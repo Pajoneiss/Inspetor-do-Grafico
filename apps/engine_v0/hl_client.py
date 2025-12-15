@@ -384,6 +384,30 @@ class HLClient:
             traceback.print_exc()
             return []
     
+    def get_open_orders(self) -> list:
+        """
+        Get open orders (MCP-first: using info_client.open_orders)
+        
+        Returns:
+            list: Open orders with details
+        """
+        try:
+            if not self.info_client or not self.wallet_address:
+                return []
+            
+            # Use MCP info_client.open_orders
+            open_orders_response = self.info_client.open_orders(self.wallet_address)
+            
+            if not open_orders_response:
+                return []
+            
+            return open_orders_response
+            
+        except Exception as e:
+            print(f"[HL][ERROR] get_open_orders failed: {e}")
+            traceback.print_exc()
+            return []
+    
     def place_market_order(self, symbol: str, is_buy: bool, size: float, reduce_only: bool = False, slippage: float = None) -> dict:
         """
         Place market order using SDK market_open

@@ -123,6 +123,20 @@ def main():
                     recent_fills = hl.get_recent_fills(limit=10)
                     state["recent_fills"] = recent_fills
                     
+                    # Get open orders (MCP-first)
+                    open_orders = hl.get_open_orders()
+                    state["open_orders"] = open_orders
+                    state["open_orders_count"] = len(open_orders)
+                    
+                    # Group open orders by symbol
+                    open_orders_by_symbol = {}
+                    for order in open_orders:
+                        coin = order.get("coin", "")
+                        if coin not in open_orders_by_symbol:
+                            open_orders_by_symbol[coin] = []
+                        open_orders_by_symbol[coin].append(order)
+                    state["open_orders_by_symbol"] = open_orders_by_symbol
+                    
                     # Add feedback (rejects, errors, successes)
                     from feedback import get_feedback_tracker
                     feedback = get_feedback_tracker()
