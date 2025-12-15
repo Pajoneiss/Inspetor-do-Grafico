@@ -29,9 +29,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Global variable to store application context
-app_context: Optional[AppContext] = None
-
 
 @dataclass
 class AppContext:
@@ -44,6 +41,10 @@ class AppContext:
     websocket_tools: WebSocketTools
     account_address: str
     network: str
+
+
+# Global variable to store application context
+app_context: Optional[AppContext] = None
 
 
 @asynccontextmanager

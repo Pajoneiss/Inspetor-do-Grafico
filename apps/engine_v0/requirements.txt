@@ -1,0 +1,8 @@
+# Engine V0 Requirements
+# Minimal dependencies for BLOCO 0
+
+# Will be added in BLOCO 1:
+# hyperliquid-python-sdk
+
+# Will be added in BLOCO 3:
+# openai
