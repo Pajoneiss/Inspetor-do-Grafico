@@ -355,3 +355,71 @@ class HLClient:
             print(f"[HL][ERROR] get_recent_fills failed: {e}")
             traceback.print_exc()
             return []
+    
+    def place_market_order(self, symbol: str, is_buy: bool, size: float, reduce_only: bool = False) -> dict:
+        """
+        Place market order (wraps MCP exchange_client)
+        
+        Args:
+            symbol: Trading symbol
+            is_buy: True for BUY, False for SELL
+            size: Order size
+            reduce_only: If True, can only reduce position
+        
+        Returns:
+            dict: Exchange response
+        """
+        try:
+            if not self.exchange_client:
+                return {"status": "error", "response": "exchange_client not initialized"}
+            
+            # Get current price for market order
+            price = self.get_last_price(symbol)
+            if not price:
+                return {"status": "error", "response": f"failed to get price for {symbol}"}
+            
+            # Call MCP exchange client directly
+            response = self.exchange_client.order(
+                coin=symbol,
+                is_buy=is_buy,
+                sz=size,
+                limit_px=price,
+                order_type={"limit": {"tif": "Ioc"}},  # IoC acts like market
+                reduce_only=reduce_only
+            )
+            
+            return response
+            
+        except Exception as e:
+            print(f"[HL][ERROR] place_market_order failed: {e}")
+            traceback.print_exc()
+            return {"status": "error", "response": str(e)}
+    
+    def update_leverage(self, symbol: str, leverage: int, is_cross: bool = False) -> dict:
+        """
+        Update leverage for symbol (wraps MCP exchange_client)
+        
+        Args:
+            symbol: Trading symbol
+            leverage: Leverage value
+            is_cross: True for cross margin, False for isolated
+        
+        Returns:
+            dict: Exchange response
+        """
+        try:
+            if not self.exchange_client:
+                return {"status": "error", "response": "exchange_client not initialized"}
+            
+            response = self.exchange_client.update_leverage(
+                coin=symbol,
+                leverage=leverage,
+                is_cross=is_cross
+            )
+            
+            return response
+            
+        except Exception as e:
+            print(f"[HL][ERROR] update_leverage failed: {e}")
+            traceback.print_exc()
+            return {"status": "error", "response": str(e)}

@@ -141,9 +141,25 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
         # Log before execution
         print(f"[LIVE] action=PLACE_ORDER payload={format_action_compact(normalized)}")
         
-        # Execute order (placeholder - needs real implementation)
-        # TODO: Implement real order placement using hl_client.exchange_client
-        resp = {"status": "TODO", "message": "LIVE execution not yet implemented"}
+        # Set leverage if specified
+        leverage = normalized.get("leverage")
+        margin_mode = normalized.get("margin_mode", "isolated")
+        
+        if leverage:
+            is_cross = (margin_mode == "cross")
+            lev_resp = hl_client.update_leverage(symbol, leverage, is_cross)
+            print(f"[LIVE] leverage set: {leverage}x {margin_mode} resp={format_response_compact(lev_resp)}")
+        
+        # Execute market order
+        is_buy = (side == "BUY")
+        reduce_only = normalized.get("reduce_only", False)
+        
+        resp = hl_client.place_market_order(
+            symbol=symbol,
+            is_buy=is_buy,
+            size=normalized["size"],
+            reduce_only=reduce_only
+        )
         
         # Log response
         print(f"[LIVE] resp={format_response_compact(resp)}")
