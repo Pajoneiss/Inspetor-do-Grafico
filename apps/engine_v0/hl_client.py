@@ -378,9 +378,10 @@ class HLClient:
             if not price:
                 return {"status": "error", "response": f"failed to get price for {symbol}"}
             
-            # Call MCP exchange client directly
+            # Call MCP exchange client with correct parameters
+            # Signature: order(name, is_buy, sz, limit_px, order_type, reduce_only, cloid, builder)
             response = self.exchange_client.order(
-                coin=symbol,
+                name=symbol,  # Correct parameter name
                 is_buy=is_buy,
                 sz=size,
                 limit_px=price,
@@ -411,9 +412,10 @@ class HLClient:
             if not self.exchange_client:
                 return {"status": "error", "response": "exchange_client not initialized"}
             
+            # Signature: update_leverage(leverage, name, is_cross)
             response = self.exchange_client.update_leverage(
-                coin=symbol,
                 leverage=leverage,
+                name=symbol,  # Correct parameter name
                 is_cross=is_cross
             )
             
