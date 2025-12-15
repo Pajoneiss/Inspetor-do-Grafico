@@ -145,9 +145,18 @@ def main():
                     state["last_successes"] = feedback.get_recent_successes(limit=10)
                     
                     # MARKET VISION: Candles + Indicators + Orderbook (Anti-Fantasy)
+                    # Resilient to import errors - graceful degradation
                     try:
                         from indicators import calculate_indicators
-                        
+                        indicators_available = True
+                    except ImportError as e:
+                        print(f"[VISION][WARN] indicators disabled: {e}")
+                        indicators_available = False
+                    except Exception as e:
+                        print(f"[VISION][WARN] indicators import failed: {e}")
+                        indicators_available = False
+                    
+                    try:
                         # Multi-timeframe candles and indicators
                         candles_by_symbol = {}
                         indicators_by_symbol = {}
@@ -162,9 +171,13 @@ def main():
                                 "1h": candles_1h[-20:] if candles_1h else []
                             }
                             
-                            # Calculate indicators from 15m (primary timeframe)
-                            if candles_15m:
-                                indicators_by_symbol[symbol] = calculate_indicators(candles_15m)
+                            # Calculate indicators from 15m (primary timeframe) if available
+                            if indicators_available and candles_15m:
+                                try:
+                                    indicators_by_symbol[symbol] = calculate_indicators(candles_15m)
+                                except Exception as e:
+                                    print(f"[VISION][WARN] indicators calc failed for {symbol}: {e}")
+                                    indicators_by_symbol[symbol] = {}
                             else:
                                 indicators_by_symbol[symbol] = {}
                         
@@ -189,6 +202,7 @@ def main():
                         print(f"[VISION][ERROR] market data failed: {e}")
                         import traceback
                         traceback.print_exc()
+                        # Continue without vision data - don't crash
                     
                     # Log Hyperliquid status
                     prices_ok = len(prices)
