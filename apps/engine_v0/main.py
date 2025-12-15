@@ -1,13 +1,16 @@
 """
 Engine V0 - Main Loop
-Trading bot engine with Hyperliquid integration
+Trading bot engine with Hyperliquid integration and AI decisions
 """
 import time
 import sys
+from datetime import datetime
 from config import (
     LOOP_INTERVAL_SECONDS,
     SYMBOL,
     LIVE_TRADING,
+    AI_ENABLED,
+    AI_CALL_INTERVAL_SECONDS,
     FORCE_TEST_ORDER,
     TEST_ORDER_SIDE,
     TEST_ORDER_SIZE,
@@ -15,6 +18,7 @@ from config import (
     print_config
 )
 from hl_client import HLClient
+from llm_client import LLMClient
 from executor import execute
 
 
@@ -40,23 +44,49 @@ def main():
         print(f"[BOOT][ERROR] Failed to initialize HLClient: {e}")
         print("[BOOT] Continuing without Hyperliquid connection...")
     
+    # Initialize LLM client
+    llm = None
+    if AI_ENABLED:
+        try:
+            llm = LLMClient()
+            print("[BOOT] LLMClient initialized")
+        except Exception as e:
+            print(f"[BOOT][ERROR] Failed to initialize LLMClient: {e}")
+            print("[BOOT] Continuing without AI...")
+    
     iteration = 0
     test_order_executed = False  # Flag to execute test order only once
+    last_ai_call_time = 0  # Timestamp of last AI call
     
     try:
         while True:
             iteration += 1
+            current_time = time.time()
             print(f"\n[LOOP] tick {iteration}")
+            
+            # Initialize state for this iteration
+            state = {
+                "time": datetime.now().isoformat(),
+                "equity": 0.0,
+                "positions_count": 0,
+                "price": None,
+                "symbol": symbols[0] if symbols else "BTC",
+                "live_trading": LIVE_TRADING
+            }
             
             # BLOCO 1: Hyperliquid integration
             if hl and symbols:
                 try:
                     # Get account summary
                     summary = hl.get_account_summary()
+                    state["equity"] = summary["equity"]
+                    state["positions_count"] = summary["positions_count"]
                     
                     # Get price for first symbol (to avoid rate limits)
                     first_symbol = symbols[0]
                     price = hl.get_last_price(first_symbol)
+                    state["price"] = price
+                    state["symbol"] = first_symbol
                     
                     # Log Hyperliquid status
                     print(f"[HL] ok equity={summary['equity']:.2f} positions={summary['positions_count']} price_{first_symbol}={price}")
@@ -82,7 +112,29 @@ def main():
                 
                 test_order_executed = True
             
-            # TODO: Add AI decision engine (BLOCO 3)
+            # BLOCO 3: AI decision engine
+            elif AI_ENABLED and llm:
+                # Check cooldown
+                time_since_last_call = current_time - last_ai_call_time
+                
+                if time_since_last_call >= AI_CALL_INTERVAL_SECONDS:
+                    try:
+                        # Get AI decision
+                        decision = llm.decide(state)
+                        
+                        # Update last call time
+                        last_ai_call_time = current_time
+                        
+                        # Execute actions
+                        actions = decision.get("actions", [])
+                        if actions:
+                            execute(actions, live_trading=LIVE_TRADING)
+                        
+                    except Exception as e:
+                        print(f"[LLM][ERROR] {e}")
+                else:
+                    remaining = AI_CALL_INTERVAL_SECONDS - time_since_last_call
+                    print(f"[LLM] skipped (cooldown {remaining:.0f}s)")
             
             # Sleep until next iteration
             time.sleep(LOOP_INTERVAL_SECONDS)
