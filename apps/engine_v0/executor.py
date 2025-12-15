@@ -423,15 +423,16 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
         
         if symbol not in positions:
             print(f"[LIVE][WARN] SET_STOP_LOSS {symbol} skipped - no position")
-            return False
+            return None  # Skipped, not failed
         
         position = positions[symbol]
+        # CRITICAL: Use REAL position size, not normalized new order size
         position_size = abs(float(position.get("szi", 0)))
         position_side = "LONG" if float(position.get("szi", 0)) > 0 else "SHORT"
         
         if position_size == 0:
-            print(f"[LIVE][WARN] SET_STOP_LOSS {symbol} skipped - zero size")
-            return False
+            print(f"[LIVE][WARN] SET_STOP_LOSS {symbol} skipped - zero position size")
+            return None  # Skipped
         
         # Get mark price and constraints for validation
         mark_price = hl_client.get_last_price(symbol)
