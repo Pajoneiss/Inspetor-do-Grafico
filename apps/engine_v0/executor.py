@@ -110,6 +110,8 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
 
 def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
     """Execute PLACE_ORDER action"""
+    from normalizer import normalize_place_order, format_action_compact, format_response_compact
+    
     symbol = action.get("symbol", "?")
     side = action.get("side", "?")
     size = action.get("size", 0)
@@ -117,9 +119,75 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
     
     if is_paper:
         print(f"[PAPER] would PLACE_ORDER {symbol} {side} size={size} type={order_type}")
-    else:
-        print(f"[LIVE] placing order {symbol} {side} size={size} type={order_type}")
-        # TODO: hl_client.place_market_order(symbol, side, size)
+        return
+    
+    # LIVE execution
+    try:
+        # Get current price and constraints
+        price = hl_client.get_last_price(symbol)
+        if not price:
+            print(f"[LIVE][ERROR] failed to get price for {symbol}")
+            return
+        
+        constraints = hl_client.get_symbol_constraints(symbol)
+        
+        # Normalize order
+        normalized, reject_reason = normalize_place_order(action, price, constraints)
+        
+        if normalized is None:
+            print(f"[REJECT] {symbol} reason={reject_reason}")
+            return
+        
+        # Log before execution
+        print(f"[LIVE] action=PLACE_ORDER payload={format_action_compact(normalized)}")
+        
+        # Execute order (placeholder - needs real implementation)
+        # TODO: Implement real order placement using hl_client.exchange_client
+        resp = {"status": "TODO", "message": "LIVE execution not yet implemented"}
+        
+        # Log response
+        print(f"[LIVE] resp={format_response_compact(resp)}")
+        
+        # Post-verification
+        _post_verify(hl_client, symbol, "PLACE_ORDER")
+        
+    except Exception as e:
+        print(f"[LIVE][ERROR] PLACE_ORDER {symbol} failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+def _post_verify(hl_client, symbol: str, action_type: str) -> None:
+    """Post-execution verification"""
+    try:
+        # Get current positions
+        positions = hl_client.get_positions_by_symbol()
+        
+        # Get recent fills
+        fills = hl_client.get_recent_fills(limit=5)
+        
+        # Log verification
+        positions_count = len(positions)
+        positions_compact = {k: f"{v['side']} {v['size']}" for k, v in list(positions.items())[:3]}
+        
+        print(f"[VERIFY] positions_count={positions_count} positions={positions_compact}")
+        
+        if fills:
+            fills_compact = [{
+                "coin": f.get("coin", "?"),
+                "side": f.get("side", "?"),
+                "sz": f.get("sz", 0)
+            } for f in fills[:3]]
+            print(f"[VERIFY] last_fills={fills_compact}")
+        else:
+            print(f"[VERIFY] last_fills=[]")
+        
+        # Warning if no position after PLACE_ORDER
+        if action_type == "PLACE_ORDER" and symbol not in positions:
+            print(f"[VERIFY][WARN] No position for {symbol} after LIVE order. Likely reject (min notional/decimals/margin/leverage). Check resp above.")
+        
+    except Exception as e:
+        print(f"[VERIFY][ERROR] {e}")
 
 
 def _execute_close_position(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
