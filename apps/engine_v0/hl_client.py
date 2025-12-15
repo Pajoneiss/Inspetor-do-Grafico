@@ -411,7 +411,7 @@ class HLClient:
     def get_candles(self, symbol: str, interval: str, limit: int = 100) -> list:
         """
         Get historical candles (MCP-first: using info_client.candles_snapshot)
-        Robust wrapper handling MCP signature requirements
+        Uses positional args to match MCP signature: (coin, interval, startTime, endTime)
         
         Args:
             symbol: Trading symbol
@@ -442,13 +442,8 @@ class HLClient:
             # Calculate start time based on limit
             start_time = now_ms - (limit * interval_ms)
             
-            # Use MCP info_client.candles_snapshot with required endTime
-            candles = self.info_client.candles_snapshot(
-                coin=symbol,
-                interval=interval,
-                startTime=start_time,
-                endTime=now_ms
-            )
+            # Use POSITIONAL args to match MCP signature: (coin, interval, startTime, endTime)
+            candles = self.info_client.candles_snapshot(symbol, interval, start_time, now_ms)
             
             if not candles:
                 return []
@@ -456,20 +451,13 @@ class HLClient:
             return candles
             
         except TypeError as e:
-            # Handle signature mismatch gracefully
-            print(f"[HL][ERROR] get_candles({symbol}, {interval}) signature error: {e}")
-            print(f"[HL][WARN] Trying alternative candles_snapshot signature")
-            try:
-                # Try without time params
-                candles = self.info_client.candles_snapshot(symbol, interval, limit)
-                return candles if candles else []
-            except Exception as e2:
-                print(f"[HL][ERROR] get_candles({symbol}, {interval}) fallback failed: {e2}")
-                return []
+            # Signature mismatch - log once and return empty
+            print(f"[HL][ERROR] get_candles({symbol}, {interval}) failed: {e}")
+            return []
         except Exception as e:
             print(f"[HL][ERROR] get_candles({symbol}, {interval}) failed: {e}")
-            traceback.print_exc()
             return []
+
     
     def get_orderbook(self, symbol: str, depth: int = 10) -> dict:
         """

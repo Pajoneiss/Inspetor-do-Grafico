@@ -263,7 +263,12 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
 
 
 def _parse_response_success(resp: dict) -> bool:
-    """Check if exchange response indicates success"""
+    """
+    Check if exchange response indicates success
+    CRITICAL: resting = success (trigger order accepted, waiting)
+              filled = success (order executed)
+              error = failure
+    """
     if not resp:
         return False
     
@@ -274,19 +279,32 @@ def _parse_response_success(resp: dict) -> bool:
     if resp.get("status") != "ok":
         return False
     
-    # Check for errors in response data
+    # Check for statuses in response data
     response_data = resp.get("response", {})
     if isinstance(response_data, dict):
         data = response_data.get("data", {})
         if isinstance(data, dict):
             statuses = data.get("statuses", [])
             if statuses:
-                # Check if any status has error
                 for status in statuses:
-                    if isinstance(status, dict) and "error" in status:
-                        return False
+                    if isinstance(status, dict):
+                        # CRITICAL: resting = SUCCESS (trigger order accepted)
+                        if "resting" in status:
+                            oid = status["resting"].get("oid", "?")
+                            print(f"[EXEC] order resting oid={oid} (SUCCESS)")
+                            return True
+                        
+                        # filled = SUCCESS
+                        if "filled" in status:
+                            return True
+                        
+                        # error = FAILURE
+                        if "error" in status:
+                            return False
     
+    # If status is ok and no error found, treat as success
     return True
+
 
 
 def _extract_error_message(resp: dict) -> str:
