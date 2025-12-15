@@ -463,6 +463,22 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
         
         print(f"[LIVE] SET_STOP_LOSS {symbol} stop=${trigger_px_quantized:.2f} size={position_size} side={position_side}")
         
+        # IDEMPOTENT CHECK: if similar trigger exists, skip
+        open_orders = hl_client.get_open_orders()
+        for order in open_orders:
+            if order.get("coin") == symbol:
+                # Check if this is a similar SL trigger
+                order_trigger_px = float(order.get("triggerPx", 0) or 0)
+                order_sz = float(order.get("sz", 0))
+                is_reduce_only = order.get("reduceOnly", False)
+                
+                # If reduce_only trigger within 0.5% of our target price, skip
+                if is_reduce_only and order_trigger_px > 0:
+                    price_diff_pct = abs(order_trigger_px - trigger_px_quantized) / trigger_px_quantized * 100
+                    if price_diff_pct < 0.5:
+                        print(f"[IDEMP] skip SET_STOP_LOSS {symbol} - similar trigger exists oid={order.get('oid', '?')} px={order_trigger_px}")
+                        return True  # Return success to prevent retry
+        
         # Place trigger order
         resp = hl_client.place_trigger_order(
             symbol=symbol,
@@ -492,56 +508,98 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
 
 
 def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) -> bool:
-    """Execute SET_TAKE_PROFIT action with trigger price quantization and validation"""
+    """Execute SET_TAKE_PROFIT action with trigger price quantization and idempotent check"""
     symbol = action.get("symbol", "?")
     tp_price = action.get("tp_price", 0)
     
     if is_paper:
         print(f"[PAPER] would SET_TAKE_PROFIT {symbol} tp=${tp_price:.2f}")
-        return
+        return True
     
-    # LIVE execution
+    # LIVE execution with trigger price validation
     try:
-        # Get current position to determine size and side
         positions = hl_client.get_positions_by_symbol()
         
         if symbol not in positions:
             print(f"[LIVE][WARN] SET_TAKE_PROFIT {symbol} skipped - no position")
-            return
+            return False
         
         position = positions[symbol]
-        position_size = position["size"]
-        position_side = position["side"]
+        position_size = abs(float(position.get("szi", 0)))
+        position_side = "LONG" if float(position.get("szi", 0)) > 0 else "SHORT"
         
-        # Take profit triggers opposite side
-        # LONG position -> SELL trigger, SHORT position -> BUY trigger
-        is_buy_trigger = (position_side == "SHORT")
+        if position_size == 0:
+            print(f"[LIVE][WARN] SET_TAKE_PROFIT {symbol} skipped - zero size")
+            return False
         
-        print(f"[LIVE] SET_TAKE_PROFIT {symbol} tp=${tp_price:.2f} size={position_size}")
+        # Get mark price and constraints for validation
+        mark_price = hl_client.get_last_price(symbol)
+        if not mark_price:
+            print(f"[LIVE][ERROR] SET_TAKE_PROFIT {symbol} - failed to get mark price")
+            return False
+        
+        constraints = hl_client.get_symbol_constraints(symbol)
+        tick_sz = constraints.get("tickSz", 1.0)
+        
+        # Quantize trigger price to tick size
+        from decimal import Decimal, ROUND_DOWN
+        trigger_px_decimal = Decimal(str(tp_price))
+        tick_decimal = Decimal(str(tick_sz))
+        trigger_px_quantized = float((trigger_px_decimal / tick_decimal).quantize(Decimal('1'), rounding=ROUND_DOWN) * tick_decimal)
+        
+        # VALIDATE TRIGGER SIDE
+        if position_side == "LONG":
+            # TP for LONG must be above mark price
+            if trigger_px_quantized <= mark_price:
+                print(f"[LIVE][REJECT] SET_TAKE_PROFIT {symbol} reason=invalid_trigger_side LONG_TP must be > mark (mark={mark_price} trigger={trigger_px_quantized})")
+                return False
+        else:  # SHORT
+            # TP for SHORT must be below mark price
+            if trigger_px_quantized >= mark_price:
+                print(f"[LIVE][REJECT] SET_TAKE_PROFIT {symbol} reason=invalid_trigger_side SHORT_TP must be < mark (mark={mark_price} trigger={trigger_px_quantized})")
+                return False
+        
+        print(f"[LIVE] SET_TAKE_PROFIT {symbol} tp=${trigger_px_quantized:.2f} size={position_size} side={position_side}")
+        
+        # IDEMPOTENT CHECK: if similar trigger exists, skip
+        open_orders = hl_client.get_open_orders()
+        for order in open_orders:
+            if order.get("coin") == symbol:
+                order_trigger_px = float(order.get("triggerPx", 0) or 0)
+                is_reduce_only = order.get("reduceOnly", False)
+                
+                # If reduce_only trigger within 0.5% of our target price, skip
+                if is_reduce_only and order_trigger_px > 0:
+                    price_diff_pct = abs(order_trigger_px - trigger_px_quantized) / trigger_px_quantized * 100
+                    if price_diff_pct < 0.5:
+                        print(f"[IDEMP] skip SET_TAKE_PROFIT {symbol} - similar trigger exists oid={order.get('oid', '?')} px={order_trigger_px}")
+                        return True  # Return success to prevent retry
         
         # Place trigger order
         resp = hl_client.place_trigger_order(
             symbol=symbol,
-            is_buy=is_buy_trigger,
-            trigger_price=tp_price,
+            is_buy=(position_side == "SHORT"),  # Buy to close short, sell to close long
+            trigger_price=trigger_px_quantized,
             size=position_size,
-            is_stop_loss=False,  # This is take profit
-            reduce_only=True
+            is_stop_loss=False  # This is take profit
         )
         
         print(f"[LIVE] resp={_format_resp(resp)}")
         
-        # Parse response
         success = _parse_response_success(resp)
         
         if not success:
             error_msg = _extract_error_message(resp)
             print(f"[LIVE][REJECT] {symbol} exchange_error={error_msg}")
-            return
+            return False
+        
+        _post_verify(hl_client, symbol, "SET_TAKE_PROFIT")
+        return True
         
     except Exception as e:
         print(f"[LIVE][ERROR] SET_TAKE_PROFIT {symbol} failed: {e}")
         import traceback
+        traceback.print_exc()
         traceback.print_exc()
 
 
