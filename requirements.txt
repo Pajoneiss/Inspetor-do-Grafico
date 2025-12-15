@@ -1,3 +1,6 @@
+# Engine V0 Dependencies (for Railway deployment)
+-r apps/engine_v0/requirements.txt
+
 # MCP Framework
 mcp[cli]>=1.0.0
 fastmcp>=0.1.0
