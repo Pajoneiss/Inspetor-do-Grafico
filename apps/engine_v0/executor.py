@@ -105,14 +105,34 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
     skipped_count = 0
     
     for action in actions:
-        # Check for duplicates using temporal window
-        action_id = _get_action_id(action)
-        if _is_duplicate(action_id, current_time):
-            print(f"[EXEC][DEDUP] skipped duplicate action: {action.get('type', 'UNKNOWN')}")
+        action_type = action.get("type", "UNKNOWN")
+        symbol = action.get("symbol", "?")
+        
+        # Check for duplicates using intent-based deduplication
+        intent_key = _get_intent_key(action)
+        if _is_intent_duplicate(intent_key, action_type, current_time):
+            ttl = _get_intent_ttl(action_type)
+            last_time = _intent_history.get(intent_key, current_time)
+            ttl_remaining = int(ttl - (current_time - last_time))
+            print(f"[SAFEGUARD] intent_dedup skip intent={intent_key} ttl_remaining={ttl_remaining}s")
             skipped_count += 1
             continue
         
-        action_type = action.get("type", "UNKNOWN")
+        # Circuit breaker: Check add limit for PLACE_ORDER
+        if action_type == "PLACE_ORDER":
+            # Clean old add timestamps (>1 hour)
+            if symbol not in _adds_history:
+                _adds_history[symbol] = []
+            
+            cutoff = current_time - 3600
+            _adds_history[symbol] = [ts for ts in _adds_history[symbol] if ts > cutoff]
+            
+            # Check limit
+            if len(_adds_history[symbol]) >= MAX_POSITION_ADDS_PER_HOUR:
+                print(f"[SAFEGUARD] add_limit_reached symbol={symbol} adds_60m={len(_adds_history[symbol])} max={MAX_POSITION_ADDS_PER_HOUR}")
+                failed_count += 1
+                continue
+        
         action_success = False
         
         try:
@@ -141,7 +161,14 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
             
             # Count based on actual success
             if action_success:
-                _action_history[action_id] = current_time
+                _intent_history[intent_key] = current_time
+                
+                # Track adds for circuit breaker
+                if action_type == "PLACE_ORDER":
+                    if symbol not in _adds_history:
+                        _adds_history[symbol] = []
+                    _adds_history[symbol].append(current_time)
+                
                 success_count += 1
             else:
                 failed_count += 1
@@ -156,9 +183,10 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
     total = len(actions)
     print(f"[EXEC] done success={success_count} failed={failed_count} skipped={skipped_count} total={total}")
     
-    # Clean old entries from history (older than dedup window)
-    cutoff_time = current_time - ACTION_DEDUP_SECONDS
-    _action_history.clear()  # Simple approach: clear all on each iteration
+    # Clean old entries from intent history
+    # Keep entries within max TTL window (TRIGGER_DEDUP_SECONDS is longest)
+    cutoff_time = current_time - max(PLACE_ORDER_DEDUP_SECONDS, TRIGGER_DEDUP_SECONDS, ACTION_DEDUP_SECONDS)
+    _intent_history.clear()  # Simple approach for now
     # Alternative: {k: v for k, v in _action_history.items() if v >= cutoff_time}
 
 
