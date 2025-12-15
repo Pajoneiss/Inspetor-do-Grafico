@@ -144,6 +144,52 @@ def main():
                     state["last_errors"] = feedback.get_recent_errors(limit=10)
                     state["last_successes"] = feedback.get_recent_successes(limit=10)
                     
+                    # MARKET VISION: Candles + Indicators + Orderbook (Anti-Fantasy)
+                    try:
+                        from indicators import calculate_indicators
+                        
+                        # Multi-timeframe candles and indicators
+                        candles_by_symbol = {}
+                        indicators_by_symbol = {}
+                        
+                        for symbol in snapshot_symbols[:3]:  # Limit to top 3 to avoid API spam
+                            # Get candles for multiple timeframes
+                            candles_15m = hl.get_candles(symbol, "15m", limit=50)
+                            candles_1h = hl.get_candles(symbol, "1h", limit=50)
+                            
+                            candles_by_symbol[symbol] = {
+                                "15m": candles_15m[-20:] if candles_15m else [],  # Last 20 for state size
+                                "1h": candles_1h[-20:] if candles_1h else []
+                            }
+                            
+                            # Calculate indicators from 15m (primary timeframe)
+                            if candles_15m:
+                                indicators_by_symbol[symbol] = calculate_indicators(candles_15m)
+                            else:
+                                indicators_by_symbol[symbol] = {}
+                        
+                        state["candles_by_symbol"] = candles_by_symbol
+                        state["indicators_by_symbol"] = indicators_by_symbol
+                        
+                        # Orderbook for top symbols
+                        orderbook_by_symbol = {}
+                        for symbol in snapshot_symbols[:3]:
+                            orderbook_by_symbol[symbol] = hl.get_orderbook(symbol, depth=5)
+                        state["orderbook_by_symbol"] = orderbook_by_symbol
+                        
+                        # Funding info
+                        funding_by_symbol = {}
+                        for symbol in snapshot_symbols[:3]:
+                            funding_by_symbol[symbol] = hl.get_funding_info(symbol)
+                        state["funding_by_symbol"] = funding_by_symbol
+                        
+                        print(f"[VISION] candles={len(candles_by_symbol)} indicators={len(indicators_by_symbol)} orderbook={len(orderbook_by_symbol)}")
+                        
+                    except Exception as e:
+                        print(f"[VISION][ERROR] market data failed: {e}")
+                        import traceback
+                        traceback.print_exc()
+                    
                     # Log Hyperliquid status
                     prices_ok = len(prices)
                     positions_symbols = list(positions_by_symbol.keys())
