@@ -10,6 +10,13 @@ from typing import List, Dict, Any
 from config import MAX_ACTIONS_PER_TICK, ACTION_DEDUP_SECONDS
 
 
+def _format_resp(resp: Any) -> str:
+    """Format response as compact JSON for logging"""
+    if isinstance(resp, dict):
+        return json.dumps(resp, separators=(',', ':'))
+    return str(resp)
+
+
 # Track executed actions with timestamps for temporal deduplication
 _action_history: Dict[str, float] = {}
 
@@ -110,8 +117,6 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
 
 def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
     """Execute PLACE_ORDER action"""
-    from normalizer import normalize_place_order, format_action_compact, format_response_compact
-    
     symbol = action.get("symbol", "?")
     side = action.get("side", "?")
     size = action.get("size", 0)
@@ -123,6 +128,9 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
     
     # LIVE execution
     try:
+        # Import normalizer functions
+        from normalizer import normalize_place_order
+        
         # Get current price and constraints
         price = hl_client.get_last_price(symbol)
         if not price:
@@ -139,7 +147,7 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
             return
         
         # Log before execution
-        print(f"[LIVE] action=PLACE_ORDER payload={format_action_compact(normalized)}")
+        print(f"[LIVE] action=PLACE_ORDER payload={_format_resp(normalized)}")
         
         # Set leverage if specified
         leverage = normalized.get("leverage")
@@ -148,7 +156,7 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
         if leverage:
             is_cross = (margin_mode == "cross")
             lev_resp = hl_client.update_leverage(symbol, leverage, is_cross)
-            print(f"[LIVE] leverage set: {leverage}x {margin_mode} resp={format_response_compact(lev_resp)}")
+            print(f"[LIVE] leverage set: {leverage}x {margin_mode} resp={_format_resp(lev_resp)}")
         
         # Execute market order
         is_buy = (side == "BUY")
@@ -160,7 +168,7 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
         )
         
         # Log response
-        print(f"[LIVE] resp={format_response_compact(resp)}")
+        print(f"[LIVE] resp={_format_resp(resp)}")
         
         # Parse response to detect rejections
         success = _parse_response_success(resp)
@@ -385,10 +393,9 @@ def _execute_close_partial(action: Dict[str, Any], is_paper: bool, hl_client) ->
         # Use market_close
         resp = hl_client.close_position_market(symbol, size=close_size)
         
-        print(f"[LIVE] resp={format_response_compact(resp)}")
+        print(f"[LIVE] resp={_format_resp(resp)}")
         
         # Parse response
-        from normalizer import format_response_compact
         success = _parse_response_success(resp)
         
         if not success:
