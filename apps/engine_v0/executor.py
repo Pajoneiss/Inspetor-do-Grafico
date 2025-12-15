@@ -7,7 +7,16 @@ import hashlib
 import time
 from typing import List, Dict, Any
 
-from config import MAX_ACTIONS_PER_TICK, ACTION_DEDUP_SECONDS
+from config import (
+    LIVE_TRADING,
+    MAX_ACTIONS_PER_TICK,
+    ACTION_DEDUP_SECONDS,
+    MIN_NOTIONAL_USD,
+    PLACE_ORDER_DEDUP_SECONDS,
+    TRIGGER_DEDUP_SECONDS,
+    MAX_OPEN_ORDERS_PER_SYMBOL,
+    MAX_POSITION_ADDS_PER_HOUR
+)
 
 
 def _format_resp(resp: Any) -> str:
@@ -17,21 +26,46 @@ def _format_resp(resp: Any) -> str:
     return str(resp)
 
 
-# Track executed actions with timestamps for temporal deduplication
-_action_history: Dict[str, float] = {}
+# Track executed actions with intent-based deduplication
+_intent_history: Dict[str, float] = {}  # {intent_key: timestamp}
+_adds_history: Dict[str, List[float]] = {}  # {symbol: [timestamps]}
 
 
-def _get_action_id(action: Dict[str, Any]) -> str:
-    """Generate unique ID for action"""
-    action_str = json.dumps(action, sort_keys=True)
-    return hashlib.sha1(action_str.encode()).hexdigest()
+def _get_intent_key(action: Dict[str, Any]) -> str:
+    """Generate intent key for deduplication (by intention, not exact params)"""
+    action_type = action.get("type", "UNKNOWN")
+    symbol = action.get("symbol", "?")
+    
+    if action_type == "PLACE_ORDER":
+        side = action.get("side", "?")
+        return f"PLACE_ORDER:{symbol}:{side}"
+    elif action_type in ("SET_STOP_LOSS", "SET_TAKE_PROFIT", "MOVE_STOP_TO_BREAKEVEN"):
+        return f"{action_type}:{symbol}"
+    elif action_type == "CLOSE_PARTIAL":
+        pct = action.get("pct", action.get("size", "?"))
+        return f"CLOSE_PARTIAL:{symbol}:{pct}"
+    else:
+        # Fallback to hash for other types
+        action_str = json.dumps(action, sort_keys=True)
+        return hashlib.sha1(action_str.encode()).hexdigest()
 
 
-def _is_duplicate(action_id: str, current_time: float) -> bool:
-    """Check if action is duplicate within dedup window"""
-    if action_id in _action_history:
-        last_time = _action_history[action_id]
-        if current_time - last_time < ACTION_DEDUP_SECONDS:
+def _get_intent_ttl(action_type: str) -> int:
+    """Get TTL for intent based on action type"""
+    if action_type == "PLACE_ORDER":
+        return PLACE_ORDER_DEDUP_SECONDS
+    elif action_type in ("SET_STOP_LOSS", "SET_TAKE_PROFIT", "MOVE_STOP_TO_BREAKEVEN"):
+        return TRIGGER_DEDUP_SECONDS
+    else:
+        return ACTION_DEDUP_SECONDS
+
+
+def _is_intent_duplicate(intent_key: str, action_type: str, current_time: float) -> bool:
+    """Check if intent is duplicate within TTL window"""
+    if intent_key in _intent_history:
+        last_time = _intent_history[intent_key]
+        ttl = _get_intent_ttl(action_type)
+        if current_time - last_time < ttl:
             return True
     return False
 
