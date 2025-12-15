@@ -159,8 +159,9 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
                 failed_count += 1
                 continue
             
-            # Count based on actual success
-            if action_success:
+            
+            # Count based on result: True=success, False=failed, None=skipped
+            if action_success is True:
                 _intent_history[intent_key] = current_time
                 
                 # Track adds for circuit breaker
@@ -170,8 +171,10 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
                     _adds_history[symbol].append(current_time)
                 
                 success_count += 1
-            else:
+            elif action_success is False:
                 failed_count += 1
+            else:  # None = skipped
+                skipped_count += 1
             
         except Exception as e:
             print(f"[EXEC][ERROR] failed to execute {action_type}: {e}")
