@@ -64,50 +64,63 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
         print("[EXEC][WARN] LIVE_TRADING=True but no hl_client provided, running as PAPER")
         is_paper = True
     
-    # Process each action
+    # Process each action with honest counting
     current_time = time.time()
-    executed_count = 0
+    success_count = 0
+    failed_count = 0
+    skipped_count = 0
     
     for action in actions:
         # Check for duplicates using temporal window
         action_id = _get_action_id(action)
         if _is_duplicate(action_id, current_time):
             print(f"[EXEC][DEDUP] skipped duplicate action: {action.get('type', 'UNKNOWN')}")
+            skipped_count += 1
             continue
         
         action_type = action.get("type", "UNKNOWN")
+        action_success = False
         
         try:
             if action_type == "PLACE_ORDER":
-                _execute_place_order(action, is_paper, hl_client)
+                action_success = _execute_place_order(action, is_paper, hl_client)
             elif action_type == "CLOSE_POSITION":
-                _execute_close_position(action, is_paper, hl_client)
+                action_success = _execute_close_position(action, is_paper, hl_client)
             elif action_type == "MOVE_STOP_TO_BREAKEVEN":
-                _execute_move_stop_to_breakeven(action, is_paper, hl_client)
+                action_success = _execute_move_stop_to_breakeven(action, is_paper, hl_client)
             elif action_type == "SET_STOP_LOSS":
-                _execute_set_stop_loss(action, is_paper, hl_client)
+                action_success = _execute_set_stop_loss(action, is_paper, hl_client)
             elif action_type == "SET_TAKE_PROFIT":
-                _execute_set_take_profit(action, is_paper, hl_client)
+                action_success = _execute_set_take_profit(action, is_paper, hl_client)
             elif action_type == "CANCEL_ALL":
-                _execute_cancel_all(action, is_paper, hl_client)
+                action_success = _execute_cancel_all(action, is_paper, hl_client)
             elif action_type == "CLOSE_PARTIAL":
-                _execute_close_partial(action, is_paper, hl_client)
+                action_success = _execute_close_partial(action, is_paper, hl_client)
             elif action_type == "CANCEL_ORDER":
-                _execute_cancel_order(action, is_paper, hl_client)
+                action_success = _execute_cancel_order(action, is_paper, hl_client)
             elif action_type == "MODIFY_ORDER":
-                _execute_modify_order(action, is_paper, hl_client)
+                action_success = _execute_modify_order(action, is_paper, hl_client)
             else:
                 print(f"[EXEC][WARN] unknown action type: {action_type}")
+                failed_count += 1
                 continue
             
-            # Mark as executed with timestamp
-            _action_history[action_id] = current_time
-            executed_count += 1
+            # Count based on actual success
+            if action_success:
+                _action_history[action_id] = current_time
+                success_count += 1
+            else:
+                failed_count += 1
             
         except Exception as e:
             print(f"[EXEC][ERROR] failed to execute {action_type}: {e}")
+            import traceback
+            traceback.print_exc()
+            failed_count += 1
     
-    print(f"[EXEC] ok (executed {executed_count}/{len(actions)})")
+    # Honest logging
+    total = len(actions)
+    print(f"[EXEC] done success={success_count} failed={failed_count} skipped={skipped_count} total={total}")
     
     # Clean old entries from history (older than dedup window)
     cutoff_time = current_time - ACTION_DEDUP_SECONDS
