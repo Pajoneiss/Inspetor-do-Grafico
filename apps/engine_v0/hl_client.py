@@ -509,22 +509,41 @@ class HLClient:
             if not self.exchange_client:
                 return {"status": "error", "response": "exchange_client not initialized"}
             
+            # Helper to ensure float type (SDK requires float, not str)
+            def _to_float(x, name="value"):
+                """Convert to float, handling str with $ and ,"""
+                if x is None:
+                    raise ValueError(f"{name} is None")
+                if isinstance(x, (int, float)):
+                    return float(x)
+                if isinstance(x, str):
+                    s = x.strip().replace("$", "").replace(",", "")
+                    return float(s)
+                raise TypeError(f"{name} must be number or str, got {type(x)}")
+            
+            # Convert all numeric values to float (CRITICAL for SDK)
+            trigger_px_f = _to_float(trigger_price, "trigger_price")
+            size_f = _to_float(size, "size")
+            
             # Normalize trigger price with tick size
             constraints = self.get_symbol_constraints(symbol)
             tick_sz = constraints.get("tickSz", 0.01)
             
-            # Round trigger price to tick size
+            # Round trigger price to tick size (keep as float)
             from decimal import Decimal, ROUND_DOWN
-            trigger_px_decimal = Decimal(str(trigger_price))
+            trigger_px_decimal = Decimal(str(trigger_px_f))
             tick_decimal = Decimal(str(tick_sz))
             trigger_px_rounded = float((trigger_px_decimal / tick_decimal).quantize(Decimal('1'), rounding=ROUND_DOWN) * tick_decimal)
             
-            # Build trigger order
+            # Log types for debugging
+            print(f"[HL] place_trigger_order triggerPx type={type(trigger_px_rounded).__name__} val={trigger_px_rounded} size type={type(size_f).__name__} val={size_f}")
+            
+            # Build trigger order - CRITICAL: all values must be float/int, NOT string
             # Signature: order(name, is_buy, sz, limit_px, order_type, reduce_only, cloid, builder)
-            # order_type for trigger: {"trigger": {"triggerPx": "price", "isMarket": True, "tpsl": "sl"|"tp"}}
+            # order_type for trigger: {"trigger": {"triggerPx": float, "isMarket": bool, "tpsl": str}}
             order_type = {
                 "trigger": {
-                    "triggerPx": str(trigger_px_rounded),
+                    "triggerPx": trigger_px_rounded,  # MUST be float
                     "isMarket": True,
                     "tpsl": "sl" if is_stop_loss else "tp"
                 }
@@ -533,8 +552,8 @@ class HLClient:
             response = self.exchange_client.order(
                 name=symbol,
                 is_buy=is_buy,
-                sz=size,
-                limit_px=trigger_px_rounded,  # Required even for market triggers
+                sz=size_f,  # MUST be float
+                limit_px=trigger_px_rounded,  # MUST be float
                 order_type=order_type,
                 reduce_only=reduce_only
             )
