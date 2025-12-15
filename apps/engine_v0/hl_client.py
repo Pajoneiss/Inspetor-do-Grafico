@@ -305,29 +305,57 @@ class HLClient:
             symbol: Trading symbol
         
         Returns:
-            dict: {szDecimals, maxLeverage, onlyIsolated}
+            dict: {szDecimals, maxLeverage, onlyIsolated, tickSz, pxDecimals}
         """
         try:
             meta = self.get_meta_cached()
             
             if not meta or "universe" not in meta:
-                return {"szDecimals": 3, "maxLeverage": 50, "onlyIsolated": False}
+                return {
+                    "szDecimals": 3,
+                    "maxLeverage": 50,
+                    "onlyIsolated": False,
+                    "tickSz": 0.01,
+                    "pxDecimals": 2
+                }
             
             # Find symbol in universe
             for asset in meta["universe"]:
                 if asset.get("name") == symbol:
+                    # Get tick size - this is critical for price normalization
+                    tick_sz = float(asset.get("tickSz", "0.01"))
+                    
+                    # Calculate price decimals from tick size
+                    # tickSz=0.01 -> 2 decimals, tickSz=0.1 -> 1 decimal, etc
+                    import math
+                    px_decimals = max(0, -int(math.floor(math.log10(tick_sz)))) if tick_sz > 0 else 2
+                    
                     return {
                         "szDecimals": asset.get("szDecimals", 3),
                         "maxLeverage": asset.get("maxLeverage", 50),
-                        "onlyIsolated": asset.get("onlyIsolated", False)
+                        "onlyIsolated": asset.get("onlyIsolated", False),
+                        "tickSz": tick_sz,
+                        "pxDecimals": px_decimals
                     }
             
             # Default if not found
-            return {"szDecimals": 3, "maxLeverage": 50, "onlyIsolated": False}
+            return {
+                "szDecimals": 3,
+                "maxLeverage": 50,
+                "onlyIsolated": False,
+                "tickSz": 0.01,
+                "pxDecimals": 2
+            }
             
         except Exception as e:
             print(f"[HL][ERROR] get_symbol_constraints({symbol}) failed: {e}")
-            return {"szDecimals": 3, "maxLeverage": 50, "onlyIsolated": False}
+            return {
+                "szDecimals": 3,
+                "maxLeverage": 50,
+                "onlyIsolated": False,
+                "tickSz": 0.01,
+                "pxDecimals": 2
+            }
     
     def get_recent_fills(self, limit: int = 10) -> list:
         """
@@ -356,15 +384,16 @@ class HLClient:
             traceback.print_exc()
             return []
     
-    def place_market_order(self, symbol: str, is_buy: bool, size: float, reduce_only: bool = False) -> dict:
+    def place_market_order(self, symbol: str, is_buy: bool, size: float, reduce_only: bool = False, slippage: float = None) -> dict:
         """
-        Place market order (wraps MCP exchange_client)
+        Place market order using SDK market_open
         
         Args:
             symbol: Trading symbol
             is_buy: True for BUY, False for SELL
             size: Order size
             reduce_only: If True, can only reduce position
+            slippage: Slippage tolerance (default from config)
         
         Returns:
             dict: Exchange response
@@ -373,26 +402,60 @@ class HLClient:
             if not self.exchange_client:
                 return {"status": "error", "response": "exchange_client not initialized"}
             
-            # Get current price for market order
-            price = self.get_last_price(symbol)
-            if not price:
-                return {"status": "error", "response": f"failed to get price for {symbol}"}
+            # Use config slippage if not provided
+            if slippage is None:
+                from config import ORDER_SLIPPAGE
+                slippage = ORDER_SLIPPAGE
             
-            # Call MCP exchange client with correct parameters
-            # Signature: order(name, is_buy, sz, limit_px, order_type, reduce_only, cloid, builder)
-            response = self.exchange_client.order(
-                name=symbol,  # Correct parameter name
+            # Use market_open for opening positions (SDK handles tick size)
+            # Signature: market_open(name, is_buy, sz, px=None, slippage=0.05, cloid, builder)
+            response = self.exchange_client.market_open(
+                name=symbol,
                 is_buy=is_buy,
                 sz=size,
-                limit_px=price,
-                order_type={"limit": {"tif": "Ioc"}},  # IoC acts like market
-                reduce_only=reduce_only
+                px=None,  # Let SDK calculate market price
+                slippage=slippage
             )
             
             return response
             
         except Exception as e:
             print(f"[HL][ERROR] place_market_order failed: {e}")
+            traceback.print_exc()
+            return {"status": "error", "response": str(e)}
+    
+    def close_position_market(self, symbol: str, size: float = None, slippage: float = None) -> dict:
+        """
+        Close position using SDK market_close
+        
+        Args:
+            symbol: Trading symbol
+            size: Size to close (None = close all)
+            slippage: Slippage tolerance
+        
+        Returns:
+            dict: Exchange response
+        """
+        try:
+            if not self.exchange_client:
+                return {"status": "error", "response": "exchange_client not initialized"}
+            
+            if slippage is None:
+                from config import ORDER_SLIPPAGE
+                slippage = ORDER_SLIPPAGE
+            
+            # Signature: market_close(coin, sz=None, px=None, slippage=0.05, cloid, builder)
+            response = self.exchange_client.market_close(
+                coin=symbol,
+                sz=size,
+                px=None,
+                slippage=slippage
+            )
+            
+            return response
+            
+        except Exception as e:
+            print(f"[HL][ERROR] close_position_market failed: {e}")
             traceback.print_exc()
             return {"status": "error", "response": str(e)}
     

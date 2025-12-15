@@ -152,25 +152,76 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
         
         # Execute market order
         is_buy = (side == "BUY")
-        reduce_only = normalized.get("reduce_only", False)
         
         resp = hl_client.place_market_order(
             symbol=symbol,
             is_buy=is_buy,
-            size=normalized["size"],
-            reduce_only=reduce_only
+            size=normalized["size"]
         )
         
         # Log response
         print(f"[LIVE] resp={format_response_compact(resp)}")
         
-        # Post-verification
+        # Parse response to detect rejections
+        success = _parse_response_success(resp)
+        
+        if not success:
+            error_msg = _extract_error_message(resp)
+            print(f"[LIVE][REJECT] {symbol} exchange_error={error_msg}")
+            return
+        
+        # Post-verification only if successful
         _post_verify(hl_client, symbol, "PLACE_ORDER")
         
     except Exception as e:
         print(f"[LIVE][ERROR] PLACE_ORDER {symbol} failed: {e}")
         import traceback
         traceback.print_exc()
+
+
+def _parse_response_success(resp: dict) -> bool:
+    """Check if exchange response indicates success"""
+    if not resp:
+        return False
+    
+    # Check status field
+    if resp.get("status") == "error":
+        return False
+    
+    if resp.get("status") != "ok":
+        return False
+    
+    # Check for errors in response data
+    response_data = resp.get("response", {})
+    if isinstance(response_data, dict):
+        data = response_data.get("data", {})
+        if isinstance(data, dict):
+            statuses = data.get("statuses", [])
+            if statuses:
+                # Check if any status has error
+                for status in statuses:
+                    if isinstance(status, dict) and "error" in status:
+                        return False
+    
+    return True
+
+
+def _extract_error_message(resp: dict) -> str:
+    """Extract error message from response"""
+    if resp.get("status") == "error":
+        return str(resp.get("response", "unknown_error"))
+    
+    response_data = resp.get("response", {})
+    if isinstance(response_data, dict):
+        data = response_data.get("data", {})
+        if isinstance(data, dict):
+            statuses = data.get("statuses", [])
+            if statuses:
+                for status in statuses:
+                    if isinstance(status, dict) and "error" in status:
+                        return str(status["error"])
+    
+    return "unknown_error"
 
 
 def _post_verify(hl_client, symbol: str, action_type: str) -> None:
