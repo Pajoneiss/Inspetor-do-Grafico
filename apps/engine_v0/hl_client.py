@@ -411,7 +411,7 @@ class HLClient:
     def get_candles(self, symbol: str, interval: str, limit: int = 100) -> list:
         """
         Get historical candles (MCP-first: using info_client.candles_snapshot)
-        Uses positional args to match MCP signature: (coin, interval, startTime, endTime)
+        Uses inspect to detect correct signature and adapt
         
         Args:
             symbol: Trading symbol
@@ -425,11 +425,18 @@ class HLClient:
             if not self.info_client:
                 return []
             
-            # Calculate time range for MCP candles_snapshot
+            # Detect signature once
+            if not hasattr(self, '_candles_sig_detected'):
+                import inspect
+                sig = inspect.signature(self.info_client.candles_snapshot)
+                self._candles_params = list(sig.parameters.keys())
+                self._candles_sig_detected = True
+                print(f"[HL] candles_signature={self._candles_params}")
+            
+            # Calculate time range
             import time
             now_ms = int(time.time() * 1000)
             
-            # Calculate interval in milliseconds
             interval_ms = {
                 "1m": 60 * 1000,
                 "5m": 5 * 60 * 1000,
@@ -439,21 +446,31 @@ class HLClient:
                 "1d": 24 * 60 * 60 * 1000
             }.get(interval, 60 * 1000)
             
-            # Calculate start time based on limit
-            start_time = now_ms - (limit * interval_ms)
+            start_ms = now_ms - (limit * interval_ms)
             
-            # Use POSITIONAL args to match MCP signature: (coin, interval, startTime, endTime)
-            candles = self.info_client.candles_snapshot(symbol, interval, start_time, now_ms)
+            # Try positional args first (most common)
+            try:
+                candles = self.info_client.candles_snapshot(symbol, interval, start_ms, now_ms)
+                if candles:
+                    return candles
+            except TypeError:
+                pass  # Try fallback
             
-            if not candles:
-                return []
+            # Fallback: try with named params
+            try:
+                candles = self.info_client.candles_snapshot(
+                    coin=symbol, 
+                    interval=interval, 
+                    startTime=start_ms, 
+                    endTime=now_ms
+                )
+                if candles:
+                    return candles
+            except Exception as e2:
+                print(f"[HL][WARN] candles unavailable {symbol} {interval}: {e2}")
             
-            return candles
-            
-        except TypeError as e:
-            # Signature mismatch - log once and return empty
-            print(f"[HL][ERROR] get_candles({symbol}, {interval}) failed: {e}")
             return []
+            
         except Exception as e:
             print(f"[HL][ERROR] get_candles({symbol}, {interval}) failed: {e}")
             return []
