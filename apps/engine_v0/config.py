@@ -14,7 +14,14 @@ AI_ENABLED = os.getenv("AI_ENABLED", "true").lower() == "true"
 AI_MODEL = os.getenv("AI_MODEL") or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 AI_CALL_INTERVAL_SECONDS = int(os.getenv("AI_CALL_INTERVAL_SECONDS", "30"))
-MAX_ACTIONS_PER_TICK = int(os.getenv("MAX_ACTIONS_PER_TICK", "5"))
+MAX_ACTIONS_PER_TICK = int(os.getenv("MAX_ACTIONS_PER_TICK", "25"))
+ACTION_DEDUP_SECONDS = int(os.getenv("ACTION_DEDUP_SECONDS", "30"))
+
+# Multi-Symbol Snapshot Configuration
+SNAPSHOT_TOP_N = int(os.getenv("SNAPSHOT_TOP_N", "12"))
+SNAPSHOT_MODE = os.getenv("SNAPSHOT_MODE", "TOP_N")  # TOP_N | ROTATE | ALL
+ROTATE_PER_TICK = int(os.getenv("ROTATE_PER_TICK", "5"))
+ALLOW_SYMBOL_NOT_IN_SNAPSHOT = os.getenv("ALLOW_SYMBOL_NOT_IN_SNAPSHOT", "true").lower() == "true"
 
 # Hyperliquid Configuration
 HYPERLIQUID_WALLET_ADDRESS = os.getenv("HYPERLIQUID_WALLET_ADDRESS") or os.getenv("HYPERLIQUID_ACCOUNT_ADDRESS", "")

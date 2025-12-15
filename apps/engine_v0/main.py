@@ -1,6 +1,6 @@
 """
 Engine V0 - Main Loop
-Trading bot engine with Hyperliquid integration and AI decisions
+Trading bot engine with multi-symbol Hyperliquid integration and AI decisions
 """
 import time
 import sys
@@ -15,6 +15,9 @@ from config import (
     TEST_ORDER_SIDE,
     TEST_ORDER_SIZE,
     TEST_ORDER_SYMBOL,
+    SNAPSHOT_TOP_N,
+    SNAPSHOT_MODE,
+    ROTATE_PER_TICK,
     print_config
 )
 from hl_client import HLClient
@@ -62,6 +65,7 @@ def main():
     iteration = 0
     test_order_executed = False  # Flag to execute test order only once
     last_ai_call_time = 0  # Timestamp of last AI call
+    rotate_offset = 0  # For ROTATE mode
     
     try:
         while True:
@@ -69,50 +73,55 @@ def main():
             current_time = time.time()
             print(f"\n[LOOP] tick {iteration}")
             
+            # Determine snapshot symbols based on mode
+            if SNAPSHOT_MODE == "ALL":
+                snapshot_symbols = symbols
+            elif SNAPSHOT_MODE == "ROTATE":
+                # Rotate through symbols
+                snapshot_symbols = symbols[rotate_offset:rotate_offset + ROTATE_PER_TICK]
+                rotate_offset = (rotate_offset + ROTATE_PER_TICK) % len(symbols)
+            else:  # TOP_N (default)
+                snapshot_symbols = symbols[:SNAPSHOT_TOP_N]
+            
             # Initialize state for this iteration
             state = {
                 "time": datetime.now().isoformat(),
                 "equity": 0.0,
                 "positions_count": 0,
-                "positions": [],
+                "positions": {},  # Will be dict[symbol, {...}]
                 "open_orders_count": 0,
-                "price": None,
-                "symbol": symbols[0] if symbols else "BTC",
+                "prices": {},
+                "symbols": symbols,  # Full allowlist
+                "snapshot_symbols": snapshot_symbols,  # Current snapshot
                 "live_trading": LIVE_TRADING
             }
             
-            # BLOCO 1: Hyperliquid integration
-            if hl and symbols:
+            # BLOCO 1 + 3.5: Hyperliquid integration with multi-symbol
+            if hl and snapshot_symbols:
                 try:
                     # Get account summary
                     summary = hl.get_account_summary()
                     state["equity"] = summary["equity"]
                     state["positions_count"] = summary["positions_count"]
                     
-                    # Get positions (for richer state)
-                    positions = hl.get_positions()
-                    state["positions"] = [
-                        {
-                            "symbol": p["coin"],
-                            "side": "LONG" if p["size"] > 0 else "SHORT",
-                            "size": abs(p["size"]),
-                            "entry_price": p["entry_price"],
-                            "unrealized_pnl": p["unrealized_pnl"]
-                        }
-                        for p in positions
-                    ]
+                    # Get positions by symbol
+                    positions_by_symbol = hl.get_positions_by_symbol()
+                    state["positions"] = positions_by_symbol
                     
-                    # Get price for first symbol (to avoid rate limits)
-                    first_symbol = symbols[0]
-                    price = hl.get_last_price(first_symbol)
-                    state["price"] = price
-                    state["symbol"] = first_symbol
+                    # Get prices for snapshot symbols
+                    prices = hl.get_prices(snapshot_symbols)
+                    state["prices"] = prices
                     
                     # Log Hyperliquid status
-                    print(f"[HL] ok equity={summary['equity']:.2f} positions={summary['positions_count']} price_{first_symbol}={price}")
+                    prices_ok = len(prices)
+                    positions_symbols = list(positions_by_symbol.keys())
+                    print(f"[HL] snapshot symbols={len(snapshot_symbols)} prices_ok={prices_ok} positions={positions_symbols if positions_symbols else '[]'}")
+                    print(f"[STATE] equity={summary['equity']:.2f} positions_count={summary['positions_count']}")
                     
                 except Exception as e:
                     print(f"[HL][ERROR] {e}")
+                    import traceback
+                    traceback.print_exc()
             
             # BLOCO 2: Test executor with forced action (only first iteration)
             if FORCE_TEST_ORDER and not test_order_executed:
@@ -127,12 +136,12 @@ def main():
                     "orderType": "MARKET"
                 }]
                 
-                # Execute (always PAPER, no hl_client passed)
-                execute(test_actions, live_trading=LIVE_TRADING, hl_client=None)
+                # Execute (pass hl_client for proper LIVE/PAPER detection)
+                execute(test_actions, live_trading=LIVE_TRADING, hl_client=hl)
                 
                 test_order_executed = True
             
-            # BLOCO 3: AI decision engine
+            # BLOCO 3 + 3.5: AI decision engine with multi-symbol state
             elif AI_ENABLED:
                 if llm is None:
                     print("[LLM] skipped (not available)")
@@ -148,10 +157,10 @@ def main():
                             # Update last call time
                             last_ai_call_time = current_time
                             
-                            # Execute actions (PAPER for now, no hl_client)
+                            # Execute actions (pass hl_client for proper LIVE/PAPER detection)
                             actions = decision.get("actions", [])
                             if actions:
-                                execute(actions, live_trading=LIVE_TRADING, hl_client=None)
+                                execute(actions, live_trading=LIVE_TRADING, hl_client=hl)
                             
                         except Exception as e:
                             print(f"[LLM][ERROR] {e}")

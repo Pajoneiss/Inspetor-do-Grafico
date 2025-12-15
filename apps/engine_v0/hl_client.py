@@ -194,3 +194,65 @@ class HLClient:
             print(f"[HL][ERROR] get_last_price({symbol}) failed: {e}")
             traceback.print_exc()
             return None
+    
+    def get_prices(self, symbols: list[str]) -> dict[str, float]:
+        """
+        Get prices for multiple symbols
+        
+        Args:
+            symbols: List of trading symbols
+        
+        Returns:
+            dict: {symbol: price} for successful fetches
+        """
+        prices = {}
+        try:
+            if not self.info_client:
+                return prices
+            
+            # Get all mid prices at once (more efficient)
+            all_mids = self.info_client.all_mids()
+            
+            if not all_mids:
+                return prices
+            
+            # Extract requested symbols
+            for symbol in symbols:
+                if symbol in all_mids:
+                    prices[symbol] = float(all_mids[symbol])
+            
+            return prices
+            
+        except Exception as e:
+            print(f"[HL][ERROR] get_prices failed: {e}")
+            traceback.print_exc()
+            return prices
+    
+    def get_positions_by_symbol(self) -> dict[str, dict]:
+        """
+        Get positions mapped by symbol
+        
+        Returns:
+            dict: {symbol: {size, side, entry_price, unrealized_pnl, ...}}
+        """
+        positions_map = {}
+        try:
+            positions = self.get_positions()
+            
+            for pos in positions:
+                symbol = pos["coin"]
+                size = pos["size"]
+                
+                positions_map[symbol] = {
+                    "size": abs(size),
+                    "side": "LONG" if size > 0 else "SHORT",
+                    "entry_price": pos["entry_price"],
+                    "unrealized_pnl": pos["unrealized_pnl"]
+                }
+            
+            return positions_map
+            
+        except Exception as e:
+            print(f"[HL][ERROR] get_positions_by_symbol failed: {e}")
+            traceback.print_exc()
+            return positions_map

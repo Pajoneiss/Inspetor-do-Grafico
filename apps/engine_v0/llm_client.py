@@ -102,61 +102,87 @@ class LLMClient:
     
     def _build_prompt(self, state: Dict[str, Any]) -> str:
         """Build prompt for AI"""
+        # Format positions
         positions_str = ""
         if state.get("positions"):
-            positions_str = "\n".join([
-                f"  - {p['symbol']}: {p['side']} {p['size']} @ ${p['entry_price']:.2f} (PnL: ${p['unrealized_pnl']:.2f})"
-                for p in state["positions"]
-            ])
-        else:
-            positions_str = "  (none)"
+            if isinstance(state["positions"], dict):
+                # positions_by_symbol format
+                for symbol, pos in state["positions"].items():
+                    positions_str += f"  - {symbol}: {pos['side']} {pos['size']} @ ${pos['entry_price']:.2f} (PnL: ${pos['unrealized_pnl']:.2f})\n"
+            else:
+                # list format
+                for p in state["positions"]:
+                    positions_str += f"  - {p['symbol']}: {p['side']} {p['size']} @ ${p['entry_price']:.2f} (PnL: ${p['unrealized_pnl']:.2f})\n"
         
-        return f"""Analyze this market state and decide on trading actions.
+        if not positions_str:
+            positions_str = "  (none)\n"
+        
+        # Format prices
+        prices_str = ""
+        if state.get("prices"):
+            for symbol, price in list(state["prices"].items())[:10]:  # Show top 10
+                prices_str += f"  - {symbol}: ${price:.2f}\n"
+        elif state.get("price") and state.get("symbol"):
+            prices_str = f"  - {state['symbol']}: ${state['price']:.2f}\n"
+        
+        # Format snapshot symbols
+        snapshot_symbols = state.get("snapshot_symbols", state.get("symbols", []))
+        if isinstance(snapshot_symbols, list) and len(snapshot_symbols) > 0:
+            symbols_str = ", ".join(snapshot_symbols[:15])  # Show first 15
+            if len(snapshot_symbols) > 15:
+                symbols_str += f" (+{len(snapshot_symbols) - 15} more)"
+        else:
+            symbols_str = state.get("symbol", "BTC")
+        
+        return f"""You are a trading AI with full autonomy. Analyze market state and decide actions.
 
-Current State:
+Market State:
 - Time: {state.get('time', 'unknown')}
-- Symbol: {state.get('symbol', 'BTC')}
-- Price: ${state.get('price', 0):.2f}
 - Account Equity: ${state.get('equity', 0):.2f}
-- Open Positions: {state.get('positions_count', 0)}
+- Symbols Available: {symbols_str}
+
+Current Prices:
+{prices_str}
+Open Positions ({state.get('positions_count', 0)}):
 {positions_str}
 - Open Orders: {state.get('open_orders_count', 0)}
 - Live Trading: {state.get('live_trading', False)}
 
-Available Actions:
-1. PLACE_ORDER - Open new position
+Available Tools (you decide everything):
+1. PLACE_ORDER - Open new position on any symbol
 2. CLOSE_POSITION - Close position (partial or full)
-3. MOVE_STOP_TO_BREAKEVEN - Move stop loss to entry price
-4. SET_STOP_LOSS - Set/update stop loss
-5. SET_TAKE_PROFIT - Set/update take profit
-6. CANCEL_ALL - Cancel all open orders for symbol
+3. CLOSE_PARTIAL - Close specific % or size
+4. MOVE_STOP_TO_BREAKEVEN - Move stop to entry price
+5. SET_STOP_LOSS - Set/update stop loss
+6. SET_TAKE_PROFIT - Set/update take profit
+7. CANCEL_ORDER - Cancel specific order
+8. CANCEL_ALL - Cancel all orders (optionally for symbol)
+9. MODIFY_ORDER - Modify existing order
 
-Respond with ONLY this JSON format (no markdown, no code blocks):
+Respond ONLY with JSON (no markdown, no code blocks):
 {{
-  "summary": "brief analysis and decision rationale",
+  "summary": "your analysis and rationale",
   "confidence": 0.75,
   "actions": [
     {{"type":"PLACE_ORDER","symbol":"BTC","side":"BUY","size":0.001,"orderType":"MARKET"}},
-    {{"type":"CLOSE_POSITION","symbol":"BTC","pct":0.3,"orderType":"MARKET"}},
+    {{"type":"CLOSE_PARTIAL","symbol":"ETH","pct":0.5}},
     {{"type":"MOVE_STOP_TO_BREAKEVEN","symbol":"BTC"}},
-    {{"type":"SET_STOP_LOSS","symbol":"BTC","stop_price":65000}},
-    {{"type":"SET_TAKE_PROFIT","symbol":"BTC","tp_price":72000}},
-    {{"type":"CANCEL_ALL","symbol":"BTC"}}
+    {{"type":"SET_STOP_LOSS","symbol":"BTC","stop_price":85000}},
+    {{"type":"SET_TAKE_PROFIT","symbol":"BTC","tp_price":90000}},
+    {{"type":"CANCEL_ALL","symbol":"SOL"}}
   ]
 }}
 
 Rules:
-- confidence: 0.0 to 1.0
-- actions: can be empty array [] if no action recommended
-- PLACE_ORDER: side "BUY" or "SELL", orderType "MARKET" only, size 0.001-0.01
-- CLOSE_POSITION: pct 0.0-1.0 (0.3 = 30%, 1.0 = 100%)
-- MOVE_STOP_TO_BREAKEVEN: moves stop to entry price (protects profit)
-- SET_STOP_LOSS: stop_price below entry for LONG, above for SHORT
-- SET_TAKE_PROFIT: tp_price above entry for LONG, below for SHORT
-- CANCEL_ALL: cancels all pending orders for symbol
-- Max 5 actions per decision
+- confidence: 0.0-1.0
+- actions: [] if no action
+- You can trade ANY symbol from available list
+- PLACE_ORDER: side BUY/SELL, size 0.001-0.01, orderType MARKET
+- CLOSE_POSITION/CLOSE_PARTIAL: pct 0.0-1.0 OR size
+- Max 25 actions per decision
+- No strategic restrictions - you decide everything
 
-Respond with pure JSON only:"""
+Respond with pure JSON:"""
     
     def _parse_json_response(self, content: str) -> Dict[str, Any]:
         """Parse JSON response from AI"""

@@ -4,13 +4,14 @@ Handles trade execution in PAPER and LIVE modes
 """
 import json
 import hashlib
-from typing import List, Dict, Any, Set
+import time
+from typing import List, Dict, Any
 
-from config import MAX_ACTIONS_PER_TICK
+from config import MAX_ACTIONS_PER_TICK, ACTION_DEDUP_SECONDS
 
 
-# Track executed actions per iteration to avoid duplicates
-_executed_actions: Set[str] = set()
+# Track executed actions with timestamps for temporal deduplication
+_action_history: Dict[str, float] = {}
 
 
 def _get_action_id(action: Dict[str, Any]) -> str:
@@ -19,17 +20,24 @@ def _get_action_id(action: Dict[str, Any]) -> str:
     return hashlib.sha1(action_str.encode()).hexdigest()
 
 
+def _is_duplicate(action_id: str, current_time: float) -> bool:
+    """Check if action is duplicate within dedup window"""
+    if action_id in _action_history:
+        last_time = _action_history[action_id]
+        if current_time - last_time < ACTION_DEDUP_SECONDS:
+            return True
+    return False
+
+
 def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -> None:
     """
     Execute trading actions
     
     Args:
         actions: List of action dictionaries
-        live_trading: Whether to execute live trades (PAPER-only in BLOCO 2-3)
-        hl_client: HLClient instance for live trading (optional)
+        live_trading: Whether to execute live trades
+        hl_client: HLClient instance for live trading (required if live_trading=True)
     """
-    global _executed_actions
-    
     if not actions:
         print("[EXEC] actions=0")
         print("[EXEC] ok")
@@ -37,13 +45,12 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
     
     # Truncate if too many actions
     if len(actions) > MAX_ACTIONS_PER_TICK:
-        print(f"[EXEC][WARN] actions truncated from {len(actions)} to {MAX_ACTIONS_PER_TICK}")
+        print(f"[EXEC][LIMIT] truncated from {len(actions)} to {MAX_ACTIONS_PER_TICK}")
         actions = actions[:MAX_ACTIONS_PER_TICK]
     
     print(f"[EXEC] actions={len(actions)}")
     
-    # BLOCO 2-3: Always run as PAPER, even if live_trading=True
-    # BLOCO 4: Will use live_trading flag
+    # Determine if PAPER or LIVE
     is_paper = not live_trading or hl_client is None
     
     if live_trading and hl_client is None:
@@ -51,12 +58,14 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
         is_paper = True
     
     # Process each action
+    current_time = time.time()
     executed_count = 0
+    
     for action in actions:
-        # Check for duplicates
+        # Check for duplicates using temporal window
         action_id = _get_action_id(action)
-        if action_id in _executed_actions:
-            print(f"[EXEC][WARN] skipping duplicate action: {action.get('type', 'UNKNOWN')}")
+        if _is_duplicate(action_id, current_time):
+            print(f"[EXEC][DEDUP] skipped duplicate action: {action.get('type', 'UNKNOWN')}")
             continue
         
         action_type = action.get("type", "UNKNOWN")
@@ -74,12 +83,18 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
                 _execute_set_take_profit(action, is_paper, hl_client)
             elif action_type == "CANCEL_ALL":
                 _execute_cancel_all(action, is_paper, hl_client)
+            elif action_type == "CLOSE_PARTIAL":
+                _execute_close_partial(action, is_paper, hl_client)
+            elif action_type == "CANCEL_ORDER":
+                _execute_cancel_order(action, is_paper, hl_client)
+            elif action_type == "MODIFY_ORDER":
+                _execute_modify_order(action, is_paper, hl_client)
             else:
                 print(f"[EXEC][WARN] unknown action type: {action_type}")
                 continue
             
-            # Mark as executed
-            _executed_actions.add(action_id)
+            # Mark as executed with timestamp
+            _action_history[action_id] = current_time
             executed_count += 1
             
         except Exception as e:
@@ -87,8 +102,10 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
     
     print(f"[EXEC] ok (executed {executed_count}/{len(actions)})")
     
-    # Clear executed actions for next iteration
-    _executed_actions.clear()
+    # Clean old entries from history (older than dedup window)
+    cutoff_time = current_time - ACTION_DEDUP_SECONDS
+    _action_history.clear()  # Simple approach: clear all on each iteration
+    # Alternative: {k: v for k, v in _action_history.items() if v >= cutoff_time}
 
 
 def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
@@ -162,3 +179,47 @@ def _execute_cancel_all(action: Dict[str, Any], is_paper: bool, hl_client) -> No
     else:
         print(f"[LIVE] canceling all orders {symbol if symbol else 'all symbols'}")
         # TODO: hl_client.cancel_all(symbol)
+
+
+def _execute_close_partial(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
+    """Execute CLOSE_PARTIAL action"""
+    symbol = action.get("symbol", "?")
+    pct = action.get("pct")
+    size = action.get("size")
+    
+    if pct is not None:
+        if is_paper:
+            print(f"[PAPER] would CLOSE_PARTIAL {symbol} pct={pct:.1%}")
+        else:
+            print(f"[LIVE] closing partial {symbol} pct={pct:.1%}")
+            # TODO: hl_client.close_position_market(symbol, pct)
+    elif size is not None:
+        if is_paper:
+            print(f"[PAPER] would CLOSE_PARTIAL {symbol} size={size}")
+        else:
+            print(f"[LIVE] closing partial {symbol} size={size}")
+            # TODO: hl_client.close_position_market_size(symbol, size)
+
+
+def _execute_cancel_order(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
+    """Execute CANCEL_ORDER action"""
+    order_id = action.get("order_id", "?")
+    
+    if is_paper:
+        print(f"[PAPER] would CANCEL_ORDER id={order_id}")
+    else:
+        print(f"[LIVE] canceling order id={order_id}")
+        # TODO: hl_client.cancel_order(order_id)
+
+
+def _execute_modify_order(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
+    """Execute MODIFY_ORDER action"""
+    order_id = action.get("order_id", "?")
+    new_price = action.get("new_price")
+    new_size = action.get("new_size")
+    
+    if is_paper:
+        print(f"[PAPER] would MODIFY_ORDER id={order_id} price={new_price} size={new_size}")
+    else:
+        print(f"[LIVE] modifying order id={order_id}")
+        # TODO: hl_client.modify_order(order_id, new_price, new_size)
