@@ -1,13 +1,15 @@
 """
 Engine V0 - Main Loop
-Simple trading bot engine with basic loop structure
+Trading bot engine with Hyperliquid integration
 """
 import time
 import sys
 from config import (
     LOOP_INTERVAL_SECONDS,
+    SYMBOL,
     print_config
 )
+from hl_client import HLClient
 
 
 def main():
@@ -16,6 +18,19 @@ def main():
     print_config()
     print("[BOOT] ok")
     
+    # Parse symbols from comma-separated list
+    symbols = [s.strip().upper() for s in SYMBOL.split(",") if s.strip()]
+    print(f"[BOOT] Parsed {len(symbols)} symbols: {symbols[:5]}..." if len(symbols) > 5 else f"[BOOT] Parsed {len(symbols)} symbols: {symbols}")
+    
+    # Initialize Hyperliquid client
+    hl = None
+    try:
+        hl = HLClient()
+        print("[BOOT] HLClient initialized")
+    except Exception as e:
+        print(f"[BOOT][ERROR] Failed to initialize HLClient: {e}")
+        print("[BOOT] Continuing without Hyperliquid connection...")
+    
     iteration = 0
     
     try:
@@ -23,7 +38,22 @@ def main():
             iteration += 1
             print(f"\n[LOOP] tick {iteration}")
             
-            # TODO: Add Hyperliquid integration (BLOCO 1)
+            # BLOCO 1: Hyperliquid integration
+            if hl and symbols:
+                try:
+                    # Get account summary
+                    summary = hl.get_account_summary()
+                    
+                    # Get price for first symbol (to avoid rate limits)
+                    first_symbol = symbols[0]
+                    price = hl.get_last_price(first_symbol)
+                    
+                    # Log Hyperliquid status
+                    print(f"[HL] ok equity={summary['equity']:.2f} positions={summary['positions_count']} price_{first_symbol}={price}")
+                    
+                except Exception as e:
+                    print(f"[HL][ERROR] {e}")
+            
             # TODO: Add AI decision engine (BLOCO 3)
             # TODO: Add executor (BLOCO 2)
             

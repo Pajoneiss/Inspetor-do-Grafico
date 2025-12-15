@@ -1,8 +1,14 @@
 # Engine V0 Requirements
-# Minimal dependencies for BLOCO 0
+# Dependencies for BLOCO 1: Hyperliquid integration
 
-# Will be added in BLOCO 1:
-# hyperliquid-python-sdk
+# Hyperliquid SDK (same as MCP server)
+hyperliquid-python-sdk>=0.3.0
+
+# Ethereum account utilities for signing
+eth-account>=0.8.0
+
+# HTTP client
+httpx>=0.24.0
 
 # Will be added in BLOCO 3:
 # openai
