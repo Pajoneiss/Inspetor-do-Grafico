@@ -322,11 +322,51 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
     
     if is_paper:
         print(f"[PAPER] would SET_STOP_LOSS {symbol} stop=${stop_price:.2f}")
-    else:
-        print(f"[LIVE] SET_STOP_LOSS {symbol} stop=${stop_price:.2f}")
-        # TODO: Implement trigger order via SDK
-        # Need to research SDK method for stop loss trigger orders
-        print(f"[LIVE][TODO] Trigger orders not yet implemented")
+        return
+    
+    # LIVE execution
+    try:
+        # Get current position to determine size and side
+        positions = hl_client.get_positions_by_symbol()
+        
+        if symbol not in positions:
+            print(f"[LIVE][WARN] SET_STOP_LOSS {symbol} skipped - no position")
+            return
+        
+        position = positions[symbol]
+        position_size = position["size"]
+        position_side = position["side"]
+        
+        # Stop loss triggers opposite side
+        # LONG position -> SELL trigger, SHORT position -> BUY trigger
+        is_buy_trigger = (position_side == "SHORT")
+        
+        print(f"[LIVE] SET_STOP_LOSS {symbol} stop=${stop_price:.2f} size={position_size}")
+        
+        # Place trigger order
+        resp = hl_client.place_trigger_order(
+            symbol=symbol,
+            is_buy=is_buy_trigger,
+            trigger_price=stop_price,
+            size=position_size,
+            is_stop_loss=True,
+            reduce_only=True
+        )
+        
+        print(f"[LIVE] resp={_format_resp(resp)}")
+        
+        # Parse response
+        success = _parse_response_success(resp)
+        
+        if not success:
+            error_msg = _extract_error_message(resp)
+            print(f"[LIVE][REJECT] {symbol} exchange_error={error_msg}")
+            return
+        
+    except Exception as e:
+        print(f"[LIVE][ERROR] SET_STOP_LOSS {symbol} failed: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
@@ -336,11 +376,51 @@ def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) 
     
     if is_paper:
         print(f"[PAPER] would SET_TAKE_PROFIT {symbol} tp=${tp_price:.2f}")
-    else:
-        print(f"[LIVE] SET_TAKE_PROFIT {symbol} tp=${tp_price:.2f}")
-        # TODO: Implement trigger order via SDK
-        # Need to research SDK method for take profit trigger orders
-        print(f"[LIVE][TODO] Trigger orders not yet implemented")
+        return
+    
+    # LIVE execution
+    try:
+        # Get current position to determine size and side
+        positions = hl_client.get_positions_by_symbol()
+        
+        if symbol not in positions:
+            print(f"[LIVE][WARN] SET_TAKE_PROFIT {symbol} skipped - no position")
+            return
+        
+        position = positions[symbol]
+        position_size = position["size"]
+        position_side = position["side"]
+        
+        # Take profit triggers opposite side
+        # LONG position -> SELL trigger, SHORT position -> BUY trigger
+        is_buy_trigger = (position_side == "SHORT")
+        
+        print(f"[LIVE] SET_TAKE_PROFIT {symbol} tp=${tp_price:.2f} size={position_size}")
+        
+        # Place trigger order
+        resp = hl_client.place_trigger_order(
+            symbol=symbol,
+            is_buy=is_buy_trigger,
+            trigger_price=tp_price,
+            size=position_size,
+            is_stop_loss=False,  # This is take profit
+            reduce_only=True
+        )
+        
+        print(f"[LIVE] resp={_format_resp(resp)}")
+        
+        # Parse response
+        success = _parse_response_success(resp)
+        
+        if not success:
+            error_msg = _extract_error_message(resp)
+            print(f"[LIVE][REJECT] {symbol} exchange_error={error_msg}")
+            return
+        
+    except Exception as e:
+        print(f"[LIVE][ERROR] SET_TAKE_PROFIT {symbol} failed: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def _execute_cancel_all(action: Dict[str, Any], is_paper: bool, hl_client) -> None:

@@ -488,3 +488,60 @@ class HLClient:
             print(f"[HL][ERROR] update_leverage failed: {e}")
             traceback.print_exc()
             return {"status": "error", "response": str(e)}
+    
+    def place_trigger_order(self, symbol: str, is_buy: bool, trigger_price: float, size: float, 
+                           is_stop_loss: bool = True, reduce_only: bool = True) -> dict:
+        """
+        Place trigger order (stop loss or take profit)
+        
+        Args:
+            symbol: Trading symbol
+            is_buy: True for BUY trigger, False for SELL trigger
+            trigger_price: Price that triggers the order
+            size: Order size
+            is_stop_loss: True for stop loss (sl), False for take profit (tp)
+            reduce_only: If True, can only reduce position
+        
+        Returns:
+            dict: Exchange response
+        """
+        try:
+            if not self.exchange_client:
+                return {"status": "error", "response": "exchange_client not initialized"}
+            
+            # Normalize trigger price with tick size
+            constraints = self.get_symbol_constraints(symbol)
+            tick_sz = constraints.get("tickSz", 0.01)
+            
+            # Round trigger price to tick size
+            from decimal import Decimal, ROUND_DOWN
+            trigger_px_decimal = Decimal(str(trigger_price))
+            tick_decimal = Decimal(str(tick_sz))
+            trigger_px_rounded = float((trigger_px_decimal / tick_decimal).quantize(Decimal('1'), rounding=ROUND_DOWN) * tick_decimal)
+            
+            # Build trigger order
+            # Signature: order(name, is_buy, sz, limit_px, order_type, reduce_only, cloid, builder)
+            # order_type for trigger: {"trigger": {"triggerPx": "price", "isMarket": True, "tpsl": "sl"|"tp"}}
+            order_type = {
+                "trigger": {
+                    "triggerPx": str(trigger_px_rounded),
+                    "isMarket": True,
+                    "tpsl": "sl" if is_stop_loss else "tp"
+                }
+            }
+            
+            response = self.exchange_client.order(
+                name=symbol,
+                is_buy=is_buy,
+                sz=size,
+                limit_px=trigger_px_rounded,  # Required even for market triggers
+                order_type=order_type,
+                reduce_only=reduce_only
+            )
+            
+            return response
+            
+        except Exception as e:
+            print(f"[HL][ERROR] place_trigger_order failed: {e}")
+            traceback.print_exc()
+            return {"status": "error", "response": str(e)}
