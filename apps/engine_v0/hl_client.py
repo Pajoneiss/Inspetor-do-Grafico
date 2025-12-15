@@ -408,6 +408,128 @@ class HLClient:
             traceback.print_exc()
             return []
     
+    def get_candles(self, symbol: str, interval: str, limit: int = 100) -> list:
+        """
+        Get historical candles (MCP-first: using info_client.candles_snapshot)
+        
+        Args:
+            symbol: Trading symbol
+            interval: Candle interval (1m, 5m, 15m, 1h, 4h, 1d)
+            limit: Number of candles (max 5000)
+        
+        Returns:
+            list: Candles with OHLCV data
+        """
+        try:
+            if not self.info_client:
+                return []
+            
+            # Use MCP info_client.candles_snapshot
+            candles = self.info_client.candles_snapshot(symbol, interval, limit)
+            
+            if not candles:
+                return []
+            
+            return candles
+            
+        except Exception as e:
+            print(f"[HL][ERROR] get_candles({symbol}, {interval}) failed: {e}")
+            traceback.print_exc()
+            return []
+    
+    def get_orderbook(self, symbol: str, depth: int = 10) -> dict:
+        """
+        Get L2 orderbook snapshot (MCP-first: using info_client.l2_snapshot)
+        
+        Args:
+            symbol: Trading symbol
+            depth: Number of levels per side
+        
+        Returns:
+            dict: Orderbook with bids, asks, spread, imbalance
+        """
+        try:
+            if not self.info_client:
+                return {}
+            
+            # Use MCP info_client.l2_snapshot
+            snapshot = self.info_client.l2_snapshot(symbol)
+            
+            if not snapshot or "levels" not in snapshot:
+                return {}
+            
+            bids = snapshot["levels"][0][:depth] if len(snapshot["levels"]) > 0 else []
+            asks = snapshot["levels"][1][:depth] if len(snapshot["levels"]) > 1 else []
+            
+            # Calculate spread and imbalance
+            best_bid = float(bids[0][0]) if bids else 0
+            best_ask = float(asks[0][0]) if asks else 0
+            spread = best_ask - best_bid if best_bid and best_ask else 0
+            
+            bid_volume = sum(float(b[1]) for b in bids)
+            ask_volume = sum(float(a[1]) for a in asks)
+            imbalance = bid_volume / ask_volume if ask_volume > 0 else 1.0
+            
+            return {
+                "bids": [[float(b[0]), float(b[1])] for b in bids],
+                "asks": [[float(a[0]), float(a[1])] for a in asks],
+                "spread": spread,
+                "imbalance": imbalance
+            }
+            
+        except Exception as e:
+            print(f"[HL][ERROR] get_orderbook({symbol}) failed: {e}")
+            traceback.print_exc()
+            return {}
+    
+    def get_funding_info(self, symbol: str) -> dict:
+        """
+        Get funding rate and market info (MCP-first: using info_client.meta_and_asset_ctxs)
+        
+        Args:
+            symbol: Trading symbol
+        
+        Returns:
+            dict: Funding rate, next funding time, mark price, etc
+        """
+        try:
+            if not self.info_client:
+                return {}
+            
+            # Use MCP info_client.meta_and_asset_ctxs
+            meta_and_ctxs = self.info_client.meta_and_asset_ctxs()
+            
+            if not meta_and_ctxs:
+                return {}
+            
+            # Find symbol in contexts
+            for ctx in meta_and_ctxs[1]:  # Asset contexts
+                if ctx.get("coin") == symbol:
+                    funding_rate = float(ctx.get("funding", 0)) * 100  # Convert to %
+                    mark_price = float(ctx.get("markPx", 0))
+                    
+                    result = {
+                        "funding_rate": funding_rate,
+                        "mark_price": mark_price
+                    }
+                    
+                    # Add next funding time if available
+                    if "nextFundingTime" in ctx:
+                        result["next_funding_time"] = ctx["nextFundingTime"]
+                    
+                    # Add open interest if available
+                    if "openInterest" in ctx:
+                        result["open_interest"] = float(ctx["openInterest"])
+                    
+                    return result
+            
+            return {}
+            
+        except Exception as e:
+            print(f"[HL][ERROR] get_funding_info({symbol}) failed: {e}")
+            traceback.print_exc()
+            return {}
+    
     def place_market_order(self, symbol: str, is_buy: bool, size: float, reduce_only: bool = False, slippage: float = None) -> dict:
         """
         Place market order using SDK market_open
