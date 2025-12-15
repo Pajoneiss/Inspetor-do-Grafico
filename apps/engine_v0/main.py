@@ -7,9 +7,15 @@ import sys
 from config import (
     LOOP_INTERVAL_SECONDS,
     SYMBOL,
+    LIVE_TRADING,
+    FORCE_TEST_ORDER,
+    TEST_ORDER_SIDE,
+    TEST_ORDER_SIZE,
+    TEST_ORDER_SYMBOL,
     print_config
 )
 from hl_client import HLClient
+from executor import execute
 
 
 def main():
@@ -22,6 +28,9 @@ def main():
     symbols = [s.strip().upper() for s in SYMBOL.split(",") if s.strip()]
     print(f"[BOOT] Parsed {len(symbols)} symbols: {symbols[:5]}..." if len(symbols) > 5 else f"[BOOT] Parsed {len(symbols)} symbols: {symbols}")
     
+    # Determine test order symbol (first symbol if not specified)
+    test_symbol = TEST_ORDER_SYMBOL if TEST_ORDER_SYMBOL else (symbols[0] if symbols else "BTC")
+    
     # Initialize Hyperliquid client
     hl = None
     try:
@@ -32,6 +41,7 @@ def main():
         print("[BOOT] Continuing without Hyperliquid connection...")
     
     iteration = 0
+    test_order_executed = False  # Flag to execute test order only once
     
     try:
         while True:
@@ -54,8 +64,25 @@ def main():
                 except Exception as e:
                     print(f"[HL][ERROR] {e}")
             
+            # BLOCO 2: Test executor with forced action (only first iteration)
+            if FORCE_TEST_ORDER and not test_order_executed:
+                print("[TEST] forcing 1 test order (PAPER)")
+                
+                # Create test action
+                test_actions = [{
+                    "type": "PLACE_ORDER",
+                    "symbol": test_symbol,
+                    "side": TEST_ORDER_SIDE,
+                    "size": TEST_ORDER_SIZE,
+                    "orderType": "MARKET"
+                }]
+                
+                # Execute (always PAPER in BLOCO 2)
+                execute(test_actions, live_trading=LIVE_TRADING)
+                
+                test_order_executed = True
+            
             # TODO: Add AI decision engine (BLOCO 3)
-            # TODO: Add executor (BLOCO 2)
             
             # Sleep until next iteration
             time.sleep(LOOP_INTERVAL_SECONDS)

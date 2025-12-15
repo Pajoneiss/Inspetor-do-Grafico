@@ -24,8 +24,12 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 ENABLE_TELEGRAM = os.getenv("ENABLE_TELEGRAM", "false").lower() == "true"
 
-# Testing
+# Testing Configuration
 FORCE_TEST_ORDER = os.getenv("FORCE_TEST_ORDER", "false").lower() == "true"
+TEST_ORDER_SIDE = os.getenv("TEST_ORDER_SIDE", "BUY").upper()
+TEST_ORDER_SIZE = float(os.getenv("TEST_ORDER_SIZE", "0.001"))
+# TEST_ORDER_SYMBOL will be set to first symbol in SYMBOL list if not specified
+TEST_ORDER_SYMBOL = os.getenv("TEST_ORDER_SYMBOL", "")
 
 
 def print_config():
@@ -38,6 +42,12 @@ def print_config():
     print(f"[ENV] HYPERLIQUID_NETWORK={HYPERLIQUID_NETWORK}")
     print(f"[ENV] ENABLE_TELEGRAM={ENABLE_TELEGRAM}")
     print(f"[ENV] FORCE_TEST_ORDER={FORCE_TEST_ORDER}")
+    
+    if FORCE_TEST_ORDER:
+        print(f"[ENV] TEST_ORDER_SIDE={TEST_ORDER_SIDE}")
+        print(f"[ENV] TEST_ORDER_SIZE={TEST_ORDER_SIZE}")
+        if TEST_ORDER_SYMBOL:
+            print(f"[ENV] TEST_ORDER_SYMBOL={TEST_ORDER_SYMBOL}")
     
     # Validate critical configs
     if HYPERLIQUID_WALLET_ADDRESS:
