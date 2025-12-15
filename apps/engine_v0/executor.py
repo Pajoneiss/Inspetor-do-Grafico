@@ -276,9 +276,35 @@ def _execute_move_stop_to_breakeven(action: Dict[str, Any], is_paper: bool, hl_c
     
     if is_paper:
         print(f"[PAPER] would MOVE_STOP_TO_BREAKEVEN {symbol}")
-    else:
-        print(f"[LIVE] moving stop to breakeven {symbol}")
-        # TODO: hl_client.move_stop_to_breakeven(symbol)
+        return
+    
+    # LIVE execution - convert to SET_STOP_LOSS at entry price
+    try:
+        positions = hl_client.get_positions_by_symbol()
+        
+        if symbol not in positions:
+            print(f"[LIVE][WARN] MOVE_STOP_TO_BREAKEVEN {symbol} skipped - no position")
+            return
+        
+        position = positions[symbol]
+        entry_price = position["entry_price"]
+        
+        print(f"[LIVE] MOVE_STOP_TO_BREAKEVEN {symbol} entry=${entry_price:.2f}")
+        
+        # Convert to SET_STOP_LOSS action
+        set_sl_action = {
+            "type": "SET_STOP_LOSS",
+            "symbol": symbol,
+            "stop_price": entry_price
+        }
+        
+        # Execute SET_STOP_LOSS
+        _execute_set_stop_loss(set_sl_action, is_paper=False, hl_client=hl_client)
+        
+    except Exception as e:
+        print(f"[LIVE][ERROR] MOVE_STOP_TO_BREAKEVEN {symbol} failed: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
@@ -289,8 +315,10 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
     if is_paper:
         print(f"[PAPER] would SET_STOP_LOSS {symbol} stop=${stop_price:.2f}")
     else:
-        print(f"[LIVE] setting stop loss {symbol} stop=${stop_price:.2f}")
-        # TODO: hl_client.set_stop_loss(symbol, stop_price)
+        print(f"[LIVE] SET_STOP_LOSS {symbol} stop=${stop_price:.2f}")
+        # TODO: Implement trigger order via SDK
+        # Need to research SDK method for stop loss trigger orders
+        print(f"[LIVE][TODO] Trigger orders not yet implemented")
 
 
 def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
@@ -301,8 +329,10 @@ def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) 
     if is_paper:
         print(f"[PAPER] would SET_TAKE_PROFIT {symbol} tp=${tp_price:.2f}")
     else:
-        print(f"[LIVE] setting take profit {symbol} tp=${tp_price:.2f}")
-        # TODO: hl_client.set_take_profit(symbol, tp_price)
+        print(f"[LIVE] SET_TAKE_PROFIT {symbol} tp=${tp_price:.2f}")
+        # TODO: Implement trigger order via SDK
+        # Need to research SDK method for take profit trigger orders
+        print(f"[LIVE][TODO] Trigger orders not yet implemented")
 
 
 def _execute_cancel_all(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
@@ -322,18 +352,56 @@ def _execute_close_partial(action: Dict[str, Any], is_paper: bool, hl_client) ->
     pct = action.get("pct")
     size = action.get("size")
     
-    if pct is not None:
-        if is_paper:
+    if is_paper:
+        if pct is not None:
             print(f"[PAPER] would CLOSE_PARTIAL {symbol} pct={pct:.1%}")
-        else:
-            print(f"[LIVE] closing partial {symbol} pct={pct:.1%}")
-            # TODO: hl_client.close_position_market(symbol, pct)
-    elif size is not None:
-        if is_paper:
+        elif size is not None:
             print(f"[PAPER] would CLOSE_PARTIAL {symbol} size={size}")
+        return
+    
+    # LIVE execution
+    try:
+        # Get current position to calculate size
+        positions = hl_client.get_positions_by_symbol()
+        
+        if symbol not in positions:
+            print(f"[LIVE][WARN] CLOSE_PARTIAL {symbol} skipped - no position")
+            return
+        
+        position = positions[symbol]
+        position_size = position["size"]
+        
+        # Calculate size to close
+        if pct is not None:
+            close_size = position_size * pct
+        elif size is not None:
+            close_size = min(size, position_size)  # Don't close more than we have
         else:
-            print(f"[LIVE] closing partial {symbol} size={size}")
-            # TODO: hl_client.close_position_market_size(symbol, size)
+            print(f"[LIVE][ERROR] CLOSE_PARTIAL {symbol} - no pct or size specified")
+            return
+        
+        print(f"[LIVE] CLOSE_PARTIAL {symbol} size={close_size:.6f}")
+        
+        # Use market_close
+        resp = hl_client.close_position_market(symbol, size=close_size)
+        
+        print(f"[LIVE] resp={format_response_compact(resp)}")
+        
+        # Parse response
+        from normalizer import format_response_compact
+        success = _parse_response_success(resp)
+        
+        if not success:
+            error_msg = _extract_error_message(resp)
+            print(f"[LIVE][REJECT] {symbol} exchange_error={error_msg}")
+            return
+        
+        _post_verify(hl_client, symbol, "CLOSE_PARTIAL")
+        
+    except Exception as e:
+        print(f"[LIVE][ERROR] CLOSE_PARTIAL {symbol} failed: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def _execute_cancel_order(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
