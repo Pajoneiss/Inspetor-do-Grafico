@@ -125,7 +125,7 @@ def main():
             
             # BLOCO 2: Test executor with forced action (only first iteration)
             if FORCE_TEST_ORDER and not test_order_executed:
-                print("[TEST] forcing 1 test order (PAPER)")
+                print("[TEST][PAPER] forcing 1 test order (PAPER mode enforced)")
                 
                 # Create test action
                 test_actions = [{
@@ -136,8 +136,8 @@ def main():
                     "orderType": "MARKET"
                 }]
                 
-                # Execute (pass hl_client for proper LIVE/PAPER detection)
-                execute(test_actions, live_trading=LIVE_TRADING, hl_client=hl)
+                # Execute in PAPER mode (override LIVE_TRADING for test)
+                execute(test_actions, live_trading=False, hl_client=hl)
                 
                 test_order_executed = True
             

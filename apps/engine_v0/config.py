@@ -28,6 +28,9 @@ MIN_NOTIONAL_USD = float(os.getenv("MIN_NOTIONAL_USD", "10.0"))
 AUTO_CAP_LEVERAGE = os.getenv("AUTO_CAP_LEVERAGE", "true").lower() == "true"
 ORDER_SLIPPAGE = float(os.getenv("ORDER_SLIPPAGE", "0.01"))  # 1% default slippage for market orders
 
+# Multi-Symbol Controls
+ALLOW_SYMBOL_NOT_IN_SNAPSHOT = os.getenv("ALLOW_SYMBOL_NOT_IN_SNAPSHOT", "true").lower() in ("1", "true", "yes", "y", "on")
+
 # Hyperliquid Configuration
 HYPERLIQUID_WALLET_ADDRESS = os.getenv("HYPERLIQUID_WALLET_ADDRESS") or os.getenv("HYPERLIQUID_ACCOUNT_ADDRESS", "")
 HYPERLIQUID_PRIVATE_KEY = os.getenv("HYPERLIQUID_PRIVATE_KEY", "")
