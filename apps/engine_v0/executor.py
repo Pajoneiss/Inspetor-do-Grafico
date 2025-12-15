@@ -390,62 +390,91 @@ def _execute_move_stop_to_breakeven(action: Dict[str, Any], is_paper: bool, hl_c
         traceback.print_exc()
 
 
-def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
-    """Execute SET_STOP_LOSS action"""
+def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) -> bool:
+    """Execute SET_STOP_LOSS action with trigger price quantization and validation"""
     symbol = action.get("symbol", "?")
     stop_price = action.get("stop_price", 0)
     
     if is_paper:
         print(f"[PAPER] would SET_STOP_LOSS {symbol} stop=${stop_price:.2f}")
-        return
+        return True
     
-    # LIVE execution
+    # LIVE execution with trigger price validation
     try:
-        # Get current position to determine size and side
         positions = hl_client.get_positions_by_symbol()
         
         if symbol not in positions:
             print(f"[LIVE][WARN] SET_STOP_LOSS {symbol} skipped - no position")
-            return
+            return False
         
         position = positions[symbol]
-        position_size = position["size"]
-        position_side = position["side"]
+        position_size = abs(float(position.get("szi", 0)))
+        position_side = "LONG" if float(position.get("szi", 0)) > 0 else "SHORT"
         
-        # Stop loss triggers opposite side
-        # LONG position -> SELL trigger, SHORT position -> BUY trigger
-        is_buy_trigger = (position_side == "SHORT")
+        if position_size == 0:
+            print(f"[LIVE][WARN] SET_STOP_LOSS {symbol} skipped - zero size")
+            return False
         
-        print(f"[LIVE] SET_STOP_LOSS {symbol} stop=${stop_price:.2f} size={position_size}")
+        # Get mark price and constraints for validation
+        mark_price = hl_client.get_last_price(symbol)
+        if not mark_price:
+            print(f"[LIVE][ERROR] SET_STOP_LOSS {symbol} - failed to get mark price")
+            return False
+        
+        constraints = hl_client.get_symbol_constraints(symbol)
+        tick_sz = constraints.get("tickSz", 1.0)
+        px_decimals = constraints.get("pxDecimals", 0)
+        
+        # Quantize trigger price to tick size
+        from decimal import Decimal, ROUND_DOWN
+        trigger_px_decimal = Decimal(str(stop_price))
+        tick_decimal = Decimal(str(tick_sz))
+        trigger_px_quantized = float((trigger_px_decimal / tick_decimal).quantize(Decimal('1'), rounding=ROUND_DOWN) * tick_decimal)
+        
+        # VALIDATE TRIGGER SIDE
+        if position_side == "LONG":
+            # SL for LONG must be below mark price
+            if trigger_px_quantized >= mark_price:
+                print(f"[LIVE][REJECT] SET_STOP_LOSS {symbol} reason=invalid_trigger_side LONG_SL must be < mark (mark={mark_price} trigger={trigger_px_quantized})")
+                return False
+        else:  # SHORT
+            # SL for SHORT must be above mark price
+            if trigger_px_quantized <= mark_price:
+                print(f"[LIVE][REJECT] SET_STOP_LOSS {symbol} reason=invalid_trigger_side SHORT_SL must be > mark (mark={mark_price} trigger={trigger_px_quantized})")
+                return False
+        
+        print(f"[LIVE] SET_STOP_LOSS {symbol} stop=${trigger_px_quantized:.2f} size={position_size} side={position_side}")
         
         # Place trigger order
         resp = hl_client.place_trigger_order(
             symbol=symbol,
-            is_buy=is_buy_trigger,
-            trigger_price=stop_price,
+            is_buy=(position_side == "SHORT"),  # Buy to close short, sell to close long
+            trigger_price=trigger_px_quantized,
             size=position_size,
-            is_stop_loss=True,
-            reduce_only=True
+            is_stop_loss=True
         )
         
         print(f"[LIVE] resp={_format_resp(resp)}")
         
-        # Parse response
         success = _parse_response_success(resp)
         
         if not success:
             error_msg = _extract_error_message(resp)
             print(f"[LIVE][REJECT] {symbol} exchange_error={error_msg}")
-            return
+            return False
+        
+        _post_verify(hl_client, symbol, "SET_STOP_LOSS")
+        return True
         
     except Exception as e:
         print(f"[LIVE][ERROR] SET_STOP_LOSS {symbol} failed: {e}")
         import traceback
         traceback.print_exc()
+        return False
 
 
-def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
-    """Execute SET_TAKE_PROFIT action"""
+def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) -> bool:
+    """Execute SET_TAKE_PROFIT action with trigger price quantization and validation"""
     symbol = action.get("symbol", "?")
     tp_price = action.get("tp_price", 0)
     
