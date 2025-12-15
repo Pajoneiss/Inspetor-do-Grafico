@@ -426,9 +426,12 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
             return None  # Skipped, not failed
         
         position = positions[symbol]
-        # CRITICAL: Use REAL position size, not normalized new order size
-        position_size = abs(float(position.get("szi", 0)))
-        position_side = "LONG" if float(position.get("szi", 0)) > 0 else "SHORT"
+        
+        # CRITICAL FIX: get_positions_by_symbol returns "size" not "szi"
+        position_size = position.get("size", 0)
+        position_side = position.get("side", "UNKNOWN")
+        
+        print(f"[DEBUG] {symbol} position: size={position_size} side={position_side}")
         
         if position_size == 0:
             print(f"[LIVE][WARN] SET_STOP_LOSS {symbol} skipped - zero position size")
@@ -526,12 +529,15 @@ def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) 
             return False
         
         position = positions[symbol]
-        position_size = abs(float(position.get("szi", 0)))
-        position_side = "LONG" if float(position.get("szi", 0)) > 0 else "SHORT"
+        # CRITICAL FIX: get_positions_by_symbol returns "size" not "szi"
+        position_size = position.get("size", 0)
+        position_side = position.get("side", "UNKNOWN")
+        
+        print(f"[DEBUG] {symbol} position: size={position_size} side={position_side}")
         
         if position_size == 0:
-            print(f"[LIVE][WARN] SET_TAKE_PROFIT {symbol} skipped - zero size")
-            return False
+            print(f"[LIVE][WARN] SET_TAKE_PROFIT {symbol} skipped - zero position size")
+            return None  # Skipped
         
         # Get mark price and constraints for validation
         mark_price = hl_client.get_last_price(symbol)
