@@ -509,61 +509,92 @@ def _execute_cancel_all(action: Dict[str, Any], is_paper: bool, hl_client) -> No
         # TODO: hl_client.cancel_all(symbol)
 
 
-def _execute_close_partial(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
-    """Execute CLOSE_PARTIAL action"""
+def _execute_close_partial(action, is_paper, hl_client):
+    """Execute CLOSE_PARTIAL action with min notional validation"""
     symbol = action.get("symbol", "?")
     pct = action.get("pct")
-    size = action.get("size")
+    
+    if not pct:
+        print(f"[EXEC][ERROR] CLOSE_PARTIAL {symbol} missing pct")
+        return False
     
     if is_paper:
-        if pct is not None:
-            print(f"[PAPER] would CLOSE_PARTIAL {symbol} pct={pct:.1%}")
-        elif size is not None:
-            print(f"[PAPER] would CLOSE_PARTIAL {symbol} size={size}")
-        return
+        print(f"[PAPER] CLOSE_PARTIAL {symbol} pct={pct}")
+        return True
     
-    # LIVE execution
+    # LIVE execution with min notional validation
     try:
-        # Get current position to calculate size
         positions = hl_client.get_positions_by_symbol()
         
         if symbol not in positions:
             print(f"[LIVE][WARN] CLOSE_PARTIAL {symbol} skipped - no position")
-            return
+            return False
         
         position = positions[symbol]
-        position_size = position["size"]
+        position_size = abs(float(position.get("szi", 0)))
         
-        # Calculate size to close
-        if pct is not None:
-            close_size = position_size * pct
-        elif size is not None:
-            close_size = min(size, position_size)  # Don't close more than we have
-        else:
-            print(f"[LIVE][ERROR] CLOSE_PARTIAL {symbol} - no pct or size specified")
-            return
+        if position_size == 0:
+            print(f"[LIVE][WARN] CLOSE_PARTIAL {symbol} skipped - zero size")
+            return False
         
-        print(f"[LIVE] CLOSE_PARTIAL {symbol} size={close_size:.6f}")
+        # Calculate close size
+        close_size = position_size * (pct / 100.0)
         
-        # Use market_close
-        resp = hl_client.close_position_market(symbol, size=close_size)
+        # Get mark price for notional calculation
+        mark_price = hl_client.get_last_price(symbol)
+        if not mark_price:
+            print(f"[LIVE][ERROR] CLOSE_PARTIAL {symbol} - failed to get mark price")
+            return False
         
+        # Calculate notional value
+        close_notional = close_size * mark_price
+        
+        # MIN NOTIONAL VALIDATION
+        if close_notional < MIN_NOTIONAL_USD:
+            print(f"[LIVE][REJECT] CLOSE_PARTIAL {symbol} reason=min_notional close_notional=${close_notional:.2f} min=${MIN_NOTIONAL_USD}")
+            
+            # Check if full position meets min notional
+            full_notional = position_size * mark_price
+            if full_notional >= MIN_NOTIONAL_USD:
+                print(f"[LIVE][WARN] CLOSE_PARTIAL {symbol} adjusted to CLOSE_FULL (full_notional=${full_notional:.2f})")
+                # Close full position instead
+                close_size = position_size
+                close_notional = full_notional
+            else:
+                print(f"[LIVE][REJECT] CLOSE_PARTIAL {symbol} skipped - even full position below min notional")
+                return False
+        
+        # Get constraints for size normalization
+        constraints = hl_client.get_symbol_constraints(symbol)
+        sz_decimals = constraints.get("szDecimals", 5)
+        
+        # Normalize size
+        from decimal import Decimal, ROUND_DOWN
+        size_decimal = Decimal(str(close_size))
+        size_factor = Decimal(10) ** sz_decimals
+        close_size_normalized = float((size_decimal * size_factor).quantize(Decimal('1'), rounding=ROUND_DOWN) / size_factor)
+        
+        print(f"[LIVE] CLOSE_PARTIAL {symbol} pct={pct} size={close_size_normalized} notional=${close_notional:.2f}")
+        
+        # Execute close
+        resp = hl_client.close_position(symbol, close_size_normalized)
         print(f"[LIVE] resp={_format_resp(resp)}")
         
-        # Parse response
         success = _parse_response_success(resp)
         
         if not success:
             error_msg = _extract_error_message(resp)
             print(f"[LIVE][REJECT] {symbol} exchange_error={error_msg}")
-            return
+            return False
         
         _post_verify(hl_client, symbol, "CLOSE_PARTIAL")
+        return True
         
     except Exception as e:
         print(f"[LIVE][ERROR] CLOSE_PARTIAL {symbol} failed: {e}")
         import traceback
         traceback.print_exc()
+        return False
 
 
 def _execute_cancel_order(action: Dict[str, Any], is_paper: bool, hl_client) -> None:

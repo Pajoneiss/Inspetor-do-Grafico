@@ -440,6 +440,7 @@ class HLClient:
     def get_orderbook(self, symbol: str, depth: int = 10) -> dict:
         """
         Get L2 orderbook snapshot (MCP-first: using info_client.l2_snapshot)
+        Robust parsing to handle multiple response formats
         
         Args:
             symbol: Trading symbol
@@ -455,27 +456,64 @@ class HLClient:
             # Use MCP info_client.l2_snapshot
             snapshot = self.info_client.l2_snapshot(symbol)
             
-            if not snapshot or "levels" not in snapshot:
+            if not snapshot:
                 return {}
             
-            bids = snapshot["levels"][0][:depth] if len(snapshot["levels"]) > 0 else []
-            asks = snapshot["levels"][1][:depth] if len(snapshot["levels"]) > 1 else []
+            # Robust parsing - handle multiple formats
+            bids = []
+            asks = []
             
-            # Calculate spread and imbalance
-            best_bid = float(bids[0][0]) if bids else 0
-            best_ask = float(asks[0][0]) if asks else 0
-            spread = best_ask - best_bid if best_bid and best_ask else 0
+            # Format 1: {"levels": [[bids], [asks]]}
+            if "levels" in snapshot and isinstance(snapshot["levels"], list):
+                if len(snapshot["levels"]) > 0:
+                    bids = snapshot["levels"][0][:depth] if isinstance(snapshot["levels"][0], list) else []
+                if len(snapshot["levels"]) > 1:
+                    asks = snapshot["levels"][1][:depth] if isinstance(snapshot["levels"][1], list) else []
             
-            bid_volume = sum(float(b[1]) for b in bids)
-            ask_volume = sum(float(a[1]) for a in asks)
-            imbalance = bid_volume / ask_volume if ask_volume > 0 else 1.0
+            # Format 2: {"bids": [...], "asks": [...]}
+            elif "bids" in snapshot and "asks" in snapshot:
+                bids = snapshot["bids"][:depth] if isinstance(snapshot["bids"], list) else []
+                asks = snapshot["asks"][:depth] if isinstance(snapshot["asks"], list) else []
             
-            return {
-                "bids": [[float(b[0]), float(b[1])] for b in bids],
-                "asks": [[float(a[0]), float(a[1])] for a in asks],
-                "spread": spread,
-                "imbalance": imbalance
-            }
+            else:
+                print(f"[HL][WARN] get_orderbook({symbol}) - unknown format: {list(snapshot.keys())}")
+                return {}
+            
+            # Normalize to consistent format
+            try:
+                bids_normalized = []
+                for b in bids:
+                    if isinstance(b, (list, tuple)) and len(b) >= 2:
+                        bids_normalized.append([float(b[0]), float(b[1])])
+                    elif isinstance(b, dict) and "px" in b and "sz" in b:
+                        bids_normalized.append([float(b["px"]), float(b["sz"])])
+                
+                asks_normalized = []
+                for a in asks:
+                    if isinstance(a, (list, tuple)) and len(a) >= 2:
+                        asks_normalized.append([float(a[0]), float(a[1])])
+                    elif isinstance(a, dict) and "px" in a and "sz" in a:
+                        asks_normalized.append([float(a["px"]), float(a["sz"])])
+                
+                # Calculate spread and imbalance
+                best_bid = bids_normalized[0][0] if bids_normalized else 0
+                best_ask = asks_normalized[0][0] if asks_normalized else 0
+                spread = best_ask - best_bid if best_bid and best_ask else 0
+                
+                bid_volume = sum(b[1] for b in bids_normalized)
+                ask_volume = sum(a[1] for a in asks_normalized)
+                imbalance = bid_volume / ask_volume if ask_volume > 0 else 1.0
+                
+                return {
+                    "bids": bids_normalized,
+                    "asks": asks_normalized,
+                    "spread": spread,
+                    "imbalance": imbalance
+                }
+                
+            except Exception as parse_error:
+                print(f"[HL][ERROR] get_orderbook({symbol}) parse failed: {parse_error}")
+                return {}
             
         except Exception as e:
             print(f"[HL][ERROR] get_orderbook({symbol}) failed: {e}")
