@@ -33,6 +33,11 @@ class HLClient:
         self.info_client: Optional[Info] = None
         self.exchange_client: Optional[Exchange] = None
         
+        # Meta cache for symbol constraints
+        self._meta_cache = None
+        self._meta_cache_time = 0
+        self._meta_cache_ttl = 300  # 5 minutes
+        
         # Initialize clients
         self._init_clients()
     
@@ -256,3 +261,97 @@ class HLClient:
             print(f"[HL][ERROR] get_positions_by_symbol failed: {e}")
             traceback.print_exc()
             return positions_map
+    
+    def get_meta_cached(self, ttl_seconds: int = 300) -> Optional[dict]:
+        """
+        Get meta (universe) with caching
+        
+        Args:
+            ttl_seconds: Cache TTL in seconds
+        
+        Returns:
+            dict: Meta data with universe info
+        """
+        import time
+        current_time = time.time()
+        
+        # Check cache
+        if self._meta_cache and (current_time - self._meta_cache_time) < ttl_seconds:
+            return self._meta_cache
+        
+        # Fetch fresh meta
+        try:
+            if not self.info_client:
+                return None
+            
+            meta = self.info_client.meta()
+            
+            if meta:
+                self._meta_cache = meta
+                self._meta_cache_time = current_time
+            
+            return meta
+            
+        except Exception as e:
+            print(f"[HL][ERROR] get_meta_cached failed: {e}")
+            traceback.print_exc()
+            return None
+    
+    def get_symbol_constraints(self, symbol: str) -> dict:
+        """
+        Get trading constraints for a symbol
+        
+        Args:
+            symbol: Trading symbol
+        
+        Returns:
+            dict: {szDecimals, maxLeverage, onlyIsolated}
+        """
+        try:
+            meta = self.get_meta_cached()
+            
+            if not meta or "universe" not in meta:
+                return {"szDecimals": 3, "maxLeverage": 50, "onlyIsolated": False}
+            
+            # Find symbol in universe
+            for asset in meta["universe"]:
+                if asset.get("name") == symbol:
+                    return {
+                        "szDecimals": asset.get("szDecimals", 3),
+                        "maxLeverage": asset.get("maxLeverage", 50),
+                        "onlyIsolated": asset.get("onlyIsolated", False)
+                    }
+            
+            # Default if not found
+            return {"szDecimals": 3, "maxLeverage": 50, "onlyIsolated": False}
+            
+        except Exception as e:
+            print(f"[HL][ERROR] get_symbol_constraints({symbol}) failed: {e}")
+            return {"szDecimals": 3, "maxLeverage": 50, "onlyIsolated": False}
+    
+    def get_recent_fills(self, limit: int = 10) -> list:
+        """
+        Get recent fills for verification
+        
+        Args:
+            limit: Number of recent fills
+        
+        Returns:
+            list: Recent fills
+        """
+        try:
+            if not self.info_client or not self.wallet_address:
+                return []
+            
+            user_fills = self.info_client.user_fills(self.wallet_address)
+            
+            if not user_fills:
+                return []
+            
+            # Return most recent fills
+            return user_fills[:limit]
+            
+        except Exception as e:
+            print(f"[HL][ERROR] get_recent_fills failed: {e}")
+            traceback.print_exc()
+            return []
