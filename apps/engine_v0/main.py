@@ -111,6 +111,24 @@ def main():
                     # Get prices for snapshot symbols
                     prices = hl.get_prices(snapshot_symbols)
                     state["prices"] = prices
+                    state["available_margin"] = summary["available"]  # Free collateral
+                    
+                    # Get constraints for snapshot symbols
+                    constraints_by_symbol = {}
+                    for sym in snapshot_symbols:
+                        constraints_by_symbol[sym] = hl.get_symbol_constraints(sym)
+                    state["constraints_by_symbol"] = constraints_by_symbol
+                    
+                    # Get recent fills
+                    recent_fills = hl.get_recent_fills(limit=10)
+                    state["recent_fills"] = recent_fills
+                    
+                    # Add feedback (rejects, errors, successes)
+                    from feedback import get_feedback_tracker
+                    feedback = get_feedback_tracker()
+                    state["last_rejects"] = feedback.get_recent_rejects(limit=10)
+                    state["last_errors"] = feedback.get_recent_errors(limit=10)
+                    state["last_successes"] = feedback.get_recent_successes(limit=10)
                     
                     # Log Hyperliquid status
                     prices_ok = len(prices)
