@@ -411,6 +411,7 @@ class HLClient:
     def get_candles(self, symbol: str, interval: str, limit: int = 100) -> list:
         """
         Get historical candles (MCP-first: using info_client.candles_snapshot)
+        Robust wrapper handling MCP signature requirements
         
         Args:
             symbol: Trading symbol
@@ -424,14 +425,47 @@ class HLClient:
             if not self.info_client:
                 return []
             
-            # Use MCP info_client.candles_snapshot
-            candles = self.info_client.candles_snapshot(symbol, interval, limit)
+            # Calculate time range for MCP candles_snapshot
+            import time
+            now_ms = int(time.time() * 1000)
+            
+            # Calculate interval in milliseconds
+            interval_ms = {
+                "1m": 60 * 1000,
+                "5m": 5 * 60 * 1000,
+                "15m": 15 * 60 * 1000,
+                "1h": 60 * 60 * 1000,
+                "4h": 4 * 60 * 60 * 1000,
+                "1d": 24 * 60 * 60 * 1000
+            }.get(interval, 60 * 1000)
+            
+            # Calculate start time based on limit
+            start_time = now_ms - (limit * interval_ms)
+            
+            # Use MCP info_client.candles_snapshot with required endTime
+            candles = self.info_client.candles_snapshot(
+                coin=symbol,
+                interval=interval,
+                startTime=start_time,
+                endTime=now_ms
+            )
             
             if not candles:
                 return []
             
             return candles
             
+        except TypeError as e:
+            # Handle signature mismatch gracefully
+            print(f"[HL][ERROR] get_candles({symbol}, {interval}) signature error: {e}")
+            print(f"[HL][WARN] Trying alternative candles_snapshot signature")
+            try:
+                # Try without time params
+                candles = self.info_client.candles_snapshot(symbol, interval, limit)
+                return candles if candles else []
+            except Exception as e2:
+                print(f"[HL][ERROR] get_candles({symbol}, {interval}) fallback failed: {e2}")
+                return []
         except Exception as e:
             print(f"[HL][ERROR] get_candles({symbol}, {interval}) failed: {e}")
             traceback.print_exc()
