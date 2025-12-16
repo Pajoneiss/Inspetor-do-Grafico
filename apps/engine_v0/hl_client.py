@@ -50,17 +50,17 @@ class HLClient:
         
         for attempt in range(max_retries):
             try:
-            print(f"[HL] Initializing clients for {self.network}...")
-            print(f"[HL] API URL: {self.api_url}")
-            print(f"[HL] Wallet: ***{self.wallet_address[-6:] if self.wallet_address else 'NOT_SET'}")
-            
-            # Info client for reading market data and account info
-            self.info_client = Info(self.api_url, skip_ws=True)
-            
-            # Exchange client for trading operations (needed for some account queries)
-            if self.private_key and self.wallet_address:
-                wallet = Account.from_key(self.private_key)
-                self.exchange_client = Exchange(
+                print(f"[HL] Initializing clients for {self.network}...")
+                print(f"[HL] API URL: {self.api_url}")
+                print(f"[HL] Wallet: ***{self.wallet_address[-6:] if self.wallet_address else 'NOT_SET'}")
+                
+                # Info client for reading market data and account info
+                self.info_client = Info(self.api_url, skip_ws=True)
+                
+                # Exchange client for trading operations (needed for some account queries)
+                if self.private_key and self.wallet_address:
+                    wallet = Account.from_key(self.private_key)
+                    self.exchange_client = Exchange(
                     wallet=wallet,
                     base_url=self.api_url,
                     account_address=self.wallet_address
