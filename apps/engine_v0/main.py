@@ -203,21 +203,22 @@ def main():
                         indicators_available = False
                     
                     try:
-                        # Multi-timeframe candles and indicators
+                        # v10.3: Multi-symbol candles and indicators
                         candles_by_symbol = {}
                         indicators_by_symbol = {}
                         
-                        for symbol in snapshot_symbols[:3]:  # Limit to top 3 to avoid API spam
+                        # Candles/indicators for top 5 symbols (avoid API spam)
+                        for symbol in snapshot_symbols[:5]:
                             # Get candles for multiple timeframes
                             candles_15m = hl.get_candles(symbol, "15m", limit=50)
                             candles_1h = hl.get_candles(symbol, "1h", limit=50)
                             
                             candles_by_symbol[symbol] = {
-                                "15m": candles_15m[-20:] if candles_15m else [],  # Last 20 for state size
+                                "15m": candles_15m[-20:] if candles_15m else [],
                                 "1h": candles_1h[-20:] if candles_1h else []
                             }
                             
-                            # Calculate indicators from 15m (primary timeframe) if available
+                            # Calculate indicators from 15m if available
                             if indicators_available and candles_15m:
                                 try:
                                     indicators_by_symbol[symbol] = calculate_indicators(candles_15m)
@@ -230,19 +231,61 @@ def main():
                         state["candles_by_symbol"] = candles_by_symbol
                         state["indicators_by_symbol"] = indicators_by_symbol
                         
-                        # Orderbook for top symbols
+                        # Orderbook for top 5 symbols
                         orderbook_by_symbol = {}
-                        for symbol in snapshot_symbols[:3]:
+                        for symbol in snapshot_symbols[:5]:
                             orderbook_by_symbol[symbol] = hl.get_orderbook(symbol, depth=5)
                         state["orderbook_by_symbol"] = orderbook_by_symbol
                         
-                        # Funding info
+                        # Funding info for top 5
                         funding_by_symbol = {}
-                        for symbol in snapshot_symbols[:3]:
+                        for symbol in snapshot_symbols[:5]:
                             funding_by_symbol[symbol] = hl.get_funding_info(symbol)
                         state["funding_by_symbol"] = funding_by_symbol
                         
-                        print(f"[VISION] candles={len(candles_by_symbol)} indicators={len(indicators_by_symbol)} orderbook={len(orderbook_by_symbol)}")
+                        # v10.3: BUILD COMPACT BRIEFS FOR ALL 11 SYMBOLS
+                        symbol_briefs = {}
+                        for symbol in snapshot_symbols:
+                            price = state["prices"].get(symbol, 0)
+                            ind = indicators_by_symbol.get(symbol, {})
+                            
+                            # Calculate simple trend from indicators
+                            ema_9 = ind.get("ema_9", price)
+                            ema_21 = ind.get("ema_21", price)
+                            rsi = ind.get("rsi", 50)
+                            
+                            # Score 0-100 based on trend + momentum
+                            if price > 0:
+                                trend = "UP" if ema_9 > ema_21 else "DOWN"
+                                momentum = "STRONG" if rsi > 60 or rsi < 40 else "NEUTRAL"
+                                
+                                # Simple score: RSI deviation from 50 + trend alignment
+                                score = 50
+                                if trend == "UP" and rsi > 50:
+                                    score = min(100, 50 + (rsi - 50) * 1.5)
+                                elif trend == "DOWN" and rsi < 50:
+                                    score = min(100, 50 + (50 - rsi) * 1.5)
+                                else:
+                                    score = 50 - abs(rsi - 50) * 0.5  # Conflicting signals = lower score
+                            else:
+                                trend = "UNKNOWN"
+                                momentum = "UNKNOWN"
+                                score = 0
+                            
+                            symbol_briefs[symbol] = {
+                                "price": round(price, 2) if price < 1000 else round(price, 0),
+                                "trend": trend,
+                                "momentum": momentum,
+                                "rsi": round(rsi, 1) if rsi else 50,
+                                "score": round(score, 0)
+                            }
+                        
+                        state["symbol_briefs"] = symbol_briefs
+                        
+                        # v10.3: PROOF LOG - show all symbols analyzed
+                        top_symbols = sorted(symbol_briefs.items(), key=lambda x: x[1]["score"], reverse=True)[:5]
+                        top_str = " ".join([f"{s}:{int(b['score'])}" for s, b in top_symbols])
+                        print(f"[VISION] symbols_included={len(snapshot_symbols)} top5=[{top_str}]")
                         
                     except Exception as e:
                         print(f"[VISION][ERROR] market data failed: {e}")
@@ -254,7 +297,8 @@ def main():
                     prices_ok = len(prices)
                     positions_symbols = list(positions_by_symbol.keys())
                     print(f"[HL] snapshot symbols={len(snapshot_symbols)} prices_ok={prices_ok} positions={positions_symbols if positions_symbols else '[]'}")
-                    print(f"[STATE] equity={summary['equity']:.2f} positions_count={summary['positions_count']}")
+                    print(f"[STATE] equity={summary['equity']:.2f} positions_count={summary['positions_count']} buying_power=${state.get('buying_power', 0):.0f}")
+
                     
                 except Exception as e:
                     print(f"[HL][ERROR] {e}")

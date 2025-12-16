@@ -201,11 +201,22 @@ Respond with PURE JSON only. No markdown."""
         # Format snapshot symbols
         snapshot_symbols = state.get("snapshot_symbols", state.get("symbols", []))
         if isinstance(snapshot_symbols, list) and len(snapshot_symbols) > 0:
-            symbols_str = ", ".join(snapshot_symbols[:15])  # Show first 15
+            symbols_str = ", ".join(snapshot_symbols[:15])
             if len(snapshot_symbols) > 15:
                 symbols_str += f" (+{len(snapshot_symbols) - 15} more)"
         else:
             symbols_str = state.get("symbol", "BTC")
+        
+        # v10.3: Format symbol briefs for multi-symbol scan
+        symbol_briefs = state.get("symbol_briefs", {})
+        briefs_lines = []
+        # Sort by score descending
+        sorted_briefs = sorted(symbol_briefs.items(), key=lambda x: x[1].get("score", 0), reverse=True)
+        for symbol, brief in sorted_briefs[:11]:  # Show all 11
+            briefs_lines.append(
+                f"  {symbol}: ${brief.get('price', 0)} | {brief.get('trend', '?')} | RSI={brief.get('rsi', 50)} | score={brief.get('score', 0)}"
+            )
+        briefs_str = "\n".join(briefs_lines) if briefs_lines else "(no briefs available)"
         
         return f"""Analyze market state and decide actions.
 
@@ -221,18 +232,19 @@ Respond with PURE JSON only. No markdown."""
 === TRIGGER STATUS ===
 {state.get('trigger_status', '(not available)')}
 
-=== PRICES ===
-{prices_str}
-=== AVAILABLE SYMBOLS ===
-{symbols_str}
+=== SYMBOL SCAN (sorted by score) ===
+{briefs_str}
 
 === EMERGENCY CHECK ===
 If any position is missing SL or TP, you MUST output SET_STOP_LOSS and/or SET_TAKE_PROFIT immediately!
+
+You may open positions in ANY symbol from the scan above. Pick the BEST opportunity based on score + trend alignment.
 
 Respond with PURE JSON only:
 {{
   "summary": "brief analysis",
   "confidence": 0.75,
+  "chosen_symbol": "BTC",
   "actions": [
     {{"type":"PLACE_ORDER","symbol":"BTC","side":"BUY","size":0.001,"orderType":"MARKET"}},
     {{"type":"SET_STOP_LOSS","symbol":"BTC","stop_price":85000}},
