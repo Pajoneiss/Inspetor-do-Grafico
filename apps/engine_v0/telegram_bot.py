@@ -102,42 +102,31 @@ class TelegramBot:
         await app.stop()
     
     async def _cmd_start(self, update, context):
-        """Handle /start command - show persistent keyboard"""
-        from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+        """Handle /start command - show persistent keyboard with 4 buttons"""
+        from telegram import ReplyKeyboardMarkup
         
-        # Inline buttons for toggle actions
-        inline_keyboard = [
-            [
-                InlineKeyboardButton("🤖 IA: ON/OFF", callback_data="toggle_ai"),
-                InlineKeyboardButton("🚨 PANIC", callback_data="panic")
-            ]
-        ]
-        inline_markup = InlineKeyboardMarkup(inline_keyboard)
+        # Check current AI state
+        ai_status = "✅ LIGADO" if _bot_state['ai_enabled'] else "❌ DESLIGADO"
         
-        # PERSISTENT reply keyboard (always visible)
+        # 4 buttons as user requested
         reply_keyboard = [
-            ["📊 Resumo", "💬 Chat"],
-            ["📰 Notícias", "📅 Calendário"],
-            ["📈 Status", "🔍 Scan"]
+            [f"🤖 IA: {ai_status}"],
+            ["📰 Notícias + Calendário"],
+            ["💬 Chat com IA"],
+            ["📊 Resumo Completo"]
         ]
         reply_markup = ReplyKeyboardMarkup(
             reply_keyboard, 
-            resize_keyboard=True,  # Smaller buttons
-            is_persistent=True     # Always visible
+            resize_keyboard=True,
+            is_persistent=True
         )
         
         await update.message.reply_text(
-            "🚀 *Hyperliquid AI Bot*\n\n"
-            f"IA: {'✅ ON' if _bot_state['ai_enabled'] else '❌ OFF'}\n\n"
-            "Use os botões abaixo para navegar:",
+            "🚀 *Bot Hyperliquid*\n\n"
+            f"🤖 IA: {ai_status}\n\n"
+            "Use os botões abaixo:",
             reply_markup=reply_markup,
             parse_mode="Markdown"
-        )
-        
-        # Also send inline buttons for toggle
-        await update.message.reply_text(
-            "⚡ Ações rápidas:",
-            reply_markup=inline_markup
         )
     
     async def _cmd_status(self, update, context):
@@ -326,38 +315,56 @@ class TelegramBot:
         user_text_lower = user_text.lower()
         user_id = update.effective_user.id
         
-        # Handle keyboard button presses (not in chat mode required)
-        if "📊 resumo" in user_text_lower or user_text_lower == "resumo":
-            await self._send_full_summary_text(update)
+        # Handle 4 keyboard buttons
+        
+        # 1. IA Toggle button
+        if "🤖 ia:" in user_text_lower or "ligar" in user_text_lower or "desligar" in user_text_lower:
+            _bot_state["ai_enabled"] = not _bot_state.get("ai_enabled", True)
+            new_status = "✅ LIGADO" if _bot_state["ai_enabled"] else "❌ DESLIGADO"
+            
+            # Update keyboard with new status
+            from telegram import ReplyKeyboardMarkup
+            reply_keyboard = [
+                [f"🤖 IA: {new_status}"],
+                ["📰 Notícias + Calendário"],
+                ["💬 Chat com IA"],
+                ["📊 Resumo Completo"]
+            ]
+            reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, is_persistent=True)
+            
+            await update.message.reply_text(
+                f"🤖 IA agora está: *{new_status}*",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+            print(f"[TG] AI toggled to: {new_status}")
             return
         
-        if "📰 notícias" in user_text_lower or user_text_lower in ["noticias", "news"]:
-            await self._send_news(update)
+        # 2. Notícias + Calendário combined
+        if "notícias + calendário" in user_text_lower or "noticias" in user_text_lower or "calendário" in user_text_lower:
+            await self._send_news_and_calendar(update)
             return
-            
-        if "📅 calendário" in user_text_lower or user_text_lower in ["calendario", "calendar"]:
-            await self._send_calendar(update)
-            return
-            
-        if "📈 status" in user_text_lower or user_text_lower == "status":
-            await self._cmd_status(update, context)
-            return
-            
-        if "🔍 scan" in user_text_lower or user_text_lower == "scan":
-            await self._send_scan(update)
-            return
-            
-        if "💬 chat" in user_text_lower:
+        
+        # 3. Chat com IA
+        if "💬 chat" in user_text_lower or "chat com ia" in user_text_lower:
             _bot_state["chat_mode"] = True
             await update.message.reply_text(
                 "💬 *Modo Chat Ativado*\n\n"
-                "Pergunte qualquer coisa sobre o mercado ou suas operações.\n"
+                "Pergunte qualquer coisa:\n"
+                "• 'Como está o mercado?'\n"
+                "• 'O que você pretende fazer?'\n"
+                "• 'Qual sua visão sobre BTC?'\n\n"
                 "Digite 'sair' para desativar.",
                 parse_mode="Markdown"
             )
             return
         
-        # Check if user wants to exit chat mode
+        # 4. Resumo Completo (includes Status + Scan + Positions)
+        if "📊 resumo" in user_text_lower or "resumo completo" in user_text_lower:
+            await self._send_full_summary_text(update)
+            return
+        
+        # Exit chat mode
         if user_text_lower == "sair" and _bot_state.get("chat_mode"):
             _bot_state["chat_mode"] = False
             await update.message.reply_text("💬 Chat desativado")
@@ -551,112 +558,136 @@ Responda como se VOCÊ fosse o bot operando. Diga "Eu estou...", "Minha posiçã
         }
     
     async def _send_full_summary_text(self, update):
-        """Send full summary as reply (for keyboard button)"""
-        import asyncio
-        from concurrent.futures import ThreadPoolExecutor
-        
+        """Send full summary (includes Status + Scan + Positions)"""
         state = _bot_state.get("last_summary", {})
         scan = _bot_state.get("last_scan", [])
         
         text = "📊 *RESUMO COMPLETO*\n\n"
-        text += f"💰 Equity: ${state.get('equity', 0):.2f}\n"
-        text += f"📈 Buying Power: ${state.get('buying_power', 0):.0f}\n"
-        text += f"🤖 IA: {'✅ ON' if _bot_state['ai_enabled'] else '❌ OFF'}\n\n"
         
-        # Positions
+        # Account section
+        text += "💰 *Conta:*\n"
+        text += f"  Equity: ${state.get('equity', 0):.2f}\n"
+        text += f"  Buying Power: ${state.get('buying_power', 0):.0f}\n"
+        text += f"  IA: {'✅ LIGADO' if _bot_state['ai_enabled'] else '❌ DESLIGADO'}\n"
+        
+        # Positions section
         positions = state.get("positions", {})
         if positions:
-            text += "📈 *Posições:*\n"
+            text += "\n📈 *Posições:*\n"
             for sym, pos in positions.items():
                 pnl = pos.get("unrealized_pnl", 0)
                 emoji = "🟢" if pnl > 0 else "🔴" if pnl < 0 else "⚪"
-                text += f"  {sym}: {pos.get('side')} | PnL: {emoji} ${pnl:.2f}\n"
+                side = pos.get('side', '?')
+                text += f"  {sym}: {side} | PnL: {emoji} ${pnl:.2f}\n"
+        else:
+            text += "\n📈 *Posições:* Nenhuma\n"
         
-        # Top 5 scan
+        # Triggers
+        triggers = state.get('trigger_status', '')
+        if triggers:
+            text += f"\n🎯 *Triggers:*\n  {escape_md(triggers)}\n"
+        
+        # Full scan (all symbols)
         if scan:
-            text += "\n📡 *Top 5:*\n"
-            for s in scan[:5]:
-                text += f"  {s['symbol']}: {s['score']} | {s.get('trend', '?')}\n"
+            text += "\n🔍 *SCAN COMPLETO:*\n"
+            for s in scan:
+                score = s.get("score", 0)
+                if score >= 70:
+                    emoji = "🟢"
+                elif score >= 50:
+                    emoji = "🟡"
+                else:
+                    emoji = "🔴"
+                
+                symbol = s.get("symbol", "?")
+                trend = s.get("trend", "?")
+                reason = s.get("reason", "")
+                text += f"  {emoji} {symbol}: {score} | {trend}\n"
+                if reason:
+                    text += f"     _{escape_md(reason[:40])}_\n"
         
-        # Try to get external data
+        # External data
         try:
-            from data_sources import get_fear_greed
+            from data_sources import get_fear_greed, fetch_macro
             fg = get_fear_greed()
-            if fg.get("value"):
-                text += f"\n😱 Fear & Greed: {fg['value']} ({fg.get('classification', '')})\n"
+            if fg.get("value") and fg.get("value") != "N/A":
+                text += f"\n😨 *Fear & Greed:* {fg['value']} ({fg.get('classification', '')})\n"
+            
+            macro = fetch_macro()
+            if macro.get("usd_brl") and macro.get("usd_brl") != "N/A":
+                text += f"📈 *USD/BRL:* {macro['usd_brl']:.2f}\n"
         except:
             pass
         
         await update.message.reply_text(text, parse_mode="Markdown")
     
-    async def _send_news(self, update):
-        """Send latest crypto news"""
-        await update.message.reply_text("📰 Buscando notícias...")
+    async def _send_news_and_calendar(self, update):
+        """Send combined news + economic calendar in Portuguese"""
+        await update.message.reply_text("📰 Buscando notícias e calendário...")
         
+        text = ""
+        
+        # Part 1: Crypto News
         try:
             from data_sources import get_cryptopanic_news
             news = get_cryptopanic_news()
             
-            if news.get("error"):
-                await update.message.reply_text(f"❌ {news['error']}")
-                return
-            
             headlines = news.get("headlines", [])
-            if not headlines:
-                await update.message.reply_text("📰 Nenhuma notícia encontrada")
-                return
-            
-            text = "📰 *TOP NOTÍCIAS*\n\n"
-            for i, headline in enumerate(headlines[:8], 1):
-                safe_title = escape_md(headline.get('title', '')[:80])
-                source = headline.get('source', '')
-                text += f"{i}. {safe_title}\n   _{source}_\n\n"
-            
-            await update.message.reply_text(text, parse_mode="Markdown")
-            
+            if headlines:
+                text += "📰 *TOP NOTÍCIAS CRYPTO*\n\n"
+                for i, headline in enumerate(headlines[:5], 1):
+                    safe_title = escape_md(headline.get('title', '')[:70])
+                    text += f"{i}. {safe_title}\n\n"
+            else:
+                text += "📰 *Notícias:* Indisponível\n\n"
         except Exception as e:
-            await update.message.reply_text(f"❌ Erro ao buscar notícias: {str(e)[:100]}")
-    
-    async def _send_calendar(self, update):
-        """Send economic calendar"""
-        await update.message.reply_text("📅 Buscando calendário econômico...")
+            text += f"📰 *Notícias:* Erro ({str(e)[:30]})\n\n"
         
+        # Part 2: Economic Calendar (translated to PT)
         try:
             import httpx
             
-            # Try to get from Forex Factory or similar free API
-            # Using a free endpoint
             url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
             
             async with httpx.AsyncClient(timeout=10) as client:
                 resp = await client.get(url)
                 events = resp.json()
             
-            if not events:
-                await update.message.reply_text("📅 Nenhum evento encontrado")
-                return
+            # Filter high/medium impact, translate country codes
+            country_pt = {
+                "USD": "🇺🇸 EUA", "EUR": "🇪🇺 Europa", "GBP": "🇬🇧 Reino Unido",
+                "JPY": "🇯🇵 Japão", "CAD": "🇨🇦 Canadá", "AUD": "🇦🇺 Austrália",
+                "CHF": "🇨🇭 Suíça", "CNY": "🇨🇳 China", "NZD": "🇳🇿 N.Zelândia",
+                "BRL": "🇧🇷 Brasil"
+            }
             
-            # Filter high impact events
-            high_impact = [e for e in events if e.get("impact", "").lower() in ["high", "medium"]][:10]
+            high_impact = [e for e in events if e.get("impact", "").lower() in ["high", "medium"]][:8]
             
-            text = "📅 *CALENDÁRIO ECONÔMICO*\n\n"
-            for event in high_impact:
-                date = event.get("date", "")[:10]
-                time_str = event.get("time", "")
-                title = escape_md(event.get("title", "")[:40])
-                currency = event.get("country", "")
-                impact = "🔴" if event.get("impact") == "High" else "🟡"
+            if high_impact:
+                text += "📅 *CALENDÁRIO ECONÔMICO*\n\n"
+                for event in high_impact:
+                    time_str = event.get("time", "")
+                    title = escape_md(event.get("title", "")[:35])
+                    country = event.get("country", "")
+                    country_name = country_pt.get(country, country)
+                    impact = "🔴" if event.get("impact") == "High" else "🟡"
+                    
+                    text += f"{impact} *{country_name}* {time_str}\n   {title}\n\n"
+            else:
+                text += "📅 *Calendário:* Sem eventos importantes\n"
                 
-                text += f"{impact} *{currency}* {time_str}\n   {title}\n\n"
-            
-            if not high_impact:
-                text += "Nenhum evento de alto impacto hoje."
-            
-            await update.message.reply_text(text, parse_mode="Markdown")
-            
         except Exception as e:
-            print(f"[TG][CALENDAR] Error: {e}")
-            await update.message.reply_text(f"❌ Erro ao buscar calendário: {str(e)[:100]}")
+            text += f"📅 *Calendário:* Erro ({str(e)[:30]})\n"
+        
+        await update.message.reply_text(text, parse_mode="Markdown")
+    
+    async def _send_news(self, update):
+        """Legacy: redirect to combined"""
+        await self._send_news_and_calendar(update)
+    
+    async def _send_calendar(self, update):
+        """Legacy: redirect to combined"""
+        await self._send_news_and_calendar(update)
     
     async def _send_scan(self, update):
         """Send current market scan"""

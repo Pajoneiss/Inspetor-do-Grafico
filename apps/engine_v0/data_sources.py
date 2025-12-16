@@ -286,3 +286,18 @@ def format_external_data_for_telegram(data: Dict[str, Any]) -> str:
             lines.append(f"  • {title}...")
     
     return "\n".join(lines) if lines else "(dados externos indisponíveis)"
+
+
+# Aliases for backward compatibility
+def get_fear_greed() -> Dict[str, Any]:
+    """Alias for fetch_fear_greed"""
+    return fetch_fear_greed()
+
+
+def get_cryptopanic_news() -> Dict[str, Any]:
+    """Alias for fetch_cryptopanic with error handling"""
+    try:
+        headlines = fetch_cryptopanic()
+        return {"headlines": headlines}
+    except Exception as e:
+        return {"error": str(e)}
