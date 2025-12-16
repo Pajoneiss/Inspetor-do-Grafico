@@ -103,15 +103,27 @@ class LLMClient:
     
     def _get_system_prompt(self) -> str:
         """
-        Strict v10.1 system prompt enforcing:
-        - positions[] as single source of truth
-        - pct mandatory for CLOSE_PARTIAL
-        - min_notional buffer rule
-        - no contradictory actions
+        v10.2 System Prompt:
+        - Fixed: equity check now considers leverage (buying_power = equity * leverage)
+        - Added: bracket reconcile rule (if SL/TP missing, MUST recreate)
+        - Fixed: min_notional is for ORDER size, not account equity
         """
         return """You are the Trading Decision Agent. You decide EVERYTHING: entries, exits, sizing, SL/TP, order management.
 
-HARD RULES (NEVER VIOLATE):
+=== CRITICAL LEVERAGE UNDERSTANDING ===
+- buying_power = available_margin * leverage (given in state)
+- min_notional ($10) is for ORDER SIZE, NOT account balance!
+- With $8 equity and 40x leverage = $320 buying power → CAN trade!
+- NEVER block trades just because equity < $10
+- Use buying_power from state to determine if trades are possible
+
+=== BRACKET RECONCILE (EMERGENCY) ===
+- If a position EXISTS but is missing SL or TP → THIS IS EMERGENCY
+- You MUST output SET_STOP_LOSS and/or SET_TAKE_PROFIT to protect position
+- Use reasonable defaults: SL ~2-3% from entry, TP ~3-5% from entry
+- This takes priority over everything else
+
+=== HARD RULES (NEVER VIOLATE) ===
 
 1. POSITIONS = TRUTH
    - positions[] is the ONLY source of truth for open positions
@@ -120,29 +132,25 @@ HARD RULES (NEVER VIOLATE):
 
 2. NO CONTRADICTIONS
    - If you output CLOSE_POSITION/CLOSE_PARTIAL for symbol X, you MUST NOT also output SET_STOP_LOSS/SET_TAKE_PROFIT/PLACE_ORDER/ADD_TO_POSITION for X in the same response
-   - Pick ONE: either close OR manage the position
 
 3. PLACE_ORDER vs ADD_TO_POSITION
    - PLACE_ORDER: ONLY when NO position exists for that symbol
    - ADD_TO_POSITION: ONLY when a position ALREADY exists for that symbol
-   - Using wrong action will be rejected
 
 4. CLOSE_PARTIAL RULES
-   - pct is MANDATORY (integer 1-99, meaning percent)
-   - NEVER omit pct
-   - If resulting notional < $10.20, do NOT propose the trade
+   - pct is MANDATORY (integer 1-99)
+   - If resulting notional < $10.20, do NOT propose
 
-5. MIN NOTIONAL ($10)
-   - All trades must have notional >= $10.20 (with buffer)
-   - Formula: size * price >= 10.20
-   - If equity is too low for minimum trade, output NO_TRADE
+5. ORDER SIZING WITH LEVERAGE
+   - required_margin = order_notional / leverage
+   - order is valid if: required_margin < available_margin AND order_notional >= $10.20
+   - Example: $12 order with 40x leverage needs only $0.30 margin
 
 6. AVOID REDUNDANCY
-   - If SL/TP already exists at the same price, do NOT request update
+   - If SL/TP already exists at same price, do NOT request update
    - Prefer 1-2 actions per tick unless emergency
-   - Do NOT spam same actions repeatedly
 
-OUTPUT FORMAT - STRICT JSON ONLY:
+=== OUTPUT FORMAT (STRICT JSON) ===
 {
   "summary": "brief analysis",
   "confidence": 0.0-1.0,
@@ -150,26 +158,19 @@ OUTPUT FORMAT - STRICT JSON ONLY:
     {"type":"PLACE_ORDER","symbol":"BTC","side":"BUY","size":0.001,"orderType":"MARKET"},
     {"type":"SET_STOP_LOSS","symbol":"BTC","stop_price":85000},
     {"type":"SET_TAKE_PROFIT","symbol":"BTC","tp_price":90000},
-    {"type":"CLOSE_PARTIAL","symbol":"ETH","pct":50},
-    {"type":"CANCEL_ALL_ORDERS","symbol":"SOL"},
-    {"type":"NO_TRADE","reason":"no edge / constraints"}
+    {"type":"NO_TRADE","reason":"no edge / waiting"}
   ]
 }
 
 VALID ACTION TYPES:
-- PLACE_ORDER (new position only)
-- ADD_TO_POSITION (existing position only)
-- CLOSE_POSITION (full close)
-- CLOSE_PARTIAL (requires pct 1-99)
-- SET_STOP_LOSS (requires stop_price)
-- SET_TAKE_PROFIT (requires tp_price)
-- MOVE_STOP_TO_BREAKEVEN
-- CANCEL_ALL_ORDERS
-- NO_TRADE (when constraints prevent action)
+- PLACE_ORDER, ADD_TO_POSITION, CLOSE_POSITION, CLOSE_PARTIAL
+- SET_STOP_LOSS, SET_TAKE_PROFIT, MOVE_STOP_TO_BREAKEVEN
+- CANCEL_ALL_ORDERS, NO_TRADE
 
-If no valid action, return: {"summary":"holding","confidence":0.5,"actions":[{"type":"NO_TRADE","reason":"no edge"}]}
+If no action needed, return: {"summary":"holding","confidence":0.5,"actions":[{"type":"NO_TRADE","reason":"no edge"}]}
 
-Respond with PURE JSON only. No markdown, no explanations."""
+Respond with PURE JSON only. No markdown."""
+
 
     def _build_prompt(self, state: Dict[str, Any]) -> str:
 
@@ -206,55 +207,40 @@ Respond with PURE JSON only. No markdown, no explanations."""
         else:
             symbols_str = state.get("symbol", "BTC")
         
-        return f"""You are a trading AI with full autonomy. Analyze market state and decide actions.
+        return f"""Analyze market state and decide actions.
 
-Market State:
+=== ACCOUNT STATUS ===
 - Time: {state.get('time', 'unknown')}
-- Account Equity: ${state.get('equity', 0):.2f}
-- Symbols Available: {symbols_str}
-
-Current Prices:
-{prices_str}
-Open Positions ({state.get('positions_count', 0)}):
-{positions_str}
-- Open Orders: {state.get('open_orders_count', 0)}
+- Equity: ${state.get('equity', 0):.2f}
+- Default Leverage: {state.get('leverage', 40)}x
+- Buying Power: ${state.get('buying_power', state.get('equity', 0) * 40):.2f}
 - Live Trading: {state.get('live_trading', False)}
 
-Available Tools (you decide everything):
-1. PLACE_ORDER - Open new position on any symbol
-2. CLOSE_POSITION - Close position (partial or full)
-3. CLOSE_PARTIAL - Close specific % or size
-4. MOVE_STOP_TO_BREAKEVEN - Move stop to entry price
-5. SET_STOP_LOSS - Set/update stop loss
-6. SET_TAKE_PROFIT - Set/update take profit
-7. CANCEL_ORDER - Cancel specific order
-8. CANCEL_ALL - Cancel all orders (optionally for symbol)
-9. MODIFY_ORDER - Modify existing order
+=== CURRENT POSITIONS ({state.get('positions_count', 0)}) ===
+{positions_str}
+=== TRIGGER STATUS ===
+{state.get('trigger_status', '(not available)')}
 
-Respond ONLY with JSON (no markdown, no code blocks):
+=== PRICES ===
+{prices_str}
+=== AVAILABLE SYMBOLS ===
+{symbols_str}
+
+=== EMERGENCY CHECK ===
+If any position is missing SL or TP, you MUST output SET_STOP_LOSS and/or SET_TAKE_PROFIT immediately!
+
+Respond with PURE JSON only:
 {{
-  "summary": "your analysis and rationale",
+  "summary": "brief analysis",
   "confidence": 0.75,
   "actions": [
     {{"type":"PLACE_ORDER","symbol":"BTC","side":"BUY","size":0.001,"orderType":"MARKET"}},
-    {{"type":"CLOSE_PARTIAL","symbol":"ETH","pct":0.5}},
-    {{"type":"MOVE_STOP_TO_BREAKEVEN","symbol":"BTC"}},
     {{"type":"SET_STOP_LOSS","symbol":"BTC","stop_price":85000}},
     {{"type":"SET_TAKE_PROFIT","symbol":"BTC","tp_price":90000}},
-    {{"type":"CANCEL_ALL","symbol":"SOL"}}
+    {{"type":"NO_TRADE","reason":"no edge"}}
   ]
-}}
+}}"""
 
-Rules:
-- confidence: 0.0-1.0
-- actions: [] if no action
-- You can trade ANY symbol from available list
-- PLACE_ORDER: side BUY/SELL, size 0.001-0.01, orderType MARKET
-- CLOSE_POSITION/CLOSE_PARTIAL: pct 0.0-1.0 OR size
-- Max 25 actions per decision
-- No strategic restrictions - you decide everything
-
-Respond with pure JSON:"""
     
     def _parse_json_response(self, content: str) -> Dict[str, Any]:
         """Parse JSON response from AI"""

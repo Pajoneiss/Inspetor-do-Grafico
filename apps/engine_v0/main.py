@@ -113,6 +113,12 @@ def main():
                     state["prices"] = prices
                     state["available_margin"] = summary["available"]  # Free collateral
                     
+                    # v10.2: Calculate buying power with leverage (default 40x for BTC)
+                    default_leverage = 40
+                    state["leverage"] = default_leverage
+                    state["buying_power"] = state["equity"] * default_leverage
+
+                    
                     # Get constraints for snapshot symbols
                     constraints_by_symbol = {}
                     for sym in snapshot_symbols:
@@ -137,7 +143,47 @@ def main():
                         open_orders_by_symbol[coin].append(order)
                     state["open_orders_by_symbol"] = open_orders_by_symbol
                     
+                    # v10.2: Build trigger status for each position (BRACKET RECONCILE)
+                    trigger_status_lines = []
+                    for pos_symbol, pos_data in positions_by_symbol.items():
+                        symbol_orders = open_orders_by_symbol.get(pos_symbol, [])
+                        has_sl = False
+                        has_tp = False
+                        sl_price = None
+                        tp_price = None
+                        
+                        for order in symbol_orders:
+                            if order.get("reduceOnly"):
+                                trigger_px = order.get("triggerPx") or order.get("trigger_px") or order.get("limitPx")
+                                if trigger_px:
+                                    trigger_px = float(trigger_px)
+                                    entry_px = pos_data.get("entry_price", 0)
+                                    pos_side = pos_data.get("side", "LONG")
+                                    
+                                    # Determine if SL or TP based on position side and trigger direction
+                                    if pos_side == "LONG":
+                                        if trigger_px < entry_px:
+                                            has_sl = True
+                                            sl_price = trigger_px
+                                        else:
+                                            has_tp = True
+                                            tp_price = trigger_px
+                                    else:  # SHORT
+                                        if trigger_px > entry_px:
+                                            has_sl = True
+                                            sl_price = trigger_px
+                                        else:
+                                            has_tp = True
+                                            tp_price = trigger_px
+                        
+                        sl_str = f"SL=${sl_price:.2f}" if has_sl else "SL=MISSING!"
+                        tp_str = f"TP=${tp_price:.2f}" if has_tp else "TP=MISSING!"
+                        trigger_status_lines.append(f"  - {pos_symbol}: {sl_str} | {tp_str}")
+                    
+                    state["trigger_status"] = "\n".join(trigger_status_lines) if trigger_status_lines else "(no positions)"
+                    
                     # Add feedback (rejects, errors, successes)
+
                     from feedback import get_feedback_tracker
                     feedback = get_feedback_tracker()
                     state["last_rejects"] = feedback.get_recent_rejects(limit=10)
