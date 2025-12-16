@@ -886,18 +886,9 @@ def _execute_close_partial(action, is_paper, hl_client):
         
         # MIN NOTIONAL VALIDATION
         if close_notional < MIN_NOTIONAL_USD:
-            print(f"[LIVE][REJECT] CLOSE_PARTIAL {symbol} reason=min_notional close_notional=${close_notional:.2f} min=${MIN_NOTIONAL_USD}")
-            
-            # Check if full position meets min notional
-            full_notional = position_size * mark_price
-            if full_notional >= MIN_NOTIONAL_USD:
-                print(f"[LIVE][WARN] CLOSE_PARTIAL {symbol} adjusted to CLOSE_FULL (full_notional=${full_notional:.2f})")
-                # Close full position instead
-                close_size = position_size
-                close_notional = full_notional
-            else:
-                print(f"[LIVE][REJECT] CLOSE_PARTIAL {symbol} skipped - even full position below min notional")
-                return False
+            print(f"[LIVE][SKIP] CLOSE_PARTIAL {symbol} reason=min_notional close_notional=${close_notional:.2f} < min=${MIN_NOTIONAL_USD}")
+            print(f"[LIVE][SKIP] NOT converting to CLOSE_FULL (position preservation)")
+            return False  # DO NOT auto-convert
         
         # Get constraints for size normalization
         constraints = hl_client.get_symbol_constraints(symbol)
