@@ -644,34 +644,45 @@ def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) 
         
         # Get open orders for checks
         open_orders = hl_client.get_open_orders()
-        
-        # CIRCUIT BREAKER & SMART MANAGEMENT
         open_orders_for_symbol = [o for o in open_orders if o.get("coin") == symbol]
-        if len(open_orders_for_symbol) >= MAX_OPEN_ORDERS_PER_SYMBOL:
-            # Try to find existing TP to replace (Upsert)
-            existing_tp = None
-            for o in open_orders_for_symbol:
-                is_reduce = o.get("reduceOnly", False)
-                trig_px = float(o.get("triggerPx", 0) or 0)
-                # Heuristic: TP is usually reduceOnly. For LONG, TP > mark.
-                if is_reduce and trig_px > 0:
-                    if position_side == "LONG" and trig_px > mark_price:
-                        existing_tp = o
-                        break
-                    elif position_side == "SHORT" and trig_px < mark_price:
-                        existing_tp = o
-                        break
+        
+        # PROTECTIVE ORDER MANAGER: Find existing TPs
+        existing_tp_orders = []
+        for o in open_orders_for_symbol:
+            is_reduce = o.get("reduceOnly", False)
+            trig_px = float(o.get("triggerPx", 0) or 0)
             
-            if existing_tp:
-                print(f"[SMART] Replacing existing TP (oid={existing_tp['oid']}) to make room for new TP")
+            # Heuristic v2: LONG TP > Mark, SHORT TP < Mark
+            if is_reduce and trig_px > 0:
+                if position_side == "LONG" and trig_px > mark_price:
+                    existing_tp_orders.append(o)
+                elif position_side == "SHORT" and trig_px < mark_price:
+                    existing_tp_orders.append(o)
+
+        # IDEMPOTENT CHECK
+        for tp_order in existing_tp_orders:
+            order_trigger_px = float(tp_order.get("triggerPx", 0))
+            price_diff_pct = abs(order_trigger_px - trigger_px_quantized) / trigger_px_quantized * 100
+            if price_diff_pct < 0.2:
+                 print(f"[IDEMP] skip SET_TAKE_PROFIT {symbol} - equivalent TP exists oid={tp_order['oid']} px={order_trigger_px}")
+                 return True
+
+        # REPLACEMENT LOGIC
+        if existing_tp_orders:
+            print(f"[SMART] Canceling {len(existing_tp_orders)} old TPs for {symbol} to replace with new ${trigger_px_quantized:.2f}")
+            for tp_to_cancel in existing_tp_orders:
                 try:
-                    hl_client.cancel_order(symbol, existing_tp["oid"])
-                    import time; time.sleep(0.5)
+                    hl_client.cancel_order(symbol, tp_to_cancel["oid"])
                 except Exception as e:
-                    print(f"[SMART][ERROR] Failed to cancel existing TP: {e}")
-            else:
-                print(f"[CIRCUIT] skip SET_TAKE_PROFIT {symbol} - {len(open_orders_for_symbol)} orders >= max {MAX_OPEN_ORDERS_PER_SYMBOL} (no existing TP to replace)")
-                return None
+                    print(f"[SMART][WARN] Failed to cancel old TP {tp_to_cancel['oid']}: {e}")
+            import time; time.sleep(0.5)
+
+        # CHECK LIMITS AFTER CANCEL
+        remaining_count = len(open_orders_for_symbol) - len(existing_tp_orders)
+        
+        if remaining_count >= MAX_OPEN_ORDERS_PER_SYMBOL:
+             print(f"[CIRCUIT] skip SET_TAKE_PROFIT {symbol} - still full {remaining_count} >= {MAX_OPEN_ORDERS_PER_SYMBOL} (removed {len(existing_tp_orders)} TPs)")
+             return None
         
         # IDEMPOTENT CHECK: if similar trigger exists, skip
         for order in open_orders:
