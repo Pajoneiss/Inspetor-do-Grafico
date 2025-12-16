@@ -86,10 +86,24 @@ def main():
         except Exception as e:
             print(f"[TG][WARN] Failed to start: {e}")
     
+    # v12.6: Start Dashboard API server
+    dashboard_api = None
+    try:
+        from dashboard_api import run_dashboard_server, update_dashboard_state, add_ai_action
+        import os
+        dashboard_port = int(os.environ.get("PORT", 8080))
+        run_dashboard_server(port=dashboard_port)
+        print(f"[BOOT] Dashboard server started on port {dashboard_port}")
+        dashboard_api = True
+    except Exception as e:
+        print(f"[DASHBOARD][WARN] Failed to start: {e}")
+        dashboard_api = None
+    
     iteration = 0
     test_order_executed = False  # Flag to execute test order only once
     last_ai_call_time = 0  # Timestamp of last AI call
     rotate_offset = 0  # For ROTATE mode
+
 
     
     try:
@@ -427,6 +441,46 @@ def main():
                     # v11.0: Sync state to Telegram
                     if TELEGRAM_AVAILABLE:
                         update_telegram_state(state)
+                    
+                    # v12.6: Sync state to Dashboard API
+                    if dashboard_api:
+                        try:
+                            # Build positions list for dashboard
+                            dashboard_positions = []
+                            for sym, pos in positions_by_symbol.items():
+                                pos_detail = state.get("position_details", {}).get(sym, {})
+                                dashboard_positions.append({
+                                    "symbol": sym,
+                                    "side": pos.get("side", "UNKNOWN"),
+                                    "size": abs(float(pos.get("size", 0))),
+                                    "entry_price": float(pos.get("entry_price", 0)),
+                                    "unrealized_pnl": float(pos.get("unrealized_pnl", 0)),
+                                    "pnl_pct": pos_detail.get("pnl_pct", 0),
+                                    "stop_loss": pos_detail.get("current_sl"),
+                                    "take_profit": pos_detail.get("current_tp")
+                                })
+                            
+                            # Build market data
+                            market_data = state.get("market_data", {})
+                            top_syms = [s for s, b in sorted(state.get("symbol_briefs", {}).items(), 
+                                                              key=lambda x: x[1].get("score", 0), reverse=True)[:5]]
+                            
+                            update_dashboard_state({
+                                "account": {
+                                    "equity": summary["equity"],
+                                    "balance": summary.get("balance", summary["equity"]),
+                                    "buying_power": state.get("buying_power", 0),
+                                    "positions_count": summary["positions_count"]
+                                },
+                                "positions": dashboard_positions,
+                                "market": {
+                                    "fear_greed": market_data.get("fear_greed", 50),
+                                    "btc_dominance": market_data.get("btc_dominance", 0),
+                                    "top_symbols": top_syms
+                                }
+                            })
+                        except Exception as e:
+                            pass  # Silent fail for dashboard
 
                     
                 except Exception as e:

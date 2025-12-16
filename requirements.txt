@@ -20,4 +20,8 @@ httpx>=0.24.0
 # Telegram
 python-telegram-bot>=20.0
 
+# Dashboard API
+flask>=3.0.0
+flask-cors>=4.0.0
+
 # OpenAI SDK for AI decisions (BLOCO 3)
