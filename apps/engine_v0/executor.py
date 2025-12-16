@@ -554,7 +554,7 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
             if action_type == "PLACE_ORDER":
                 action_success = _execute_place_order(action, is_paper, hl_client)
             elif action_type == "ADD_TO_POSITION":
-                # Treat same as PLACE_ORDER (the gate already blocked PLACE_ORDER for existing positions)
+                # v12.3: Treat same as PLACE_ORDER (ADD is same flow now)
                 action_success = _execute_place_order(action, is_paper, hl_client)
             elif action_type == "CLOSE_POSITION":
                 action_success = _execute_close_position(action, is_paper, hl_client)
@@ -625,17 +625,17 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
     
     # LIVE execution
     try:
-        # GATE 1: Check if position already exists for this symbol
+        # GATE 1: If position exists, LOG but DON'T BLOCK - LLM has autonomy
+        # Just convert PLACE_ORDER to ADD_TO_POSITION behavior
         positions = hl_client.get_positions_by_symbol()
         if symbol in positions:
             pos = positions[symbol]
             existing_size = abs(float(pos.get("size", 0)))
             existing_side = pos.get("side", "?")
             if existing_size > 0:
-                print(f"[LIVE][GATE] PLACE_ORDER {symbol} blocked - position already exists")
-                print(f"[LIVE][GATE] Existing: {existing_side} size={existing_size}")
-                print(f"[LIVE][GATE] Use ADD_TO_POSITION to increase size, not PLACE_ORDER")
-                return False  # Blocked
+                # v12.3: Log for visibility but ALLOW execution (LLM autonomy)
+                print(f"[LIVE][INFO] PLACE_ORDER {symbol} → adding to existing {existing_side} position")
+                # Continue execution - don't return False
         
         # Import normalizer functions
         from normalizer import normalize_place_order
@@ -949,16 +949,8 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
         print(f"[PAPER] would SET_STOP_LOSS {symbol} stop=${stop_price:.2f}")
         return True
     
-    # BE PROTECTION GATE: Prevent LLM from overriding BE SL with worse price
-    # Skip this check if the action is from BE auto-execution itself
-    if "BE auto-execution" not in reason:
-        try:
-            from be_protection import is_sl_worse_than_be
-            if is_sl_worse_than_be(symbol, stop_price):
-                print(f"[BE][GATE] REJECTED SET_STOP_LOSS {symbol} stop=${stop_price:.2f} - would violate BE protection")
-                return None  # Skipped, not failed
-        except ImportError:
-            pass  # Module not available, skip check
+    # v12.3: Removed BE PROTECTION GATE - LLM has 100% autonomy for SL decisions
+    # The LLM is a professional trader and can set SL wherever it wants
     
     # LIVE execution with trigger price validation
     try:
