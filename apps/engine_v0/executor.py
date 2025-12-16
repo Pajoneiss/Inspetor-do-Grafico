@@ -23,10 +23,15 @@ from config import (
 # BRACKET MANAGER HELPERS (Definitive Order Hygiene)
 # ==================================================================
 
-def _identify_reduce_only_orders(open_orders, symbol):
+def _identify_reduce_only_orders(open_orders, symbol, trigger_type=None, mark_price=None, position_side=None):
     """
-    Identifica TODAS as ordens reduce-only trigger de um símbolo.
-    CRITICAL FIX: Suporta múltiplas estruturas de API (triggerPx, orderType, limit_px, etc)
+    Identifica ordens reduce-only trigger de um símbolo.
+    ENHANCED: Pode filtrar por tipo (SL ou TP) para permitir coexistência.
+    
+    Args:
+        trigger_type: None=all, "SL"=stop loss only, "TP"=take profit only
+        mark_price: Current mark price (needed to differentiate SL vs TP)
+        position_side: "LONG" or "SHORT" (needed to differentiate SL vs TP)
     """
     if not open_orders:
         return []
@@ -45,31 +50,66 @@ def _identify_reduce_only_orders(open_orders, symbol):
             continue
         
         # MULTI-FIELD TRIGGER DETECTION
-        # Method 1: Check for triggerPx field (typical for Stop/TP orders)
-        has_trigger_px = o.get("triggerPx") or o.get("trigger_px") or o.get("limitPx")
+        trigger_px = None
         
-        # Method 2: Check order_type field for "Stop Market" / "Take Profit Market"
+        # Method 1: Check for trigger price fields
+        for field in ["triggerPx", "trigger_px", "limitPx"]:
+            if o.get(field):
+                try:
+                    trigger_px = float(o.get(field))
+                    break
+                except (ValueError, TypeError):
+                    pass
+        
+        # Method 2: Check order_type for trigger keywords
         order_type = o.get("order_type") or o.get("orderType") or o.get("order", {}).get("orderType") or ""
         is_trigger_type = ("stop" in order_type.lower()) or ("profit" in order_type.lower())
         
-        # Method 3: Check for trigger field in nested structures
+        # Method 3: Nested trigger structures
         has_trigger_nested = (
             o.get("order", {}).get("trigger") or 
             o.get("trigger") or 
             o.get("triggerConditions")
         )
         
-        # If ANY method detects a trigger, include it
-        if has_trigger_px or is_trigger_type or has_trigger_nested:
-            triggers.append(o)
+        # If not a trigger order, skip
+        if not (trigger_px or is_trigger_type or has_trigger_nested):
+            continue
+        
+        # TYPE FILTERING (SL vs TP)
+        if trigger_type and mark_price and position_side:
+            # Determine if this trigger is SL or TP based on price vs mark
+            if trigger_px:
+                if position_side == "LONG":
+                    # LONG: SL is below mark, TP is above mark
+                    is_sl = trigger_px < mark_price
+                    is_tp = trigger_px > mark_price
+                else:  # SHORT
+                    # SHORT: SL is above mark, TP is below mark
+                    is_sl = trigger_px > mark_price
+                    is_tp = trigger_px < mark_price
+                
+                # Filter by requested type
+                if trigger_type == "SL" and not is_sl:
+                    continue
+                if trigger_type == "TP" and not is_tp:
+                    continue
+            
+        triggers.append(o)
             
     return triggers
 
 
-def _cleanup_all_triggers(hl_client, symbol):
+def _cleanup_all_triggers(hl_client, symbol, trigger_type=None, mark_price=None, position_side=None):
     """
-    Cancela TODAS as ordens reduce-only trigger antes de recriar.
-    CRITICAL FIX: Agora ABORTA se qualquer cancel falhar (evita empilhamento).
+    Cancela ordens reduce-only trigger antes de recriar.
+    ENHANCED: Pode cancelar apenas SL ou apenas TP para permitir coexistência.
+    
+    Args:
+        trigger_type: None=all, "SL"=only stop losses, "TP"=only take profits
+        mark_price: Current mark price (needed for type detection)
+        position_side: "LONG" or "SHORT"
+        
     Returns: número de ordens canceladas (ou -1 se falhou)
     """
     try:
@@ -82,7 +122,7 @@ def _cleanup_all_triggers(hl_client, symbol):
             fields = list(sample.keys())
             print(f"[BRACKET][DEBUG] Sample order fields: {fields}")
         
-        triggers = _identify_reduce_only_orders(open_orders, symbol)
+        triggers = _identify_reduce_only_orders(open_orders, symbol, trigger_type, mark_price, position_side)
         
         if not triggers:
             return 0  # Nothing to cancel
@@ -763,9 +803,9 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
         
         print(f"[LIVE] SET_STOP_LOSS {symbol} stop=${trigger_px_quantized:.2f} size={position_size} side={position_side}")
         
-        # BRACKET MANAGER: Cleanup ALL triggers before creating new one
-        cleaned_count = _cleanup_all_triggers(hl_client, symbol)
-        print(f"[BRACKET] Cleaned {cleaned_count} triggers before SET_STOP_LOSS")
+        # BRACKET MANAGER: Cleanup only SL triggers (preserve TP)
+        cleaned_count = _cleanup_all_triggers(hl_client, symbol, trigger_type="SL", mark_price=mark_price, position_side=position_side)
+        print(f"[BRACKET] Cleaned {cleaned_count} SL triggers before SET_STOP_LOSS (TP preserved)")
 
         # Place trigger order
         resp = hl_client.place_trigger_order(
@@ -846,9 +886,9 @@ def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) 
         
         print(f"[LIVE] SET_TAKE_PROFIT {symbol} tp=${trigger_px_quantized:.2f} size={position_size} side={position_side}")
         
-        # BRACKET MANAGER: Cleanup ALL triggers before creating new one
-        cleaned_count = _cleanup_all_triggers(hl_client, symbol)
-        print(f"[BRACKET] Cleaned {cleaned_count} triggers before SET_TAKE_PROFIT")
+        # BRACKET MANAGER: Cleanup only TP triggers (preserve SL)
+        cleaned_count = _cleanup_all_triggers(hl_client, symbol, trigger_type="TP", mark_price=mark_price, position_side=position_side)
+        print(f"[BRACKET] Cleaned {cleaned_count} TP triggers before SET_TAKE_PROFIT (SL preserved)")
         
         # Place trigger order
         resp = hl_client.place_trigger_order(
