@@ -368,24 +368,71 @@ def _is_intent_duplicate(intent_key: str, action_type: str, current_time: float)
     return False
 
 
-def _sanitize_actions(actions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _sanitize_actions(actions: List[Dict[str, Any]], hl_client=None) -> List[Dict[str, Any]]:
     """
-    Sanitize/dedupe actions before execution.
+    v10.1 Hardened Sanitizer:
+    - B1) Remove contradictions (CLOSE + SL/TP for same symbol)
+    - B3) Convert PLACE_ORDER → ADD_TO_POSITION if position exists
+    - B4) Require pct for CLOSE_PARTIAL (no default 50%)
     - Keep only 1 SET_STOP_LOSS per symbol (last one wins)
     - Keep only 1 SET_TAKE_PROFIT per symbol (last one wins)
     - Remove MOVE_STOP_TO_BREAKEVEN if SET_STOP_LOSS exists for same symbol
-    - Remove actions for symbols without position (will be done later)
     """
+    if not actions:
+        return []
+    
+    # Get current positions for PLACE_ORDER → ADD conversion
+    existing_positions = set()
+    if hl_client:
+        try:
+            positions = hl_client.get_positions_by_symbol()
+            existing_positions = set(positions.keys())
+        except:
+            pass
+    
+    # === B1: Find symbols with CLOSE actions (these can't have SL/TP/ADD) ===
+    close_symbols = set()
+    for action in actions:
+        action_type = action.get("type", "")
+        symbol = action.get("symbol", "")
+        if action_type in ("CLOSE_POSITION", "CLOSE_PARTIAL"):
+            close_symbols.add(symbol)
+    
+    # === First pass: categorize and filter ===
     seen_sl = {}  # symbol -> action
     seen_tp = {}  # symbol -> action
     seen_be = {}  # symbol -> action
     other_actions = []
+    removed_count = 0
     
-    # First pass: categorize
     for action in actions:
-        action_type = action.get("type")
-        symbol = action.get("symbol")
+        action_type = action.get("type", "")
+        symbol = action.get("symbol", "")
         
+        # === B1: Remove SL/TP/ADD if CLOSE exists for same symbol ===
+        if symbol in close_symbols:
+            if action_type in ("SET_STOP_LOSS", "SET_TAKE_PROFIT", "MOVE_STOP_TO_BREAKEVEN", 
+                               "PLACE_ORDER", "ADD_TO_POSITION"):
+                print(f"[SANITIZE] Removed {action_type} for {symbol} (conflicting with CLOSE_*)")
+                removed_count += 1
+                continue
+        
+        # === B4: CLOSE_PARTIAL requires pct ===
+        if action_type == "CLOSE_PARTIAL":
+            pct = action.get("pct")
+            if pct is None:
+                print(f"[SANITIZE] CLOSE_PARTIAL {symbol} skipped - pct is MANDATORY (1-99)")
+                removed_count += 1
+                continue
+        
+        # === B3: Convert PLACE_ORDER → ADD_TO_POSITION if position exists ===
+        if action_type == "PLACE_ORDER" and symbol in existing_positions:
+            print(f"[SANITIZE] Converting PLACE_ORDER → ADD_TO_POSITION for {symbol} (position exists)")
+            action = dict(action)  # Copy
+            action["type"] = "ADD_TO_POSITION"
+            action_type = "ADD_TO_POSITION"
+        
+        # Categorize triggers
         if action_type == "SET_STOP_LOSS":
             seen_sl[symbol] = action
         elif action_type == "SET_TAKE_PROFIT":
@@ -395,7 +442,7 @@ def _sanitize_actions(actions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         else:
             other_actions.append(action)
     
-    # Second pass: merge (BE removed if SL exists)
+    # === Second pass: merge SL/TP/BE (BE removed if SL exists) ===
     result = other_actions.copy()
     
     for symbol in set(list(seen_sl.keys()) + list(seen_tp.keys()) + list(seen_be.keys())):
@@ -404,16 +451,16 @@ def _sanitize_actions(actions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             result.append(seen_sl[symbol])
             if symbol in seen_be:
                 print(f"[SANITIZE] Removed MOVE_STOP_TO_BREAKEVEN for {symbol} (explicit SET_STOP_LOSS exists)")
+                removed_count += 1
         elif symbol in seen_be:
-            # Convert BE to SL (will be handled by BE function)
             result.append(seen_be[symbol])
         
         # Add TP if exists
         if symbol in seen_tp:
             result.append(seen_tp[symbol])
     
-    if len(result) != len(actions):
-        print(f"[SANITIZE] Reduced actions from {len(actions)} to {len(result)}")
+    if removed_count > 0 or len(result) != len(actions):
+        print(f"[SANITIZE] Reduced actions from {len(actions)} to {len(result)} (removed {removed_count})")
     
     return result
 
@@ -437,10 +484,11 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
         print(f"[EXEC][LIMIT] truncated from {len(actions)} to {MAX_ACTIONS_PER_TICK}")
         actions = actions[:MAX_ACTIONS_PER_TICK]
     
-    # SANITIZE: Dedupe BE+SL+TP before execution
-    actions = _sanitize_actions(actions)
+    # SANITIZE v10.1: Dedupe, contradictions, pct mandatory, PLACE→ADD conversion
+    actions = _sanitize_actions(actions, hl_client)
     
     print(f"[EXEC] actions={len(actions)}")
+
 
     
     # Determine if PAPER or LIVE
