@@ -813,11 +813,14 @@ class HLClient:
             constraints = self.get_symbol_constraints(symbol)
             tick_sz = constraints.get("tickSz", 0.01)
             
-            # Round trigger price to tick size (keep as float)
-            from decimal import Decimal, ROUND_DOWN
+            # Log tick size for debugging invalid price errors
+            print(f"[HL] {symbol} tickSz={tick_sz} raw_trigger={trigger_px_f}")
+            
+            # Round trigger price to tick size (use ROUND_HALF_UP for valid prices)
+            from decimal import Decimal, ROUND_HALF_UP
             trigger_px_decimal = Decimal(str(trigger_px_f))
             tick_decimal = Decimal(str(tick_sz))
-            trigger_px_rounded = float((trigger_px_decimal / tick_decimal).quantize(Decimal('1'), rounding=ROUND_DOWN) * tick_decimal)
+            trigger_px_rounded = float((trigger_px_decimal / tick_decimal).quantize(Decimal('1'), rounding=ROUND_HALF_UP) * tick_decimal)
             
             # Log types for debugging
             print(f"[HL] place_trigger_order triggerPx type={type(trigger_px_rounded).__name__} val={trigger_px_rounded} size type={type(size_f).__name__} val={size_f}")

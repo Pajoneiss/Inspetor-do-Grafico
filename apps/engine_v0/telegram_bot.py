@@ -37,6 +37,11 @@ def is_admin(user_id: int) -> bool:
     return str(user_id) in TELEGRAM_ADMIN_IDS or not TELEGRAM_ADMIN_IDS[0]  # Allow all if not configured
 
 
+def escape_md(text: str) -> str:
+    """Escape markdown v1 special chars"""
+    return str(text).replace("_", "\\_").replace("*", "\\*").replace("`", "\\`").replace("[", "\\[")
+
+
 class TelegramBot:
     """Simple Telegram bot with 3 main buttons"""
     
@@ -200,15 +205,6 @@ class TelegramBot:
             
         elif data == "cancel":
             await query.edit_message_text("❌ Cancelado")
-    
-def escape_md(text: str) -> str:
-    """Escape markdown v1 special chars"""
-    return str(text).replace("_", "\\_").replace("*", "\\*").replace("`", "\\`").replace("[", "\\[")
-
-class TelegramBot:
-    # ... (keeps existing init and other methods)
-
-    # ... (keeps _cmd_start, _cmd_status, etc. - we fix _send_full_summary below)
 
     async def _send_full_summary(self, query):
         """Send full summary with all info"""
