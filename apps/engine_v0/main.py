@@ -23,6 +23,14 @@ from config import (
 from hl_client import HLClient
 from executor import execute
 
+# v11.0: Telegram bot integration
+try:
+    from telegram_bot import start_telegram_bot, update_telegram_state, is_ai_enabled, should_panic_close
+    TELEGRAM_AVAILABLE = True
+except ImportError:
+    TELEGRAM_AVAILABLE = False
+    print("[TG][WARN] Telegram module not available, skipping")
+
 
 def main():
     """Main bot loop"""
@@ -62,10 +70,19 @@ def main():
             import traceback
             traceback.print_exc()
     
+    # v11.0: Start Telegram bot in background
+    if TELEGRAM_AVAILABLE:
+        try:
+            start_telegram_bot()
+            print("[BOOT] Telegram bot started")
+        except Exception as e:
+            print(f"[TG][WARN] Failed to start: {e}")
+    
     iteration = 0
     test_order_executed = False  # Flag to execute test order only once
     last_ai_call_time = 0  # Timestamp of last AI call
     rotate_offset = 0  # For ROTATE mode
+
     
     try:
         while True:
@@ -210,6 +227,29 @@ def main():
                         
                         # Log BE every tick
                         print(f"[BE] {pos_symbol} status={be_status} pnl={pnl_pct:.2f}% trigger={BE_TRIGGER_PCT}% be_target=${be_target:.2f} current_sl=${sl_price if sl_price else 'NONE'}")
+                        
+                        # v11.0: BE AUTO-EXECUTION - Move SL to breakeven when TRIGGERED
+                        ENABLE_BE_EXECUTION = True  # Enable auto-execution
+                        if ENABLE_BE_EXECUTION and be_status == "TRIGGERED":
+                            # SL is worse than breakeven, need to move it
+                            if pos_side == "LONG" and (sl_price is None or sl_price < be_target):
+                                state["be_actions"] = state.get("be_actions", [])
+                                state["be_actions"].append({
+                                    "type": "SET_STOP_LOSS",
+                                    "symbol": pos_symbol,
+                                    "stop_price": be_target,
+                                    "reason": "BE auto-execution"
+                                })
+                                print(f"[BE][EXEC] Queued SL move to breakeven ${be_target:.2f} for {pos_symbol}")
+                            elif pos_side == "SHORT" and (sl_price is None or sl_price > be_target):
+                                state["be_actions"] = state.get("be_actions", [])
+                                state["be_actions"].append({
+                                    "type": "SET_STOP_LOSS",
+                                    "symbol": pos_symbol,
+                                    "stop_price": be_target,
+                                    "reason": "BE auto-execution"
+                                })
+                                print(f"[BE][EXEC] Queued SL move to breakeven ${be_target:.2f} for {pos_symbol}")
                     
                     state["trigger_status"] = "\n".join(trigger_status_lines) if trigger_status_lines else "(no positions)"
 
@@ -400,6 +440,10 @@ def main():
                     positions_symbols = list(positions_by_symbol.keys())
                     print(f"[HL] snapshot symbols={len(snapshot_symbols)} prices_ok={prices_ok} positions={positions_symbols if positions_symbols else '[]'}")
                     print(f"[STATE] equity={summary['equity']:.2f} positions_count={summary['positions_count']} buying_power=${state.get('buying_power', 0):.0f}")
+                    
+                    # v11.0: Sync state to Telegram
+                    if TELEGRAM_AVAILABLE:
+                        update_telegram_state(state)
 
                     
                 except Exception as e:
@@ -435,6 +479,13 @@ def main():
                     
                     if time_since_last_call >= AI_CALL_INTERVAL_SECONDS:
                         try:
+                            # v11.0: Execute BE actions FIRST (before LLM)
+                            be_actions = state.get("be_actions", [])
+                            if be_actions:
+                                print(f"[BE] Executing {len(be_actions)} breakeven actions")
+                                execute(be_actions, live_trading=LIVE_TRADING, hl_client=hl)
+                                state["be_actions"] = []  # Clear after execution
+                            
                             # Get AI decision
                             decision = llm.decide(state)
                             
@@ -445,6 +496,7 @@ def main():
                             actions = decision.get("actions", [])
                             if actions:
                                 execute(actions, live_trading=LIVE_TRADING, hl_client=hl)
+
                             
                         except Exception as e:
                             print(f"[LLM][ERROR] {e}")
