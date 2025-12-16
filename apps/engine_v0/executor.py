@@ -317,6 +317,56 @@ def _is_intent_duplicate(intent_key: str, action_type: str, current_time: float)
     return False
 
 
+def _sanitize_actions(actions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Sanitize/dedupe actions before execution.
+    - Keep only 1 SET_STOP_LOSS per symbol (last one wins)
+    - Keep only 1 SET_TAKE_PROFIT per symbol (last one wins)
+    - Remove MOVE_STOP_TO_BREAKEVEN if SET_STOP_LOSS exists for same symbol
+    - Remove actions for symbols without position (will be done later)
+    """
+    seen_sl = {}  # symbol -> action
+    seen_tp = {}  # symbol -> action
+    seen_be = {}  # symbol -> action
+    other_actions = []
+    
+    # First pass: categorize
+    for action in actions:
+        action_type = action.get("type")
+        symbol = action.get("symbol")
+        
+        if action_type == "SET_STOP_LOSS":
+            seen_sl[symbol] = action
+        elif action_type == "SET_TAKE_PROFIT":
+            seen_tp[symbol] = action
+        elif action_type == "MOVE_STOP_TO_BREAKEVEN":
+            seen_be[symbol] = action
+        else:
+            other_actions.append(action)
+    
+    # Second pass: merge (BE removed if SL exists)
+    result = other_actions.copy()
+    
+    for symbol in set(list(seen_sl.keys()) + list(seen_tp.keys()) + list(seen_be.keys())):
+        # If explicit SL exists, use it (skip BE)
+        if symbol in seen_sl:
+            result.append(seen_sl[symbol])
+            if symbol in seen_be:
+                print(f"[SANITIZE] Removed MOVE_STOP_TO_BREAKEVEN for {symbol} (explicit SET_STOP_LOSS exists)")
+        elif symbol in seen_be:
+            # Convert BE to SL (will be handled by BE function)
+            result.append(seen_be[symbol])
+        
+        # Add TP if exists
+        if symbol in seen_tp:
+            result.append(seen_tp[symbol])
+    
+    if len(result) != len(actions):
+        print(f"[SANITIZE] Reduced actions from {len(actions)} to {len(result)}")
+    
+    return result
+
+
 def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -> None:
     """
     Execute trading actions
@@ -336,7 +386,11 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
         print(f"[EXEC][LIMIT] truncated from {len(actions)} to {MAX_ACTIONS_PER_TICK}")
         actions = actions[:MAX_ACTIONS_PER_TICK]
     
+    # SANITIZE: Dedupe BE+SL+TP before execution
+    actions = _sanitize_actions(actions)
+    
     print(f"[EXEC] actions={len(actions)}")
+
     
     # Determine if PAPER or LIVE
     is_paper = not live_trading or hl_client is None
