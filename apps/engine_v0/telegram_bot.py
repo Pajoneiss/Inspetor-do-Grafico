@@ -207,7 +207,10 @@ class TelegramBot:
             await query.edit_message_text("❌ Cancelado")
 
     async def _send_full_summary(self, query):
-        """Send full summary with all info"""
+        """Send full summary with all info including external data"""
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+        
         state = _bot_state.get("last_summary", {})
         scan = _bot_state.get("last_scan", [])
         
@@ -235,7 +238,15 @@ class TelegramBot:
         triggers = state.get('trigger_status', 'N/A')
         text += f"\n🎯 *Triggers:*\n{escape_md(triggers)}\n"
         
-        # Scan
+        # Scan info with visibility
+        scan_info = _bot_state.get("scan_info", {})
+        scanned = scan_info.get("scanned", 0)
+        total = scan_info.get("total", 0)
+        symbols_list = scan_info.get("symbols", [])
+        if scanned and total:
+            text += f"\n🔍 *Scan:* {scanned}/{total} symbols\n"
+        
+        # Top 5 Score
         if scan:
             text += "\n📡 *Top 5 Score:*\n"
             for s in scan[:5]:
@@ -244,6 +255,29 @@ class TelegramBot:
                 trend = escape_md(s.get('trend', '?'))
                 reason = escape_md(s.get('reason', ''))
                 text += f"  {sym}: {score} | {trend} | {reason}\n"
+            
+            # Show holding score vs top1 if holding
+            holding = state.get("holding_symbol")
+            if holding and scan:
+                top1 = scan[0]
+                holding_score = next((s['score'] for s in scan if s['symbol'] == holding), "?")
+                if top1['symbol'] != holding:
+                    text += f"\n⚖️ *Holding vs Top1:* {holding}={holding_score} vs {top1['symbol']}={top1['score']}\n"
+        
+        # External data (with timeout protection)
+        try:
+            from data_sources import get_all_external_data, format_external_data_for_telegram
+            
+            # Run in thread to not block
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor() as pool:
+                external_data = await loop.run_in_executor(pool, get_all_external_data)
+            
+            external_text = format_external_data_for_telegram(external_data)
+            if external_text and external_text != "(dados externos indisponíveis)":
+                text += f"\n{escape_md(external_text)}\n"
+        except Exception as e:
+            print(f"[TG][WARN] External data fetch failed: {e}")
         
         # Truncate if too long
         if len(text) > 4000:
@@ -335,10 +369,20 @@ def update_telegram_state(state: Dict[str, Any]):
         "buying_power": state.get("buying_power", 0),
         "positions_count": state.get("positions_count", 0),
         "positions": state.get("positions", {}),
-        "trigger_status": state.get("trigger_status", "")
+        "trigger_status": state.get("trigger_status", ""),
+        "holding_symbol": state.get("holding_symbol", None)
     }
     
-    # Update scan
+    # Update scan info for visibility
+    symbols = state.get("symbols", [])
+    _bot_state["scan_info"] = {
+        "scanned": len(symbols),
+        "total": len(symbols),
+        "symbols": symbols,
+        "timestamp": state.get("scan_timestamp", "")
+    }
+    
+    # Update scan results
     briefs = state.get("symbol_briefs", {})
     if briefs:
         scan = []
