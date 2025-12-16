@@ -504,21 +504,7 @@ def _execute_move_stop_to_breakeven(action: Dict[str, Any], is_paper: bool, hl_c
         print(f"[LIVE][ERROR] MOVE_STOP_TO_BREAKEVEN {symbol} failed: {e}")
         import traceback
         traceback.print_exc()
-        
-        # Convert to SET_STOP_LOSS action
-        set_sl_action = {
-            "type": "SET_STOP_LOSS",
-            "symbol": symbol,
-            "stop_price": entry_price
-        }
-        
-        # Execute SET_STOP_LOSS
-        _execute_set_stop_loss(set_sl_action, is_paper=False, hl_client=hl_client)
-        
-    except Exception as e:
-        print(f"[LIVE][ERROR] MOVE_STOP_TO_BREAKEVEN {symbol} failed: {e}")
-        import traceback
-        traceback.print_exc()
+
 
 
 def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) -> bool:
