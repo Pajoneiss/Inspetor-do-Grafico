@@ -558,66 +558,92 @@ Responda como se VOCÊ fosse o bot operando. Diga "Eu estou...", "Minha posiçã
         }
     
     async def _send_full_summary_text(self, update):
-        """Send full summary (includes Status + Scan + Positions)"""
+        """Send beautiful summary with full market data (no scan)"""
         state = _bot_state.get("last_summary", {})
-        scan = _bot_state.get("last_scan", [])
         
         text = "📊 *RESUMO COMPLETO*\n\n"
         
         # Account section
-        text += "💰 *Conta:*\n"
-        text += f"  Equity: ${state.get('equity', 0):.2f}\n"
-        text += f"  Buying Power: ${state.get('buying_power', 0):.0f}\n"
-        text += f"  IA: {'✅ LIGADO' if _bot_state['ai_enabled'] else '❌ DESLIGADO'}\n"
+        text += "💰 *CONTA*\n"
+        text += f"├ Equity: ${state.get('equity', 0):.2f}\n"
+        text += f"├ Buying Power: ${state.get('buying_power', 0):.0f}\n"
+        text += f"└ IA: {'✅ LIGADO' if _bot_state['ai_enabled'] else '❌ DESLIGADO'}\n"
         
         # Positions section
         positions = state.get("positions", {})
         if positions:
-            text += "\n📈 *Posições:*\n"
+            text += "\n📈 *POSIÇÕES*\n"
             for sym, pos in positions.items():
                 pnl = pos.get("unrealized_pnl", 0)
                 emoji = "🟢" if pnl > 0 else "🔴" if pnl < 0 else "⚪"
                 side = pos.get('side', '?')
-                text += f"  {sym}: {side} | PnL: {emoji} ${pnl:.2f}\n"
+                text += f"├ {sym}: {side} | {emoji} ${pnl:.2f}\n"
         else:
-            text += "\n📈 *Posições:* Nenhuma\n"
+            text += "\n📈 *POSIÇÕES:* Nenhuma\n"
         
         # Triggers
         triggers = state.get('trigger_status', '')
         if triggers:
-            text += f"\n🎯 *Triggers:*\n  {escape_md(triggers)}\n"
+            text += f"\n🎯 *TRIGGERS*\n└ {escape_md(triggers)}\n"
         
-        # Full scan (all symbols)
-        if scan:
-            text += "\n🔍 *SCAN COMPLETO:*\n"
-            for s in scan:
-                score = s.get("score", 0)
-                if score >= 70:
-                    emoji = "🟢"
-                elif score >= 50:
-                    emoji = "🟡"
-                else:
-                    emoji = "🔴"
-                
-                symbol = s.get("symbol", "?")
-                trend = s.get("trend", "?")
-                reason = s.get("reason", "")
-                text += f"  {emoji} {symbol}: {score} | {trend}\n"
-                if reason:
-                    text += f"     _{escape_md(reason[:40])}_\n"
-        
-        # External data
+        # Market Data (CMC style)
         try:
-            from data_sources import get_fear_greed, fetch_macro
+            from data_sources import get_fear_greed, fetch_coingecko_global, fetch_macro
+            
+            text += "\n🌍 *MERCADO GLOBAL*\n"
+            
+            # CoinGecko data
+            market = fetch_coingecko_global()
+            if market.get("market_cap") and market.get("market_cap") != "N/A":
+                # Format to Trilhões
+                cap = market['market_cap']
+                if isinstance(cap, (int, float)):
+                    cap_t = cap / 1_000_000_000_000
+                    text += f"├ 📊 Market Cap: ${cap_t:.2f}T\n"
+            
+            if market.get("btc_dominance") and market.get("btc_dominance") != "N/A":
+                btc_d = market['btc_dominance']
+                if isinstance(btc_d, float):
+                    text += f"├ ₿ BTC Dom: {btc_d:.1f}%\n"
+            
+            if market.get("eth_dominance") and market.get("eth_dominance") != "N/A":
+                eth_d = market['eth_dominance']
+                if isinstance(eth_d, float):
+                    text += f"├ Ξ ETH Dom: {eth_d:.1f}%\n"
+            
+            if market.get("market_cap_change_24h") and market.get("market_cap_change_24h") != "N/A":
+                change = market['market_cap_change_24h']
+                if isinstance(change, float):
+                    emoji = "📈" if change > 0 else "📉"
+                    text += f"├ {emoji} 24h: {change:+.1f}%\n"
+            
+            # Fear & Greed
             fg = get_fear_greed()
             if fg.get("value") and fg.get("value") != "N/A":
-                text += f"\n😨 *Fear & Greed:* {fg['value']} ({fg.get('classification', '')})\n"
+                val = fg['value']
+                classification = fg.get('classification', '')
+                # Emoji based on value
+                if val <= 25:
+                    fg_emoji = "😱"
+                elif val <= 45:
+                    fg_emoji = "😨"
+                elif val <= 55:
+                    fg_emoji = "😐"
+                elif val <= 75:
+                    fg_emoji = "😊"
+                else:
+                    fg_emoji = "🤑"
+                text += f"├ {fg_emoji} Fear/Greed: {val} ({classification})\n"
             
+            # Macro
             macro = fetch_macro()
             if macro.get("usd_brl") and macro.get("usd_brl") != "N/A":
-                text += f"📈 *USD/BRL:* {macro['usd_brl']:.2f}\n"
-        except:
-            pass
+                text += f"└ 💵 USD/BRL: R${macro['usd_brl']:.2f}\n"
+            else:
+                text += "└ 💵 Macro: Carregando...\n"
+                
+        except Exception as e:
+            text += f"\n⚠️ Dados de mercado indisponíveis\n"
         
         await update.message.reply_text(text, parse_mode="Markdown")
     
