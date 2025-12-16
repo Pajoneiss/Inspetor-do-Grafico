@@ -516,30 +516,8 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
             skipped_count += 1
             continue
         
-        # Check for duplicates using intent-based deduplication
-        intent_key = _get_intent_key(action)
-        if _is_intent_duplicate(intent_key, action_type, current_time):
-            ttl = _get_intent_ttl(action_type)
-            last_time = _intent_history.get(intent_key, current_time)
-            ttl_remaining = int(ttl - (current_time - last_time))
-            print(f"[SAFEGUARD] intent_dedup skip intent={intent_key} ttl_remaining={ttl_remaining}s")
-            skipped_count += 1
-            continue
-        
-        # Circuit breaker: Check add limit for PLACE_ORDER
-        if action_type == "PLACE_ORDER":
-            # Clean old add timestamps (>1 hour)
-            if symbol not in _adds_history:
-                _adds_history[symbol] = []
-            
-            cutoff = current_time - 3600
-            _adds_history[symbol] = [ts for ts in _adds_history[symbol] if ts > cutoff]
-            
-            # Check limit
-            if len(_adds_history[symbol]) >= MAX_POSITION_ADDS_PER_HOUR:
-                print(f"[SAFEGUARD] add_limit_reached symbol={symbol} adds_60m={len(_adds_history[symbol])} max={MAX_POSITION_ADDS_PER_HOUR}")
-                failed_count += 1
-                continue
+        # v12.4: REMOVED intent_dedup SAFEGUARD - LLM has full discretion
+        # v12.4: REMOVED add_limit SAFEGUARD - LLM has full discretion
         
         action_success = False
         
