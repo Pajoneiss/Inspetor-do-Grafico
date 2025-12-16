@@ -168,10 +168,8 @@ def main():
                         open_orders_by_symbol[coin].append(order)
                     state["open_orders_by_symbol"] = open_orders_by_symbol
                     
-                    # v11.0: Build trigger status + BE telemetry for each position
+                    # Build trigger status for each position
                     trigger_status_lines = []
-                    BE_TRIGGER_PCT = 0.30  # 0.30% profit to arm breakeven
-                    BE_OFFSET_BPS = 2  # 0.02% offset for fees
                     
                     for pos_symbol, pos_data in positions_by_symbol.items():
                         symbol_orders = open_orders_by_symbol.get(pos_symbol, [])
@@ -220,42 +218,21 @@ def main():
                                             has_tp = True
                                             tp_price = trigger_px
                         
-                        # BE Telemetry - compute status
-                        be_target = entry_px * (1 + BE_OFFSET_BPS/10000) if pos_side == "LONG" else entry_px * (1 - BE_OFFSET_BPS/10000)
-                        
-                        if pnl_pct >= BE_TRIGGER_PCT:
-                            if has_sl and sl_price and abs(sl_price - be_target) / entry_px < 0.001:
-                                be_status = "EXECUTED"
-                            else:
-                                be_status = "TRIGGERED"
-                        elif pnl_pct > 0:
-                            be_status = "ARMED"
-                        else:
-                            be_status = "INACTIVE"
-                        
-                        # Build status line (neutral, no alarm)
+                        # Build simple status line
                         sl_str = f"SL=${sl_price:.2f}" if has_sl else "SL=None"
                         tp_str = f"TP=${tp_price:.2f}" if has_tp else "TP=None"
-                        be_str = f"BE={be_status}({pnl_pct:.2f}%)"
-                        trigger_status_lines.append(f"  - {pos_symbol}: {sl_str} | {tp_str} | {be_str}")
+                        trigger_status_lines.append(f"  - {pos_symbol}: {sl_str} | {tp_str} | PnL={pnl_pct:.2f}%")
                         
-                        # Log BE every tick (TELEMETRY ONLY - LLM decides what to do)
-                        print(f"[BE] {pos_symbol} status={be_status} pnl={pnl_pct:.2f}% trigger={BE_TRIGGER_PCT}% be_target=${be_target:.2f} current_sl=${sl_price if sl_price else 'NONE'}")
-                        
-                        # Store BE telemetry for LLM context (NO AUTO-EXECUTION)
-                        if "be_telemetry" not in state:
-                            state["be_telemetry"] = {}
-                        state["be_telemetry"][pos_symbol] = {
-                            "status": be_status,
+                        # Store position info for LLM context
+                        if "position_details" not in state:
+                            state["position_details"] = {}
+                        state["position_details"][pos_symbol] = {
                             "pnl_pct": pnl_pct,
-                            "be_target": be_target,
-                            "current_sl": sl_price,
                             "entry_price": entry_px,
+                            "current_sl": sl_price,
+                            "current_tp": tp_price,
                             "side": pos_side
                         }
-                        
-                        # NOTE: BE protection is ONLY set when LLM explicitly moves to BE
-                        # See executor.py for BE Guard logic
                     
                     state["trigger_status"] = "\n".join(trigger_status_lines) if trigger_status_lines else "(no positions)"
 

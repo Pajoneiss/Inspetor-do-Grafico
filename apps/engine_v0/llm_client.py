@@ -187,14 +187,16 @@ JSON puro, sem markdown."""
             briefs_lines.append(
                 f"  {symbol}: ${brief.get('price', 0)} | {brief.get('trend', '?')} | RSI={brief.get('rsi', 50):.0f} | score={brief.get('score', 0):.0f}{reason_str}"
             )
-        briefs_str = "\n".join(briefs_lines) if briefs_lines else "(no briefs available)"
+        briefs_str = "\n".join(briefs_lines) if briefs_lines else "(sem dados)"
 
-        # v11.1: Add BE telemetry for LLM decision
-        be_telemetry = state.get("be_telemetry", {})
-        be_lines = []
-        for sym, be_data in be_telemetry.items():
-            be_lines.append(f"  {sym}: pnl={be_data['pnl_pct']:.2f}% entry=${be_data['entry_price']:.2f} sl=${be_data['current_sl'] or 'None'}")
-        be_str = "\n".join(be_lines) if be_lines else "(sem posições)"
+        # Position details for context
+        pos_details = state.get("position_details", {})
+        details_lines = []
+        for sym, data in pos_details.items():
+            sl_str = f"SL=${data['current_sl']:.2f}" if data.get('current_sl') else "SL=None"
+            tp_str = f"TP=${data['current_tp']:.2f}" if data.get('current_tp') else "TP=None"
+            details_lines.append(f"  {sym}: PnL={data['pnl_pct']:.2f}% | entry=${data['entry_price']:.2f} | {sl_str} | {tp_str}")
+        details_str = "\n".join(details_lines) if details_lines else "(sem posições)"
         
         return f"""DADOS DE MERCADO:
 
@@ -202,15 +204,11 @@ CONTA:
 - Equity: ${state.get('equity', 0):.2f}
 - Buying Power: ${state.get('buying_power', state.get('equity', 0) * 40):.2f}
 - Leverage: {state.get('leverage', 40)}x
-- Live: {state.get('live_trading', False)}
 
-POSIÇÕES ABERTAS ({state.get('positions_count', 0)}):
+POSIÇÕES ({state.get('positions_count', 0)}):
 {positions_str}
-TRIGGERS ATUAIS:
-{state.get('trigger_status', '(nenhum)')}
-
-DETALHES PNL:
-{be_str}
+DETALHES:
+{details_str}
 
 SCAN DE MERCADO:
 {briefs_str}
