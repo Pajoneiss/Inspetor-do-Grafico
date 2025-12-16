@@ -474,7 +474,6 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
         tick_decimal = Decimal(str(tick_sz))
         trigger_px_quantized = float((trigger_px_decimal / tick_decimal).quantize(Decimal('1'), rounding=ROUND_DOWN) * tick_decimal)
         
-        # VALIDATE TRIGGER SIDE (CRITICAL FIX: logic was inverted!)
         if position_side == "LONG":
             # SL for LONG must be BELOW mark price (sell lower to cut losses)
             if trigger_px_quantized >= mark_price:
@@ -490,55 +489,78 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
         
         # Get open orders for checks
         open_orders = hl_client.get_open_orders()
-        
-        # CIRCUIT BREAKER & SMART MANAGEMENT
         open_orders_for_symbol = [o for o in open_orders if o.get("coin") == symbol]
-        if len(open_orders_for_symbol) >= MAX_OPEN_ORDERS_PER_SYMBOL:
-            # Try to find existing SL to replace (Upsert)
-            existing_sl = None
-            for o in open_orders_for_symbol:
-                is_reduce = o.get("reduceOnly", False)
-                trig_px = float(o.get("triggerPx", 0) or 0)
-                # Heuristic: SL is usually reduceOnly. For LONG, SL < mark.
-                if is_reduce and trig_px > 0:
-                    if position_side == "LONG" and trig_px < mark_price:
-                        existing_sl = o
-                        break
-                    elif position_side == "SHORT" and trig_px > mark_price:
-                        existing_sl = o
-                        break
+        
+        # PROTECTIVE ORDER MANAGER: Find existing SLs
+        existing_sl_orders = []
+        for o in open_orders_for_symbol:
+            is_reduce = o.get("reduceOnly", False)
+            trig_px = float(o.get("triggerPx", 0) or 0)
             
-            if existing_sl:
-                print(f"[SMART] Replacing existing SL (oid={existing_sl['oid']}) to make room for new SL")
+            # Heuristic for SL: 
+            # 1. Must be reduceOnly
+            # 2. Must be trigger
+            # 3. For LONG: Trigger < Mark (roughly) OR Trigger < Entry (if stop loss)
+            # To be safe, we assume any reduceOnly trigger on the "loss" side is a SL.
+            # But "loss side" moves.
+            # Simpler: If LONG, SL is Sell Trigger. If SHORT, SL is Buy Trigger.
+            o_side = o.get("side", "?") # 'A' (Ask/Sell) or 'B' (Bid/Buy)
+            
+            is_sl_candidate = False
+            if position_side == "LONG" and o_side == "A" and is_reduce and trig_px > 0:
+                 # Check if price is below mark (typical SL) or just trust it's SL
+                 # Double check against TP: TP is usually ABOVE mark for LONG.
+                 if trig_px < mark_price: 
+                     is_sl_candidate = True
+                 # Edge case: SL is above mark (locking profit)? That's valid too (Stop Win). 
+                 # But TP is usually "Take Profit Market" or Limit.
+                 # Let's check order type if available. 'OT' (Order Type)? 
+                 # Assuming triggers lower than mark for LONG are SLs.
+                 pass
+
+            # Heuristic v2 (User guidance): 
+            # LONG SL: Trigger < Mark. LONG TP: Trigger > Mark.
+            # This is robust enough for standard conditions.
+            if is_reduce and trig_px > 0:
+                if position_side == "LONG" and trig_px < mark_price:
+                    existing_sl_orders.append(o)
+                elif position_side == "SHORT" and trig_px > mark_price:
+                    existing_sl_orders.append(o)
+
+        # IDEMPOTENT CHECK
+        for sl_order in existing_sl_orders:
+            order_trigger_px = float(sl_order.get("triggerPx", 0))
+            price_diff_pct = abs(order_trigger_px - trigger_px_quantized) / trigger_px_quantized * 100
+            if price_diff_pct < 0.2: # Strict 0.2% tolerance
+                 print(f"[IDEMP] skip SET_STOP_LOSS {symbol} - equivalent SL exists oid={sl_order['oid']} px={order_trigger_px}")
+                 return True
+
+        # REPLACEMENT LOGIC
+        # If we have existing SLs (that didn't match), CANCEL THEM to make room/update
+        if existing_sl_orders:
+            print(f"[SMART] Canceling {len(existing_sl_orders)} old SLs for {symbol} to replace with new ${trigger_px_quantized:.2f}")
+            for sl_to_cancel in existing_sl_orders:
                 try:
-                    hl_client.cancel_order(symbol, existing_sl["oid"])
-                    # Small delay to ensure cancel propagates inside engine state if needed
-                    import time; time.sleep(0.5) 
+                    hl_client.cancel_order(symbol, sl_to_cancel["oid"])
                 except Exception as e:
-                    print(f"[SMART][ERROR] Failed to cancel existing SL: {e}")
-            else:
-                print(f"[CIRCUIT] skip SET_STOP_LOSS {symbol} - {len(open_orders_for_symbol)} orders >= max {MAX_OPEN_ORDERS_PER_SYMBOL} (no existing SL to replace)")
-                return None
+                    print(f"[SMART][WARN] Failed to cancel old SL {sl_to_cancel['oid']}: {e}")
+            # Wait a tick for propagation
+            import time; time.sleep(0.5)
+
+        # CHECK LIMITS AFTER CANCEL
+        # Re-check count (optimistic)
+        # We know we just cancelled len(existing_sl_orders).
+        remaining_count = len(open_orders_for_symbol) - len(existing_sl_orders)
         
-        # IDEMPOTENT CHECK: if similar trigger exists, skip
-        for order in open_orders:
-            if order.get("coin") == symbol:
-                # Check if this is a similar SL trigger
-                order_trigger_px = float(order.get("triggerPx", 0) or 0)
-                order_sz = float(order.get("sz", 0))
-                is_reduce_only = order.get("reduceOnly", False)
-                
-                # If reduce_only trigger within 0.5% of our target price, skip
-                if is_reduce_only and order_trigger_px > 0:
-                    price_diff_pct = abs(order_trigger_px - trigger_px_quantized) / trigger_px_quantized * 100
-                    if price_diff_pct < 0.5:
-                        print(f"[IDEMP] skip SET_STOP_LOSS {symbol} - similar trigger exists oid={order.get('oid', '?')} px={order_trigger_px}")
-                        return True  # Return success to prevent retry
-        
+        if remaining_count >= MAX_OPEN_ORDERS_PER_SYMBOL:
+             print(f"[CIRCUIT] skip SET_STOP_LOSS {symbol} - still full {remaining_count} >= {MAX_OPEN_ORDERS_PER_SYMBOL} (removed {len(existing_sl_orders)} SLs)")
+             # Last resort: Try to cancel OLDEST order if it's not a position?
+             return None
+
         # Place trigger order
         resp = hl_client.place_trigger_order(
             symbol=symbol,
-            is_buy=(position_side == "SHORT"),  # Buy to close short, sell to close long
+            is_buy=(position_side == "SHORT"),
             trigger_price=trigger_px_quantized,
             size=position_size,
             is_stop_loss=True
