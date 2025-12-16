@@ -96,7 +96,7 @@ class TelegramBot:
         
         await app.stop()
     
-    async def _cmd_start(self, update: Update, context):
+    async def _cmd_start(self, update, context):
         """Handle /start command"""
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
         
@@ -119,7 +119,7 @@ class TelegramBot:
             parse_mode="Markdown"
         )
     
-    async def _cmd_status(self, update: Update, context):
+    async def _cmd_status(self, update, context):
         """Handle /status command"""
         state = _bot_state.get("last_summary", {})
         
@@ -140,7 +140,7 @@ class TelegramBot:
         
         await update.message.reply_text(text, parse_mode="Markdown")
     
-    async def _cmd_panic(self, update: Update, context):
+    async def _cmd_panic(self, update, context):
         """Handle /panic command - emergency close all"""
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
         
@@ -164,7 +164,7 @@ class TelegramBot:
             parse_mode="Markdown"
         )
     
-    async def _handle_callback(self, update: Update, context):
+    async def _handle_callback(self, update, context):
         """Handle button callbacks"""
         query = update.callback_query
         await query.answer()
@@ -240,7 +240,7 @@ class TelegramBot:
         
         await query.edit_message_text(text, parse_mode="Markdown")
     
-    async def _handle_message(self, update: Update, context):
+    async def _handle_message(self, update, context):
         """Handle free text messages (chat mode)"""
         if not _bot_state.get("chat_mode"):
             return
