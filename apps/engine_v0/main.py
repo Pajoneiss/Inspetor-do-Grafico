@@ -190,16 +190,22 @@ def main():
                                 if trigger_px:
                                     trigger_px = float(trigger_px)
                                     
-                                    # Determine if SL or TP based on position side and trigger direction
+                                    # FIX: Determine if SL or TP based on trigger vs MARK price
+                                    # BE SL can be ABOVE entry (with offset), so use mark price for comparison
+                                    # For LONG: SL triggers when price DROPS to trigger_px
+                                    # For SHORT: SL triggers when price RISES to trigger_px
                                     if pos_side == "LONG":
-                                        if trigger_px < entry_px:
+                                        # For LONG, if trigger is at or below current mark - it's a SL
+                                        # (includes BE SL which is slightly above entry)
+                                        if trigger_px <= mark_px or trigger_px < entry_px * 1.005:  # 0.5% tolerance
                                             has_sl = True
                                             sl_price = trigger_px
                                         else:
                                             has_tp = True
                                             tp_price = trigger_px
                                     else:  # SHORT
-                                        if trigger_px > entry_px:
+                                        # For SHORT, if trigger is at or above current mark - it's a SL
+                                        if trigger_px >= mark_px or trigger_px > entry_px * 0.995:  # 0.5% tolerance
                                             has_sl = True
                                             sl_price = trigger_px
                                         else:
