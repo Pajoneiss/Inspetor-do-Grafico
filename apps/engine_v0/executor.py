@@ -762,80 +762,20 @@ def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) 
         constraints = hl_client.get_symbol_constraints(symbol)
         tick_sz = constraints.get("tickSz", 1.0)
         
-        # Quantize trigger price to tick size
-        from decimal import Decimal, ROUND_DOWN
-        trigger_px_decimal = Decimal(str(tp_price))
-        tick_decimal = Decimal(str(tick_sz))
-        trigger_px_quantized = float((trigger_px_decimal / tick_decimal).quantize(Decimal('1'), rounding=ROUND_DOWN) * tick_decimal)
+        # BRACKET MANAGER: Use validator helper
+        trigger_px_quantized, is_valid = _validate_and_adjust_trigger(
+            symbol, tp_price, position_side, mark_price, tick_sz, is_stop_loss=False
+        )
         
-        # VALIDATE TRIGGER SIDE
-        if position_side == "LONG":
-            # TP for LONG must be above mark price
-            if trigger_px_quantized <= mark_price:
-                print(f"[LIVE][REJECT] SET_TAKE_PROFIT {symbol} reason=invalid_trigger_side LONG_TP must be > mark (mark={mark_price} trigger={trigger_px_quantized})")
-                return False
-        else:  # SHORT
-            # TP for SHORT must be below mark price
-            if trigger_px_quantized >= mark_price:
-                print(f"[LIVE][REJECT] SET_TAKE_PROFIT {symbol} reason=invalid_trigger_side SHORT_TP must be < mark (mark={mark_price} trigger={trigger_px_quantized})")
-                return False
+        if not is_valid or trigger_px_quantized is None:
+            print(f"[LIVE][REJECT] SET_TAKE_PROFIT {symbol} - validation failed")
+            return False
         
         print(f"[LIVE] SET_TAKE_PROFIT {symbol} tp=${trigger_px_quantized:.2f} size={position_size} side={position_side}")
         
-        # Get open orders for checks
-        open_orders = hl_client.get_open_orders()
-        open_orders_for_symbol = [o for o in open_orders if o.get("coin") == symbol]
-        
-        # PROTECTIVE ORDER MANAGER: Find existing TPs
-        existing_tp_orders = []
-        for o in open_orders_for_symbol:
-            is_reduce = o.get("reduceOnly", False)
-            trig_px = float(o.get("triggerPx", 0) or 0)
-            
-            # Heuristic v2: LONG TP > Mark, SHORT TP < Mark
-            if is_reduce and trig_px > 0:
-                if position_side == "LONG" and trig_px > mark_price:
-                    existing_tp_orders.append(o)
-                elif position_side == "SHORT" and trig_px < mark_price:
-                    existing_tp_orders.append(o)
-
-        # IDEMPOTENT CHECK
-        for tp_order in existing_tp_orders:
-            order_trigger_px = float(tp_order.get("triggerPx", 0))
-            price_diff_pct = abs(order_trigger_px - trigger_px_quantized) / trigger_px_quantized * 100
-            if price_diff_pct < 0.2:
-                 print(f"[IDEMP] skip SET_TAKE_PROFIT {symbol} - equivalent TP exists oid={tp_order['oid']} px={order_trigger_px}")
-                 return True
-
-        # REPLACEMENT LOGIC
-        if existing_tp_orders:
-            print(f"[SMART] Canceling {len(existing_tp_orders)} old TPs for {symbol} to replace with new ${trigger_px_quantized:.2f}")
-            for tp_to_cancel in existing_tp_orders:
-                try:
-                    hl_client.cancel_order(symbol, tp_to_cancel["oid"])
-                except Exception as e:
-                    print(f"[SMART][WARN] Failed to cancel old TP {tp_to_cancel['oid']}: {e}")
-            import time; time.sleep(0.5)
-
-        # CHECK LIMITS AFTER CANCEL
-        remaining_count = len(open_orders_for_symbol) - len(existing_tp_orders)
-        
-        if remaining_count >= MAX_OPEN_ORDERS_PER_SYMBOL:
-             print(f"[CIRCUIT] skip SET_TAKE_PROFIT {symbol} - still full {remaining_count} >= {MAX_OPEN_ORDERS_PER_SYMBOL} (removed {len(existing_tp_orders)} TPs)")
-             return None
-        
-        # IDEMPOTENT CHECK: if similar trigger exists, skip
-        for order in open_orders:
-            if order.get("coin") == symbol:
-                order_trigger_px = float(order.get("triggerPx", 0) or 0)
-                is_reduce_only = order.get("reduceOnly", False)
-                
-                # If reduce_only trigger within 0.5% of our target price, skip
-                if is_reduce_only and order_trigger_px > 0:
-                    price_diff_pct = abs(order_trigger_px - trigger_px_quantized) / trigger_px_quantized * 100
-                    if price_diff_pct < 0.5:
-                        print(f"[IDEMP] skip SET_TAKE_PROFIT {symbol} - similar trigger exists oid={order.get('oid', '?')} px={order_trigger_px}")
-                        return True  # Return success to prevent retry
+        # BRACKET MANAGER: Cleanup ALL triggers before creating new one
+        cleaned_count = _cleanup_all_triggers(hl_client, symbol)
+        print(f"[BRACKET] Cleaned {cleaned_count} triggers before SET_TAKE_PROFIT")
         
         # Place trigger order
         resp = hl_client.place_trigger_order(
@@ -854,6 +794,9 @@ def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) 
             error_msg = _extract_error_message(resp)
             print(f"[LIVE][REJECT] {symbol} exchange_error={error_msg}")
             return False
+        
+        # POST-EXECUTION ASSERT
+        _post_execution_assert(hl_client, symbol, "SET_TAKE_PROFIT")
         
         _post_verify(hl_client, symbol, "SET_TAKE_PROFIT")
         return True
