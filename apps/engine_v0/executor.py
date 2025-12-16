@@ -507,6 +507,14 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
     for action in actions:
         action_type = action.get("type", "UNKNOWN")
         symbol = action.get("symbol", "?")
+        source = action.get("source", "UNKNOWN")
+        
+        # CRITICAL: Log source for every action
+        # Only LLM and USER sources should execute trades
+        if source not in ("LLM", "USER"):
+            print(f"[EXEC][BLOCKED] action={action_type} symbol={symbol} source={source} - rejected (only LLM/USER allowed)")
+            skipped_count += 1
+            continue
         
         # Check for duplicates using intent-based deduplication
         intent_key = _get_intent_key(action)

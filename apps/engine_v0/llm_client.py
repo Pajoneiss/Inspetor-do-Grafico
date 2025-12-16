@@ -83,8 +83,13 @@ class LLMClient:
             # Try to parse JSON
             decision = self._parse_json_response(content)
             
+            # TAG ALL ACTIONS WITH SOURCE=LLM
+            actions = decision.get("actions", [])
+            for action in actions:
+                action["source"] = "LLM"
+            
             # Log decision
-            actions_count = len(decision.get("actions", []))
+            actions_count = len(actions)
             summary = decision.get("summary", "")
             confidence = decision.get("confidence", 0.0)
             
