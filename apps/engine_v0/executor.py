@@ -23,6 +23,57 @@ from config import (
 # BRACKET MANAGER HELPERS (Definitive Order Hygiene)
 # ==================================================================
 
+# Rate limiting for bracket updates
+_bracket_last_update: Dict[str, float] = {}  # symbol -> timestamp
+MIN_BRACKET_UPDATE_INTERVAL = 60  # seconds between same SL/TP updates
+
+
+def _find_existing_trigger(hl_client, symbol, trigger_type, mark_price, position_side):
+    """
+    Find existing trigger of specified type (SL or TP) for symbol.
+    Returns: (trigger_px, trigger_size, oid) or (None, None, None)
+    """
+    try:
+        open_orders = hl_client.get_open_orders()
+        triggers = _identify_reduce_only_orders(open_orders, symbol, trigger_type, mark_price, position_side)
+        
+        if triggers:
+            t = triggers[0]  # Take first matching trigger
+            trigger_px = None
+            for field in ["triggerPx", "trigger_px", "limitPx"]:
+                if t.get(field):
+                    try:
+                        trigger_px = float(t.get(field))
+                        break
+                    except:
+                        pass
+            trigger_sz = float(t.get("sz", t.get("origSz", 0)))
+            oid = t.get("oid") or t.get("id")
+            return trigger_px, trigger_sz, oid
+        return None, None, None
+    except:
+        return None, None, None
+
+
+def _trigger_matches_desired(current_px, current_sz, desired_px, desired_sz):
+    """
+    Check if current trigger matches desired state within tolerances.
+    Returns: True if matches (skip update), False if needs update
+    """
+    if current_px is None:
+        return False
+    
+    # Price tolerance: 0.01% or $1 (whichever is larger)
+    px_epsilon = max(1.0, desired_px * 0.0001)
+    
+    # Size tolerance: 0.1% or minimum precision
+    sz_epsilon = max(1e-8, desired_sz * 0.001)
+    
+    px_matches = abs(current_px - desired_px) <= px_epsilon
+    sz_matches = abs(current_sz - desired_sz) <= sz_epsilon
+    
+    return px_matches and sz_matches
+
 def _identify_reduce_only_orders(open_orders, symbol, trigger_type=None, mark_price=None, position_side=None):
     """
     Identifica ordens reduce-only trigger de um símbolo.
@@ -868,11 +919,27 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
             print(f"[LIVE][REJECT] SET_STOP_LOSS {symbol} - validation failed")
             return False
         
+        # IDEMPOTENCY CHECK: Skip if existing SL already matches desired state
+        existing_sl_px, existing_sl_sz, existing_sl_oid = _find_existing_trigger(
+            hl_client, symbol, "SL", mark_price, position_side
+        )
+        
+        if _trigger_matches_desired(existing_sl_px, existing_sl_sz, trigger_px_quantized, position_size):
+            print(f"[BRACKET][SKIP] SL already matches desired state (px={existing_sl_px:.2f}, size={existing_sl_sz})")
+            return None  # Skipped, not failed - trigger already correct
+        
+        # Log what we're doing
+        if existing_sl_px:
+            print(f"[BRACKET][REPLACE] SL differs (cur={existing_sl_px:.2f}, desired={trigger_px_quantized:.2f})")
+        else:
+            print(f"[BRACKET][CREATE] No existing SL found, creating new one")
+        
         print(f"[LIVE] SET_STOP_LOSS {symbol} stop=${trigger_px_quantized:.2f} size={position_size} side={position_side}")
         
         # BRACKET MANAGER: Cleanup only SL triggers (preserve TP)
         cleaned_count = _cleanup_all_triggers(hl_client, symbol, trigger_type="SL", mark_price=mark_price, position_side=position_side)
         print(f"[BRACKET] Cleaned {cleaned_count} SL triggers before SET_STOP_LOSS (TP preserved)")
+
 
         # Place trigger order
         resp = hl_client.place_trigger_order(
@@ -951,11 +1018,27 @@ def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) 
             print(f"[LIVE][REJECT] SET_TAKE_PROFIT {symbol} - validation failed")
             return False
         
+        # IDEMPOTENCY CHECK: Skip if existing TP already matches desired state
+        existing_tp_px, existing_tp_sz, existing_tp_oid = _find_existing_trigger(
+            hl_client, symbol, "TP", mark_price, position_side
+        )
+        
+        if _trigger_matches_desired(existing_tp_px, existing_tp_sz, trigger_px_quantized, position_size):
+            print(f"[BRACKET][SKIP] TP already matches desired state (px={existing_tp_px:.2f}, size={existing_tp_sz})")
+            return None  # Skipped, not failed - trigger already correct
+        
+        # Log what we're doing
+        if existing_tp_px:
+            print(f"[BRACKET][REPLACE] TP differs (cur={existing_tp_px:.2f}, desired={trigger_px_quantized:.2f})")
+        else:
+            print(f"[BRACKET][CREATE] No existing TP found, creating new one")
+        
         print(f"[LIVE] SET_TAKE_PROFIT {symbol} tp=${trigger_px_quantized:.2f} size={position_size} side={position_side}")
         
         # BRACKET MANAGER: Cleanup only TP triggers (preserve SL)
         cleaned_count = _cleanup_all_triggers(hl_client, symbol, trigger_type="TP", mark_price=mark_price, position_side=position_side)
         print(f"[BRACKET] Cleaned {cleaned_count} TP triggers before SET_TAKE_PROFIT (SL preserved)")
+
         
         # Place trigger order
         resp = hl_client.place_trigger_order(
