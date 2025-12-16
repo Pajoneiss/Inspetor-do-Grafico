@@ -142,10 +142,12 @@ OUTPUT (STRICT JSON ONLY)
   "actions": [
     {"type":"SET_STOP_LOSS","symbol":"BTC","stop_price":85000,"reason":"risk management"},
     {"type":"SET_TAKE_PROFIT","symbol":"BTC","tp_price":92000,"reason":"target"},
-    {"type":"PLACE_ORDER","symbol":"ETH","side":"BUY","size":0.01,"orderType":"MARKET","reason":"setup"},
+    {"type":"PLACE_ORDER","symbol":"ETH","side":"BUY","size":0.01,"leverage":25,"orderType":"MARKET","reason":"setup with 25x"},
     {"type":"NO_TRADE","reason":"positions managed, waiting for edge"}
   ]
 }
+
+LEVERAGE: You decide leverage per trade (1-50x). Include "leverage" field in PLACE_ORDER/ADD_TO_POSITION.
 
 Available actions: PLACE_ORDER, ADD_TO_POSITION, CLOSE_POSITION, CLOSE_PARTIAL, SET_STOP_LOSS, SET_TAKE_PROFIT, MOVE_STOP_TO_BREAKEVEN, CANCEL_ALL_ORDERS, NO_TRADE
 

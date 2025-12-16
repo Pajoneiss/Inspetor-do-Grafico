@@ -629,10 +629,8 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
         # Log before execution
         print(f"[LIVE] action=PLACE_ORDER payload={_format_resp(normalized)}")
         
-        # DEFAULT TARGET LEVERAGE (Majors 50x, Alts 20x)
-        majors = ["BTC", "ETH", "SOL"]
-        default_lev = 50 if symbol in majors else 20
-        target_leverage = int(normalized.get("leverage", default_lev))
+        # v12.5: LLM DECIDES LEVERAGE - use action value or sensible default (20x)
+        target_leverage = int(normalized.get("leverage", 20))  # LLM decides, 20x fallback
         margin_mode = normalized.get("margin_mode", "isolated")
         
         # 1. ALWAYS ENSURE LEVERAGE/MARGIN MODE
