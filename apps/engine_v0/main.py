@@ -50,6 +50,14 @@ def main():
     try:
         hl = HLClient()
         print("[BOOT] HLClient initialized")
+        
+        # Set hl_client reference for PnL tracker (used by Telegram)
+        try:
+            from pnl_tracker import set_hl_client
+            set_hl_client(hl)
+        except Exception as e:
+            print(f"[PNL][WARN] Failed to set hl_client: {e}")
+            
     except Exception as e:
         print(f"[BOOT][ERROR] Failed to initialize HLClient: {e}")
         print("[BOOT] Continuing without Hyperliquid connection...")

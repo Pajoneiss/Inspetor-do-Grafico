@@ -12,6 +12,16 @@ _pnl_cache: Optional[Dict[str, Any]] = None
 _pnl_cache_time: float = 0
 PNL_CACHE_TTL = 120  # 2 minutes
 
+# Global hl_client reference (set by main.py)
+_hl_client_ref = None
+
+
+def set_hl_client(client):
+    """Set the hl_client reference for PnL fetching"""
+    global _hl_client_ref
+    _hl_client_ref = client
+    print("[PNL] hl_client reference set")
+
 
 def get_pnl_from_hyperliquid(hl_client=None) -> Dict[str, Any]:
     """
@@ -21,13 +31,17 @@ def get_pnl_from_hyperliquid(hl_client=None) -> Dict[str, Any]:
     Returns:
         dict with windows: 24h, 7d, 30d, allTime
     """
-    global _pnl_cache, _pnl_cache_time
+    global _pnl_cache, _pnl_cache_time, _hl_client_ref
     
     now = time.time()
     
     # Return cached if fresh
     if _pnl_cache and now - _pnl_cache_time < PNL_CACHE_TTL:
         return _pnl_cache
+    
+    # Use global reference if no client passed
+    if hl_client is None:
+        hl_client = _hl_client_ref
     
     # Need to fetch fresh data
     if hl_client is None:
