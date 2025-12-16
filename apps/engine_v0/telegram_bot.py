@@ -381,22 +381,36 @@ class TelegramBot:
                 # Build context for the question
                 state = _bot_state.get("last_summary", {})
                 scan = _bot_state.get("last_scan", [])
+                positions = state.get("positions", {})
                 
-                context = f"""Você é um assistente de trading crypto. Responda de forma concisa e útil.
+                # Build position details
+                pos_details = ""
+                for sym, pos in positions.items():
+                    pos_details += f"  - {sym}: {pos.get('side')} ${pos.get('size', 0)} | PnL ${pos.get('unrealized_pnl', 0):.2f}\n"
+                if not pos_details:
+                    pos_details = "  Nenhuma posição aberta\n"
+                
+                context = f"""EU SOU o trading bot. Estou operando agora. Responda na PRIMEIRA PESSOA.
 
-Estado atual:
-- Equity: ${state.get('equity', 0):.2f}
-- Posições: {len(state.get('positions', {}))}
-- Scan Top5: {', '.join([f"{s['symbol']}:{s['score']}" for s in scan[:5]])}
+MINHA SITUAÇÃO ATUAL:
+- Minha equity: ${state.get('equity', 0):.2f}
+- Buying power: ${state.get('buying_power', 0):.0f}
 
-Pergunta do usuário: {user_text}"""
+MINHAS POSIÇÕES AGORA:
+{pos_details}
+MEU SCAN DE MERCADO:
+Top 5: {', '.join([f"{s['symbol']}:{s['score']}" for s in scan[:5]])}
+
+O usuário perguntou: {user_text}
+
+Responda como se VOCÊ fosse o bot operando. Diga "Eu estou...", "Minha posição...", "Pretendo...". Seja direto e assertivo."""
                 
                 await update.message.reply_text("💭 Pensando...")
                 
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": "Você é um assistente de trading. Responda em português, seja conciso (max 3 parágrafos). Não invente dados - use apenas o contexto fornecido."},
+                        {"role": "system", "content": "Você É o trading bot. Responda em PRIMEIRA PESSOA. Diga 'Eu tenho', 'Eu pretendo', 'Minha estratégia'. Seja direto e assertivo, sem rodeios. Max 2 parágrafos."},
                         {"role": "user", "content": context}
                     ],
                     max_tokens=300,
