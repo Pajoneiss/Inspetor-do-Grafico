@@ -536,7 +536,17 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
         action_success = False
         
         try:
+            # === NO_TRADE: LLM decided to hold, count as skipped ===
+            if action_type == "NO_TRADE":
+                reason = action.get("reason", "no edge")
+                print(f"[EXEC][HOLD] NO_TRADE reason=\"{reason}\"")
+                skipped_count += 1
+                continue
+            
             if action_type == "PLACE_ORDER":
+                action_success = _execute_place_order(action, is_paper, hl_client)
+            elif action_type == "ADD_TO_POSITION":
+                # Treat same as PLACE_ORDER (the gate already blocked PLACE_ORDER for existing positions)
                 action_success = _execute_place_order(action, is_paper, hl_client)
             elif action_type == "CLOSE_POSITION":
                 action_success = _execute_close_position(action, is_paper, hl_client)
@@ -546,7 +556,7 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
                 action_success = _execute_set_stop_loss(action, is_paper, hl_client)
             elif action_type == "SET_TAKE_PROFIT":
                 action_success = _execute_set_take_profit(action, is_paper, hl_client)
-            elif action_type == "CANCEL_ALL":
+            elif action_type in ("CANCEL_ALL", "CANCEL_ALL_ORDERS"):
                 action_success = _execute_cancel_all(action, is_paper, hl_client)
             elif action_type == "CLOSE_PARTIAL":
                 action_success = _execute_close_partial(action, is_paper, hl_client)
@@ -558,6 +568,7 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
                 print(f"[EXEC][WARN] unknown action type: {action_type}")
                 failed_count += 1
                 continue
+
             
             
             # Count based on result: True=success, False=failed, None=skipped
