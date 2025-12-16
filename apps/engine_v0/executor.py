@@ -19,19 +19,50 @@ from config import (
 )
 
 
-# ============================================================================
+# ==================================================================
 # BRACKET MANAGER HELPERS (Definitive Order Hygiene)
-# ============================================================================
+# ==================================================================
 
 def _identify_reduce_only_orders(open_orders, symbol):
     """
     Identifica TODAS as ordens reduce-only trigger de um símbolo.
-    Não tenta diferenciar SL de TP - cancela TUDO e recria.
+    CRITICAL FIX: Suporta múltiplas estruturas de API (triggerPx, orderType, limit_px, etc)
     """
+    if not open_orders:
+        return []
+        
     triggers = []
+    
     for o in open_orders:
-        if o.get("coin") == symbol and o.get("reduceOnly") and o.get("triggerPx"):
+        # Skip if wrong symbol
+        coin = o.get("coin") or o.get("symbol") or o.get("asset_ctx", {}).get("coin")
+        if coin != symbol:
+            continue
+        
+        # Check reduce-only flag
+        is_reduce = o.get("reduceOnly") or o.get("reduce_only") or False
+        if not is_reduce:
+            continue
+        
+        # MULTI-FIELD TRIGGER DETECTION
+        # Method 1: Check for triggerPx field (typical for Stop/TP orders)
+        has_trigger_px = o.get("triggerPx") or o.get("trigger_px") or o.get("limitPx")
+        
+        # Method 2: Check order_type field for "Stop Market" / "Take Profit Market"
+        order_type = o.get("order_type") or o.get("orderType") or o.get("order", {}).get("orderType") or ""
+        is_trigger_type = ("stop" in order_type.lower()) or ("profit" in order_type.lower())
+        
+        # Method 3: Check for trigger field in nested structures
+        has_trigger_nested = (
+            o.get("order", {}).get("trigger") or 
+            o.get("trigger") or 
+            o.get("triggerConditions")
+        )
+        
+        # If ANY method detects a trigger, include it
+        if has_trigger_px or is_trigger_type or has_trigger_nested:
             triggers.append(o)
+            
     return triggers
 
 
@@ -43,16 +74,30 @@ def _cleanup_all_triggers(hl_client, symbol):
     """
     try:
         open_orders = hl_client.get_open_orders()
+        
+        # DEBUG: Log raw structure (first order only, to avoid spam)
+        if open_orders and len(open_orders) > 0:
+            import json
+            sample = open_orders[0]
+            fields = list(sample.keys())
+            print(f"[BRACKET][DEBUG] Sample order fields: {fields}")
+        
         triggers = _identify_reduce_only_orders(open_orders, symbol)
         
         if triggers:
             print(f"[BRACKET] Cleaning {len(triggers)} reduce-only triggers for {symbol}")
             for t in triggers:
                 try:
-                    hl_client.cancel_order(symbol, t["oid"])
-                    print(f"[BRACKET] Canceled oid={t['oid']} trigger_px={t.get('triggerPx')}")
+                    oid = t.get("oid") or t.get("id") or t.get("order_id")
+                    if not oid:
+                        print(f"[BRACKET][ERROR] Trigger missing OID: {t}")
+                        continue
+                    
+                    hl_client.cancel_order(symbol, oid)
+                    trigger_info = t.get("triggerPx") or t.get("limitPx") or t.get("order_type") or "unknown"
+                    print(f"[BRACKET] Canceled oid={oid} info={trigger_info}")
                 except Exception as e:
-                    print(f"[BRACKET][WARN] Failed to cancel {t['oid']}: {e}")
+                    print(f"[BRACKET][WARN] Failed to cancel {t.get('oid')}: {e}")
             
             import time
             time.sleep(0.5)  # Propagation delay
@@ -60,6 +105,8 @@ def _cleanup_all_triggers(hl_client, symbol):
         return len(triggers)
     except Exception as e:
         print(f"[BRACKET][ERROR] Cleanup failed for {symbol}: {e}")
+        import traceback
+        traceback.print_exc()
         return 0
 
 
