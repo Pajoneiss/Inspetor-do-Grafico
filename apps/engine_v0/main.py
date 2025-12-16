@@ -143,8 +143,11 @@ def main():
                         open_orders_by_symbol[coin].append(order)
                     state["open_orders_by_symbol"] = open_orders_by_symbol
                     
-                    # v10.2: Build trigger status for each position (BRACKET RECONCILE)
+                    # v11.0: Build trigger status + BE telemetry for each position
                     trigger_status_lines = []
+                    BE_TRIGGER_PCT = 0.30  # 0.30% profit to arm breakeven
+                    BE_OFFSET_BPS = 2  # 0.02% offset for fees
+                    
                     for pos_symbol, pos_data in positions_by_symbol.items():
                         symbol_orders = open_orders_by_symbol.get(pos_symbol, [])
                         has_sl = False
@@ -152,13 +155,23 @@ def main():
                         sl_price = None
                         tp_price = None
                         
+                        entry_px = pos_data.get("entry_price", 0)
+                        mark_px = state.get("prices", {}).get(pos_symbol, entry_px)
+                        pos_side = pos_data.get("side", "LONG")
+                        pnl_pct = pos_data.get("unrealized_pnl_pct", 0)
+                        
+                        # Calculate PnL % if not provided
+                        if entry_px > 0 and mark_px > 0 and pnl_pct == 0:
+                            if pos_side == "LONG":
+                                pnl_pct = ((mark_px - entry_px) / entry_px) * 100
+                            else:
+                                pnl_pct = ((entry_px - mark_px) / entry_px) * 100
+                        
                         for order in symbol_orders:
                             if order.get("reduceOnly"):
                                 trigger_px = order.get("triggerPx") or order.get("trigger_px") or order.get("limitPx")
                                 if trigger_px:
                                     trigger_px = float(trigger_px)
-                                    entry_px = pos_data.get("entry_price", 0)
-                                    pos_side = pos_data.get("side", "LONG")
                                     
                                     # Determine if SL or TP based on position side and trigger direction
                                     if pos_side == "LONG":
@@ -176,11 +189,30 @@ def main():
                                             has_tp = True
                                             tp_price = trigger_px
                         
+                        # BE Telemetry - compute status
+                        be_target = entry_px * (1 + BE_OFFSET_BPS/10000) if pos_side == "LONG" else entry_px * (1 - BE_OFFSET_BPS/10000)
+                        
+                        if pnl_pct >= BE_TRIGGER_PCT:
+                            if has_sl and sl_price and abs(sl_price - be_target) / entry_px < 0.001:
+                                be_status = "EXECUTED"
+                            else:
+                                be_status = "TRIGGERED"
+                        elif pnl_pct > 0:
+                            be_status = "ARMED"
+                        else:
+                            be_status = "INACTIVE"
+                        
+                        # Build status line
                         sl_str = f"SL=${sl_price:.2f}" if has_sl else "SL=MISSING!"
                         tp_str = f"TP=${tp_price:.2f}" if has_tp else "TP=MISSING!"
-                        trigger_status_lines.append(f"  - {pos_symbol}: {sl_str} | {tp_str}")
+                        be_str = f"BE={be_status}({pnl_pct:.2f}%)"
+                        trigger_status_lines.append(f"  - {pos_symbol}: {sl_str} | {tp_str} | {be_str}")
+                        
+                        # Log BE every tick
+                        print(f"[BE] {pos_symbol} status={be_status} pnl={pnl_pct:.2f}% trigger={BE_TRIGGER_PCT}% be_target=${be_target:.2f} current_sl=${sl_price if sl_price else 'NONE'}")
                     
                     state["trigger_status"] = "\n".join(trigger_status_lines) if trigger_status_lines else "(no positions)"
+
                     
                     # Add feedback (rejects, errors, successes)
 
@@ -243,49 +275,119 @@ def main():
                             funding_by_symbol[symbol] = hl.get_funding_info(symbol)
                         state["funding_by_symbol"] = funding_by_symbol
                         
-                        # v10.3: BUILD COMPACT BRIEFS FOR ALL 11 SYMBOLS
+                        # v11.0: BUILD REAL SYMBOL BRIEFS WITH VARIED SCORING
                         symbol_briefs = {}
                         for symbol in snapshot_symbols:
                             price = state["prices"].get(symbol, 0)
                             ind = indicators_by_symbol.get(symbol, {})
                             
-                            # Calculate simple trend from indicators
-                            ema_9 = ind.get("ema_9", price)
-                            ema_21 = ind.get("ema_21", price)
-                            rsi = ind.get("rsi", 50)
+                            # Get real indicator values (correct keys from indicators.py)
+                            ema_9 = ind.get("ema_9", 0)
+                            ema_21 = ind.get("ema_21", 0)
+                            ema_50 = ind.get("ema_50", 0)
+                            rsi = ind.get("rsi_14", 50)  # FIX: was "rsi", should be "rsi_14"
+                            macd_hist = ind.get("macd_hist", 0)
+                            atr_pct = ind.get("atr_pct", 0)
+                            trend_str = ind.get("trend", "neutral")
+                            relative_volume = ind.get("relative_volume", 1.0)
                             
-                            # Score 0-100 based on trend + momentum
-                            if price > 0:
-                                trend = "UP" if ema_9 > ema_21 else "DOWN"
-                                momentum = "STRONG" if rsi > 60 or rsi < 40 else "NEUTRAL"
-                                
-                                # Simple score: RSI deviation from 50 + trend alignment
-                                score = 50
-                                if trend == "UP" and rsi > 50:
-                                    score = min(100, 50 + (rsi - 50) * 1.5)
-                                elif trend == "DOWN" and rsi < 50:
-                                    score = min(100, 50 + (50 - rsi) * 1.5)
+                            # Multi-factor scoring (0-100)
+                            score = 50  # Base score
+                            reasons = []
+                            
+                            if price > 0 and ema_21 > 0:
+                                # Factor 1: EMA alignment (+/- 15 points)
+                                if ema_9 > ema_21 > ema_50:
+                                    score += 15
+                                    trend = "UP_STRONG"
+                                    reasons.append("EMA aligned bullish")
+                                elif ema_9 > ema_21:
+                                    score += 8
+                                    trend = "UP"
+                                    reasons.append("EMA9>21")
+                                elif ema_9 < ema_21 < ema_50:
+                                    score += 15  # Good for shorts too
+                                    trend = "DOWN_STRONG"
+                                    reasons.append("EMA aligned bearish")
+                                elif ema_9 < ema_21:
+                                    score += 8
+                                    trend = "DOWN"
+                                    reasons.append("EMA9<21")
                                 else:
-                                    score = 50 - abs(rsi - 50) * 0.5  # Conflicting signals = lower score
+                                    trend = "RANGE"
+                                    reasons.append("ranging")
+                                
+                                # Factor 2: RSI momentum (+/- 20 points)
+                                if rsi > 70:
+                                    score -= 10  # Overbought penalty
+                                    reasons.append("overbought")
+                                elif rsi > 60:
+                                    score += 10
+                                    reasons.append("RSI strong")
+                                elif rsi < 30:
+                                    score -= 10  # Oversold penalty
+                                    reasons.append("oversold")
+                                elif rsi < 40:
+                                    score += 10  # Good for shorts
+                                    reasons.append("RSI weak")
+                                else:
+                                    score += 0  # Neutral zone
+                                
+                                # Factor 3: MACD confirmation (+/- 10 points)
+                                if macd_hist > 0 and trend in ["UP", "UP_STRONG"]:
+                                    score += 10
+                                    reasons.append("MACD+")
+                                elif macd_hist < 0 and trend in ["DOWN", "DOWN_STRONG"]:
+                                    score += 10
+                                    reasons.append("MACD-")
+                                elif (macd_hist > 0 and trend.startswith("DOWN")) or (macd_hist < 0 and trend.startswith("UP")):
+                                    score -= 5  # Divergence penalty
+                                    reasons.append("MACD diverge")
+                                
+                                # Factor 4: Volume boost (+5 max)
+                                if relative_volume > 1.5:
+                                    score += 5
+                                    reasons.append("high vol")
+                                
+                                # Factor 5: Volatility penalty (-5 if too high)
+                                if atr_pct > 3.0:
+                                    score -= 5
+                                    reasons.append("high ATR")
+                                
+                                # Clamp score
+                                score = max(0, min(100, score))
+                                momentum = "STRONG" if rsi > 60 or rsi < 40 else "NEUTRAL"
                             else:
                                 trend = "UNKNOWN"
                                 momentum = "UNKNOWN"
-                                score = 0
+                                score = 25  # Unknown gets low score, not 50
+                                reasons.append("no data")
                             
                             symbol_briefs[symbol] = {
                                 "price": round(price, 2) if price < 1000 else round(price, 0),
                                 "trend": trend,
                                 "momentum": momentum,
-                                "rsi": round(rsi, 1) if rsi else 50,
-                                "score": round(score, 0)
+                                "rsi": round(rsi, 1),
+                                "score": round(score, 0),
+                                "reason": " + ".join(reasons[:2]) if reasons else ""
                             }
                         
                         state["symbol_briefs"] = symbol_briefs
                         
-                        # v10.3: PROOF LOG - show all symbols analyzed
+                        # v11.0: PROOF LOG with varied scores
                         top_symbols = sorted(symbol_briefs.items(), key=lambda x: x[1]["score"], reverse=True)[:5]
+                        bottom_symbols = sorted(symbol_briefs.items(), key=lambda x: x[1]["score"])[:3]
                         top_str = " ".join([f"{s}:{int(b['score'])}" for s, b in top_symbols])
-                        print(f"[VISION] symbols_included={len(snapshot_symbols)} top5=[{top_str}]")
+                        bottom_str = " ".join([f"{s}:{int(b['score'])}" for s, b in bottom_symbols])
+                        
+                        # Check for flat scores warning
+                        all_scores = [b["score"] for b in symbol_briefs.values()]
+                        scores_flat = len(set(all_scores)) <= 2
+                        
+                        if scores_flat:
+                            print(f"[SCAN][WARN] scores_flat detected → check indicator pipeline")
+                        print(f"[SCAN] top5=[{top_str}] bottom3=[{bottom_str}]")
+
                         
                     except Exception as e:
                         print(f"[VISION][ERROR] market data failed: {e}")

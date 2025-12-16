@@ -207,16 +207,19 @@ Respond with PURE JSON only. No markdown."""
         else:
             symbols_str = state.get("symbol", "BTC")
         
-        # v10.3: Format symbol briefs for multi-symbol scan
+        # v11.0: Format symbol briefs for multi-symbol scan with reasons
         symbol_briefs = state.get("symbol_briefs", {})
         briefs_lines = []
         # Sort by score descending
         sorted_briefs = sorted(symbol_briefs.items(), key=lambda x: x[1].get("score", 0), reverse=True)
         for symbol, brief in sorted_briefs[:11]:  # Show all 11
+            reason = brief.get('reason', '') 
+            reason_str = f" [{reason}]" if reason else ""
             briefs_lines.append(
-                f"  {symbol}: ${brief.get('price', 0)} | {brief.get('trend', '?')} | RSI={brief.get('rsi', 50)} | score={brief.get('score', 0)}"
+                f"  {symbol}: ${brief.get('price', 0)} | {brief.get('trend', '?')} | RSI={brief.get('rsi', 50):.0f} | score={brief.get('score', 0):.0f}{reason_str}"
             )
         briefs_str = "\n".join(briefs_lines) if briefs_lines else "(no briefs available)"
+
         
         return f"""Analyze market state and decide actions.
 
