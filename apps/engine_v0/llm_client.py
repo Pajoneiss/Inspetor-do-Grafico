@@ -228,20 +228,26 @@ Respond with PURE JSON only. No markdown."""
 - Equity: ${state.get('equity', 0):.2f}
 - Default Leverage: {state.get('leverage', 40)}x
 - Buying Power: ${state.get('buying_power', state.get('equity', 0) * 40):.2f}
+- Min Order Notional: $10.20 (required_margin = notional / leverage)
 - Live Trading: {state.get('live_trading', False)}
 
 === CURRENT POSITIONS ({state.get('positions_count', 0)}) ===
 {positions_str}
-=== TRIGGER STATUS ===
+=== TRIGGER STATUS (SL/TP/BE) ===
 {state.get('trigger_status', '(not available)')}
+
+IMPORTANT: If a position shows "SL=$X" and "TP=$Y" above, the triggers ALREADY EXIST.
+Do NOT request SET_STOP_LOSS or SET_TAKE_PROFIT unless you want to CHANGE the price.
+If BE=EXECUTED or BE=TRIGGERED, the SL is protected - do NOT try to move it lower!
 
 === SYMBOL SCAN (sorted by score) ===
 {briefs_str}
 
-=== EMERGENCY CHECK ===
-If any position is missing SL or TP, you MUST output SET_STOP_LOSS and/or SET_TAKE_PROFIT immediately!
-
-You may open positions in ANY symbol from the scan above. Pick the BEST opportunity based on score + trend alignment.
+=== DECISION GUIDANCE ===
+- If position has SL and TP already set → output NO_TRADE unless you want to change them
+- If position is missing SL or TP → THIS IS EMERGENCY, set them immediately
+- If BE is TRIGGERED/EXECUTED → SL is protected, do not try to lower it
+- Pick trades based on score + trend alignment from scan above
 
 Respond with PURE JSON only:
 {{
