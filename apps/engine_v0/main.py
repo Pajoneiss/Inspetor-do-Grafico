@@ -239,43 +239,23 @@ def main():
                         be_str = f"BE={be_status}({pnl_pct:.2f}%)"
                         trigger_status_lines.append(f"  - {pos_symbol}: {sl_str} | {tp_str} | {be_str}")
                         
-                        # Log BE every tick
+                        # Log BE every tick (TELEMETRY ONLY - LLM decides what to do)
                         print(f"[BE] {pos_symbol} status={be_status} pnl={pnl_pct:.2f}% trigger={BE_TRIGGER_PCT}% be_target=${be_target:.2f} current_sl=${sl_price if sl_price else 'NONE'}")
                         
-                        # v11.0: BE AUTO-EXECUTION - Move SL to breakeven when TRIGGERED
-                        ENABLE_BE_EXECUTION = True  # Enable auto-execution
-                        if ENABLE_BE_EXECUTION and be_status == "TRIGGERED":
-                            # SL is worse than breakeven, need to move it
-                            if pos_side == "LONG" and (sl_price is None or sl_price < be_target):
-                                state["be_actions"] = state.get("be_actions", [])
-                                state["be_actions"].append({
-                                    "type": "SET_STOP_LOSS",
-                                    "symbol": pos_symbol,
-                                    "stop_price": be_target,
-                                    "reason": "BE auto-execution"
-                                })
-                                # Set BE protection to prevent LLM from downgrading this SL
-                                try:
-                                    from be_protection import set_be_protection
-                                    set_be_protection(pos_symbol, be_target, pos_side)
-                                except ImportError:
-                                    pass
-                                print(f"[BE][EXEC] Queued SL move to breakeven ${be_target:.2f} for {pos_symbol}")
-                            elif pos_side == "SHORT" and (sl_price is None or sl_price > be_target):
-                                state["be_actions"] = state.get("be_actions", [])
-                                state["be_actions"].append({
-                                    "type": "SET_STOP_LOSS",
-                                    "symbol": pos_symbol,
-                                    "stop_price": be_target,
-                                    "reason": "BE auto-execution"
-                                })
-                                # Set BE protection to prevent LLM from downgrading this SL
-                                try:
-                                    from be_protection import set_be_protection
-                                    set_be_protection(pos_symbol, be_target, pos_side)
-                                except ImportError:
-                                    pass
-                                print(f"[BE][EXEC] Queued SL move to breakeven ${be_target:.2f} for {pos_symbol}")
+                        # Store BE telemetry for LLM context (NO AUTO-EXECUTION)
+                        if "be_telemetry" not in state:
+                            state["be_telemetry"] = {}
+                        state["be_telemetry"][pos_symbol] = {
+                            "status": be_status,
+                            "pnl_pct": pnl_pct,
+                            "be_target": be_target,
+                            "current_sl": sl_price,
+                            "entry_price": entry_px,
+                            "side": pos_side
+                        }
+                        
+                        # NOTE: BE protection is ONLY set when LLM explicitly moves to BE
+                        # See executor.py for BE Guard logic
                     
                     state["trigger_status"] = "\n".join(trigger_status_lines) if trigger_status_lines else "(no positions)"
 
@@ -505,12 +485,8 @@ def main():
                     
                     if time_since_last_call >= AI_CALL_INTERVAL_SECONDS:
                         try:
-                            # v11.0: Execute BE actions FIRST (before LLM)
-                            be_actions = state.get("be_actions", [])
-                            if be_actions:
-                                print(f"[BE] Executing {len(be_actions)} breakeven actions")
-                                execute(be_actions, live_trading=LIVE_TRADING, hl_client=hl)
-                                state["be_actions"] = []  # Clear after execution
+                            # NOTE: BE telemetry is passed to LLM via state["be_telemetry"]
+                            # LLM decides 100% of actions - NO auto-execution
                             
                             # Get AI decision
                             decision = llm.decide(state)
@@ -518,7 +494,7 @@ def main():
                             # Update last call time
                             last_ai_call_time = current_time
                             
-                            # Execute actions (pass hl_client for proper LIVE/PAPER detection)
+                            # Execute actions from LLM (only source of actions now)
                             actions = decision.get("actions", [])
                             if actions:
                                 execute(actions, live_trading=LIVE_TRADING, hl_client=hl)

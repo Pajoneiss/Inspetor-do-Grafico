@@ -220,6 +220,12 @@ Respond with PURE JSON only. No markdown."""
             )
         briefs_str = "\n".join(briefs_lines) if briefs_lines else "(no briefs available)"
 
+        # v11.1: Add BE telemetry for LLM decision
+        be_telemetry = state.get("be_telemetry", {})
+        be_lines = []
+        for sym, be_data in be_telemetry.items():
+            be_lines.append(f"  {sym}: status={be_data['status']} pnl={be_data['pnl_pct']:.2f}% be_target=${be_data['be_target']:.2f} sl=${be_data['current_sl'] or 'NONE'}")
+        be_str = "\n".join(be_lines) if be_lines else "(no active BE tracking)"
         
         return f"""Analyze market state and decide actions.
 
@@ -236,22 +242,26 @@ Respond with PURE JSON only. No markdown."""
 === TRIGGER STATUS (SL/TP/BE) ===
 {state.get('trigger_status', '(not available)')}
 
-IMPORTANT: If a position shows "SL=$X" and "TP=$Y" above, the triggers ALREADY EXIST.
-Do NOT request SET_STOP_LOSS or SET_TAKE_PROFIT unless you want to CHANGE the price.
-If BE=EXECUTED or BE=TRIGGERED, the SL is protected - do NOT try to move it lower!
+=== BE TELEMETRY (DECISION DATA) ===
+{be_str}
+
+IMPORTANT INFO:
+- If a position shows "SL=$X" and "TP=$Y" above, the triggers ALREADY EXIST.
+- BE status: INACTIVE=no profit, ARMED=small profit, TRIGGERED=ready for BE, EXECUTED=BE already set
+- YOU decide: whether to move SL to breakeven, trail, partial close, or hold.
 
 === SYMBOL SCAN (sorted by score) ===
 {briefs_str}
 
-=== DECISION GUIDANCE ===
-- If position has SL and TP already set → output NO_TRADE unless you want to change them
-- If position is missing SL or TP → THIS IS EMERGENCY, set them immediately
-- If BE is TRIGGERED/EXECUTED → SL is protected, do not try to lower it
-- Pick trades based on score + trend alignment from scan above
+=== YOUR ROLE ===
+YOU are the autonomous trader. YOU decide 100% of actions:
+- Open trades, close trades, set SL, set TP, move to BE, trail, partial - ALL YOUR CHOICE.
+- There are NO automatic rules. Evaluate the data and decide what's best.
+- Consider risk/reward, market conditions, position size, PnL.
 
 Respond with PURE JSON only:
 {{
-  "summary": "brief analysis",
+  "summary": "brief analysis of what you see",
   "confidence": 0.75,
   "chosen_symbol": "BTC",
   "actions": [
