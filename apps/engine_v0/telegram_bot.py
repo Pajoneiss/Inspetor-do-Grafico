@@ -366,15 +366,50 @@ class TelegramBot:
             )
             
         elif intent == "QUESTION":
-            # For now, provide helpful response
-            await update.message.reply_text(
-                "🤖 Chat com IA em desenvolvimento.\n\n"
-                "Por enquanto, use:\n"
-                "• /status - ver status atual\n"
-                "• 📊 Resumo Completo - dados detalhados\n"
-                "• 'abrir long em BTC' - executar trade\n"
-                "• /panic - emergência"
-            )
+            # Actually call the LLM to answer the question
+            try:
+                from openai import OpenAI
+                import os
+                
+                api_key = os.environ.get("OPENAI_API_KEY", "")
+                if not api_key:
+                    await update.message.reply_text("❌ API key não configurada")
+                    return
+                
+                client = OpenAI(api_key=api_key)
+                
+                # Build context for the question
+                state = _bot_state.get("last_summary", {})
+                scan = _bot_state.get("last_scan", [])
+                
+                context = f"""Você é um assistente de trading crypto. Responda de forma concisa e útil.
+
+Estado atual:
+- Equity: ${state.get('equity', 0):.2f}
+- Posições: {len(state.get('positions', {}))}
+- Scan Top5: {', '.join([f"{s['symbol']}:{s['score']}" for s in scan[:5]])}
+
+Pergunta do usuário: {user_text}"""
+                
+                await update.message.reply_text("💭 Pensando...")
+                
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "Você é um assistente de trading. Responda em português, seja conciso (max 3 parágrafos). Não invente dados - use apenas o contexto fornecido."},
+                        {"role": "user", "content": context}
+                    ],
+                    max_tokens=300,
+                    temperature=0.7
+                )
+                
+                ai_response = response.choices[0].message.content.strip()
+                await update.message.reply_text(f"🤖 {ai_response}")
+                print(f"[TG][CHAT] AI answered question: {user_text[:50]}...")
+                
+            except Exception as e:
+                print(f"[TG][CHAT][ERROR] {e}")
+                await update.message.reply_text(f"❌ Erro ao responder: {str(e)[:100]}")
         
         else:
             # Unknown intent
