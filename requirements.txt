@@ -17,4 +17,7 @@ python-dotenv>=1.0.0
 # HTTP client
 httpx>=0.24.0
 
+# Telegram
+python-telegram-bot>=20.0
+
 # OpenAI SDK for AI decisions (BLOCO 3)
