@@ -556,17 +556,9 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
                 continue
 
             
-            
             # Count based on result: True=success, False=failed, None=skipped
             if action_success is True:
-                _intent_history[intent_key] = current_time
-                
-                # Track adds for circuit breaker
-                if action_type == "PLACE_ORDER":
-                    if symbol not in _adds_history:
-                        _adds_history[symbol] = []
-                    _adds_history[symbol].append(current_time)
-                
+                # v12.4: Removed intent_history tracking (SAFEGUARDs removed)
                 success_count += 1
             elif action_success is False:
                 failed_count += 1
