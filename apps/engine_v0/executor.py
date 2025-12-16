@@ -935,10 +935,22 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
     """Execute SET_STOP_LOSS action with trigger price quantization and validation"""
     symbol = action.get("symbol", "?")
     stop_price = action.get("stop_price", 0)
+    reason = action.get("reason", "")
     
     if is_paper:
         print(f"[PAPER] would SET_STOP_LOSS {symbol} stop=${stop_price:.2f}")
         return True
+    
+    # BE PROTECTION GATE: Prevent LLM from overriding BE SL with worse price
+    # Skip this check if the action is from BE auto-execution itself
+    if "BE auto-execution" not in reason:
+        try:
+            from be_protection import is_sl_worse_than_be
+            if is_sl_worse_than_be(symbol, stop_price):
+                print(f"[BE][GATE] REJECTED SET_STOP_LOSS {symbol} stop=${stop_price:.2f} - would violate BE protection")
+                return None  # Skipped, not failed
+        except ImportError:
+            pass  # Module not available, skip check
     
     # LIVE execution with trigger price validation
     try:

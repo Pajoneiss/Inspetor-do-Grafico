@@ -240,6 +240,12 @@ def main():
                                     "stop_price": be_target,
                                     "reason": "BE auto-execution"
                                 })
+                                # Set BE protection to prevent LLM from downgrading this SL
+                                try:
+                                    from be_protection import set_be_protection
+                                    set_be_protection(pos_symbol, be_target, pos_side)
+                                except ImportError:
+                                    pass
                                 print(f"[BE][EXEC] Queued SL move to breakeven ${be_target:.2f} for {pos_symbol}")
                             elif pos_side == "SHORT" and (sl_price is None or sl_price > be_target):
                                 state["be_actions"] = state.get("be_actions", [])
@@ -249,6 +255,12 @@ def main():
                                     "stop_price": be_target,
                                     "reason": "BE auto-execution"
                                 })
+                                # Set BE protection to prevent LLM from downgrading this SL
+                                try:
+                                    from be_protection import set_be_protection
+                                    set_be_protection(pos_symbol, be_target, pos_side)
+                                except ImportError:
+                                    pass
                                 print(f"[BE][EXEC] Queued SL move to breakeven ${be_target:.2f} for {pos_symbol}")
                     
                     state["trigger_status"] = "\n".join(trigger_status_lines) if trigger_status_lines else "(no positions)"
