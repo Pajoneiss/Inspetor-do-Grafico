@@ -995,12 +995,10 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
         
         print(f"[LIVE] SET_STOP_LOSS {symbol} stop=${trigger_px_quantized:.2f} size={position_size} side={position_side}")
         
-        # BRACKET MANAGER: Cleanup only SL triggers (preserve TP)
-        cleaned_count = _cleanup_all_triggers(hl_client, symbol, trigger_type="SL", mark_price=mark_price, position_side=position_side)
-        print(f"[BRACKET] Cleaned {cleaned_count} SL triggers before SET_STOP_LOSS (TP preserved)")
-
-
-        # Place trigger order
+        # SAFE TRIGGER REPLACEMENT: Create new FIRST, only delete old if new succeeds
+        # This prevents leaving position unprotected if exchange rejects new trigger
+        
+        # Step 1: Try to create new trigger (Hyperliquid allows multiple)
         resp = hl_client.place_trigger_order(
             symbol=symbol,
             is_buy=(position_side == "SHORT"),
@@ -1016,13 +1014,26 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
         if not success:
             error_msg = _extract_error_message(resp)
             print(f"[LIVE][REJECT] {symbol} exchange_error={error_msg}")
+            # CRITICAL: Keep old trigger since new one failed!
+            if existing_sl_px:
+                print(f"[BRACKET][SAFE] Keeping existing SL at ${existing_sl_px:.2f} (new trigger rejected)")
             return False
+        
+        # Step 2: New trigger created successfully - now cleanup old one
+        if existing_sl_oid:
+            try:
+                hl_client.cancel_order(symbol, existing_sl_oid)
+                print(f"[BRACKET] Cleaned old SL oid={existing_sl_oid} after successful replacement")
+            except Exception as e:
+                print(f"[BRACKET][WARN] Failed to cancel old SL oid={existing_sl_oid}: {e}")
+                # New trigger exists, old one will be handled by exchange (both will coexist)
         
         # POST-EXECUTION ASSERT
         _post_execution_assert(hl_client, symbol, "SET_STOP_LOSS")
         
         _post_verify(hl_client, symbol, "SET_STOP_LOSS")
         return True
+
         
     except Exception as e:
         print(f"[LIVE][ERROR] SET_STOP_LOSS {symbol} failed: {e}")
@@ -1094,12 +1105,10 @@ def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) 
         
         print(f"[LIVE] SET_TAKE_PROFIT {symbol} tp=${trigger_px_quantized:.2f} size={position_size} side={position_side}")
         
-        # BRACKET MANAGER: Cleanup only TP triggers (preserve SL)
-        cleaned_count = _cleanup_all_triggers(hl_client, symbol, trigger_type="TP", mark_price=mark_price, position_side=position_side)
-        print(f"[BRACKET] Cleaned {cleaned_count} TP triggers before SET_TAKE_PROFIT (SL preserved)")
-
+        # SAFE TRIGGER REPLACEMENT: Create new FIRST, only delete old if new succeeds
+        # This prevents leaving position without TP if exchange rejects new trigger
         
-        # Place trigger order
+        # Step 1: Try to create new trigger
         resp = hl_client.place_trigger_order(
             symbol=symbol,
             is_buy=(position_side == "SHORT"),  # Buy to close short, sell to close long
@@ -1115,13 +1124,25 @@ def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) 
         if not success:
             error_msg = _extract_error_message(resp)
             print(f"[LIVE][REJECT] {symbol} exchange_error={error_msg}")
+            # CRITICAL: Keep old trigger since new one failed!
+            if existing_tp_px:
+                print(f"[BRACKET][SAFE] Keeping existing TP at ${existing_tp_px:.2f} (new trigger rejected)")
             return False
+        
+        # Step 2: New trigger created successfully - now cleanup old one
+        if existing_tp_oid:
+            try:
+                hl_client.cancel_order(symbol, existing_tp_oid)
+                print(f"[BRACKET] Cleaned old TP oid={existing_tp_oid} after successful replacement")
+            except Exception as e:
+                print(f"[BRACKET][WARN] Failed to cancel old TP oid={existing_tp_oid}: {e}")
         
         # POST-EXECUTION ASSERT
         _post_execution_assert(hl_client, symbol, "SET_TAKE_PROFIT")
         
         _post_verify(hl_client, symbol, "SET_TAKE_PROFIT")
         return True
+
         
     except Exception as e:
         print(f"[LIVE][ERROR] SET_TAKE_PROFIT {symbol} failed: {e}")
