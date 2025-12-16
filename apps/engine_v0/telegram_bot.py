@@ -427,9 +427,16 @@ Pergunta do usuário: {user_text}"""
         """Classify user intent from message text"""
         text = text.lower()
         
-        # Trade commands
+        # Check for symbols first
+        symbols = ["btc", "eth", "sol", "doge", "xrp", "ada", "link", "arb", "hype", "bnb", "icp"]
+        has_symbol = any(sym in text for sym in symbols)
+        
+        # Trade commands: require BOTH trade keyword AND symbol
         trade_keywords = ["abrir", "comprar", "vender", "buy", "sell", "long", "short"]
-        if any(kw in text for kw in trade_keywords):
+        has_trade_keyword = any(kw in text for kw in trade_keywords)
+        
+        # Only classify as TRADE_COMMAND if has both keyword AND symbol
+        if has_trade_keyword and has_symbol:
             return "TRADE_COMMAND"
         
         # Risk commands
@@ -437,11 +444,8 @@ Pergunta do usuário: {user_text}"""
         if any(kw in text for kw in risk_keywords):
             return "RISK_COMMAND"
         
-        # Questions (contains ?)
-        if "?" in text or any(q in text for q in ["como", "qual", "quanto", "por que", "o que"]):
-            return "QUESTION"
-        
-        return "UNKNOWN"
+        # Everything else is a question (let AI handle it)
+        return "QUESTION"
     
     def _parse_trade_command(self, text: str) -> Optional[Dict[str, Any]]:
         """Parse trade command into action dict"""
