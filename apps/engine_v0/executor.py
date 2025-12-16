@@ -227,32 +227,67 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
         # Log before execution
         print(f"[LIVE] action=PLACE_ORDER payload={_format_resp(normalized)}")
         
-        # Set leverage if specified
-        leverage = float(normalized.get("leverage", 1) or 1)
+        # DEFAULT TARGET LEVERAGE (Safety)
+        target_leverage = int(normalized.get("leverage", 20)) # Default to 20x if not set
         margin_mode = normalized.get("margin_mode", "isolated")
         
-        if normalized.get("leverage"):
+        # 1. ALWAYS ENSURE LEVERAGE/MARGIN MODE
+        try:
             is_cross = (margin_mode == "cross")
-            lev_resp = hl_client.update_leverage(symbol, int(leverage), is_cross)
-            print(f"[LIVE] leverage set: {leverage}x {margin_mode} resp={_format_resp(lev_resp)}")
+            print(f"[LIVE] Ensuring {target_leverage}x {margin_mode} for {symbol}...")
+            hl_client.update_leverage(symbol, target_leverage, is_cross)
+            # Small delay for propagation
+            time.sleep(0.5)
+        except Exception as e:
+            print(f"[LIVE][WARN] Update leverage failed: {e}")
             
-        # MARGIN CHECK (Pre-flight)
+        # 2. MARGIN CHECK & DYNAMIC SIZING
         # Get account state
         account_state = hl_client.get_account_state()
         if account_state:
             margin_summary = account_state.get("marginSummary", {})
             account_value = float(margin_summary.get("accountValue", 0))
             total_margin_used = float(margin_summary.get("totalMarginUsed", 0))
-            available_margin = account_value - total_margin_used
+            available_margin = max(0.0, account_value - total_margin_used)
             
-            # Required margin = size * price / leverage
-            required_margin = (normalized["size"] * price) / leverage
+            price = float(price)
+            current_size = normalized["size"]
+            required_notional = current_size * price
             
+            # Buying Power = Available Margin * Leverage * Buffer (90%)
+            buying_power = available_margin * target_leverage * 0.90
+            
+            print(f"[LIVE] Margin Calc: Avail=${available_margin:.2f} Lev={target_leverage}x Power=${buying_power:.2f} Req=${required_notional:.2f}")
+            
+            if required_notional > buying_power:
+                print(f"[LIVE][WARN] Insufficient buying power for size={current_size} (${required_notional:.2f})")
+                
+                # Dynamic Sizing: Clamp to max possible
+                adj_size = buying_power / price
+                adj_notional = adj_size * price
+                
+                # Check Min Notional ($10)
+                if adj_notional < 10.0:
+                    print(f"[LIVE][REJECT] Account too small for min trade ($10). Max Power=${buying_power:.2f}")
+                    return
+                
+                # Normalize adjusted size
+                constraints = hl_client.get_symbol_constraints(symbol)
+                sz_decimals = constraints.get("szDecimals", 5) if constraints else 5
+                from decimal import Decimal, ROUND_DOWN
+                size_decimal = Decimal(str(adj_size))
+                size_factor = Decimal(10) ** sz_decimals
+                normalized_adj_size = float((size_decimal * size_factor).quantize(Decimal('1'), rounding=ROUND_DOWN) / size_factor)
+                
+                print(f"[LIVE] Adjusted size from {current_size} to {normalized_adj_size} (${normalized_adj_size*price:.2f})")
+                normalized["size"] = normalized_adj_size
+                current_size = normalized_adj_size
+            
+            # Final Check
+            required_margin = (current_size * price) / target_leverage
             if available_margin < required_margin:
-                print(f"[LIVE][REJECT] PLACE_ORDER {symbol} reason=insufficient_margin available=${available_margin:.2f} needed=${required_margin:.2f} (lev={leverage}x)")
-                return
-            
-            print(f"[LIVE] Margin Check OK: available=${available_margin:.2f} >= needed=${required_margin:.2f}")
+                 print(f"[LIVE][REJECT] Still insufficient margin after adjust. Avail=${available_margin:.2f} Need=${required_margin:.2f}")
+                 return
 
         # Execute market order
         is_buy = (side == "BUY")
