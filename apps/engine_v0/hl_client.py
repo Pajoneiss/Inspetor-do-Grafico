@@ -852,8 +852,20 @@ class HLClient:
             constraints = self.get_symbol_constraints(symbol)
             tick_sz = constraints.get("tickSz", 0.01)
             
+            # CRITICAL: Hyperliquid TRIGGER orders require larger tick sizes than limit orders
+            # BTC/ETH triggers need tick=1.0 (whole dollars), not 0.01 from meta
+            TRIGGER_TICK_OVERRIDES = {
+                "BTC": 1.0,
+                "ETH": 0.1,
+                "SOL": 0.01,
+                "DOGE": 0.00001,
+                "XRP": 0.0001,
+                "HYPE": 0.01,
+            }
+            trigger_tick = TRIGGER_TICK_OVERRIDES.get(symbol, max(tick_sz, 0.01))
+            
             # Use quantize_to_tick helper for robust price normalization
-            trigger_px_rounded = quantize_to_tick(trigger_px_f, tick_sz, mode="nearest")
+            trigger_px_rounded = quantize_to_tick(trigger_px_f, trigger_tick, mode="nearest")
             
             # Log types for debugging
             print(f"[HL] place_trigger_order symbol={symbol} triggerPx={trigger_px_rounded} size={size_f}")
