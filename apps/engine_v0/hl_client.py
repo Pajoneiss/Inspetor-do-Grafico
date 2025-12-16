@@ -64,10 +64,11 @@ class HLClient:
                     wallet=wallet,
                     base_url=self.api_url,
                     account_address=self.wallet_address
-                )
-            
-            print("[HL] Clients initialized successfully")
-            
+                    )
+                
+                print("[HL] Clients initialized successfully")
+                return  # Success, exit retry loop
+                
             except Exception as e:
                 error_str = str(e)
                 
