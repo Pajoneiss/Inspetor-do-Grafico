@@ -228,14 +228,32 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
         print(f"[LIVE] action=PLACE_ORDER payload={_format_resp(normalized)}")
         
         # Set leverage if specified
-        leverage = normalized.get("leverage")
+        leverage = float(normalized.get("leverage", 1) or 1)
         margin_mode = normalized.get("margin_mode", "isolated")
         
-        if leverage:
+        if normalized.get("leverage"):
             is_cross = (margin_mode == "cross")
-            lev_resp = hl_client.update_leverage(symbol, leverage, is_cross)
+            lev_resp = hl_client.update_leverage(symbol, int(leverage), is_cross)
             print(f"[LIVE] leverage set: {leverage}x {margin_mode} resp={_format_resp(lev_resp)}")
-        
+            
+        # MARGIN CHECK (Pre-flight)
+        # Get account state
+        account_state = hl_client.get_account_state()
+        if account_state:
+            margin_summary = account_state.get("marginSummary", {})
+            account_value = float(margin_summary.get("accountValue", 0))
+            total_margin_used = float(margin_summary.get("totalMarginUsed", 0))
+            available_margin = account_value - total_margin_used
+            
+            # Required margin = size * price / leverage
+            required_margin = (normalized["size"] * price) / leverage
+            
+            if available_margin < required_margin:
+                print(f"[LIVE][REJECT] PLACE_ORDER {symbol} reason=insufficient_margin available=${available_margin:.2f} needed=${required_margin:.2f} (lev={leverage}x)")
+                return
+            
+            print(f"[LIVE] Margin Check OK: available=${available_margin:.2f} >= needed=${required_margin:.2f}")
+
         # Execute market order
         is_buy = (side == "BUY")
         
