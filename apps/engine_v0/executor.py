@@ -19,6 +19,140 @@ from config import (
 )
 
 
+# ============================================================================
+# BRACKET MANAGER HELPERS (Definitive Order Hygiene)
+# ============================================================================
+
+def _identify_reduce_only_orders(open_orders, symbol):
+    """
+    Identifica TODAS as ordens reduce-only trigger de um símbolo.
+    Não tenta diferenciar SL de TP - cancela TUDO e recria.
+    """
+    triggers = []
+    for o in open_orders:
+        if o.get("coin") == symbol and o.get("reduceOnly") and o.get("triggerPx"):
+            triggers.append(o)
+    return triggers
+
+
+def _cleanup_all_triggers(hl_client, symbol):
+    """
+    Cancela TODAS as ordens reduce-only trigger antes de recriar.
+    Estratégia: Delete ALL, Create 1 (ao invés de tentar identificar qual é qual).
+    Returns: número de ordens canceladas
+    """
+    try:
+        open_orders = hl_client.get_open_orders()
+        triggers = _identify_reduce_only_orders(open_orders, symbol)
+        
+        if triggers:
+            print(f"[BRACKET] Cleaning {len(triggers)} reduce-only triggers for {symbol}")
+            for t in triggers:
+                try:
+                    hl_client.cancel_order(symbol, t["oid"])
+                    print(f"[BRACKET] Canceled oid={t['oid']} trigger_px={t.get('triggerPx')}")
+                except Exception as e:
+                    print(f"[BRACKET][WARN] Failed to cancel {t['oid']}: {e}")
+            
+            import time
+            time.sleep(0.5)  # Propagation delay
+        
+        return len(triggers)
+    except Exception as e:
+        print(f"[BRACKET][ERROR] Cleanup failed for {symbol}: {e}")
+        return 0
+
+
+def _validate_and_adjust_trigger(symbol, trigger_price, position_side, mark_price, tick_sz, is_stop_loss):
+    """
+    Valida trigger price e ajusta se necessário para garantir ordem válida.
+    Returns: (adjusted_trigger, is_valid)
+    """
+    from decimal import Decimal, ROUND_DOWN, ROUND_UP
+    
+    # Quantize to tick
+    tick_decimal = Decimal(str(tick_sz))
+    trigger_decimal = Decimal(str(trigger_price))
+    
+    # Round appropriately
+    if is_stop_loss:
+        # SL: Round conservatively (down for long, up for short)
+        rounding = ROUND_DOWN if position_side == "LONG" else ROUND_UP
+    else:
+        # TP: Round optimistically (up for long, down for short)
+        rounding = ROUND_UP if position_side == "LONG" else ROUND_DOWN
+    
+    quantized = float((trigger_decimal / tick_decimal).quantize(Decimal('1'), rounding=rounding) * tick_decimal)
+    
+    # Validate trigger side with epsilon buffer
+    epsilon = max(float(tick_sz) * 2, mark_price * 0.001)  # 0.1% or 2 ticks
+    
+    if is_stop_loss:
+        if position_side == "LONG":
+            # Must be < mark
+            if quantized >= mark_price:
+                quantized = mark_price - epsilon
+                quantized = float((Decimal(str(quantized)) / tick_decimal).quantize(Decimal('1'), rounding=ROUND_DOWN) * tick_decimal)
+                print(f"[VALIDATE] Adjusted LONG SL from {trigger_price:.2f} to {quantized:.2f} (mark={mark_price:.2f})")
+        else:
+            # Must be > mark
+            if quantized <= mark_price:
+                quantized = mark_price + epsilon
+                quantized = float((Decimal(str(quantized)) / tick_decimal).quantize(Decimal('1'), rounding=ROUND_UP) * tick_decimal)
+                print(f"[VALIDATE] Adjusted SHORT SL from {trigger_price:.2f} to {quantized:.2f} (mark={mark_price:.2f})")
+    else:
+        # TP validation (reject if invalid, don't auto-adjust)
+        if position_side == "LONG":
+            if quantized <= mark_price:
+                print(f"[VALIDATE][REJECT] LONG TP {quantized:.2f} <= mark {mark_price:.2f}")
+                return None, False
+        else:
+            if quantized >= mark_price:
+                print(f"[VALIDATE][REJECT] SHORT TP {quantized:.2f} >= mark {mark_price:.2f}")
+                return None, False
+    
+    return quantized, True
+
+
+def _post_execution_assert(hl_client, symbol, action_type):
+    """
+    Verifica hygiene pós-execução:
+    - Position exists → max 2 triggers (1 SL + 1 TP)
+    - No position → 0 triggers
+    """
+    try:
+        positions = hl_client.get_positions_by_symbol()
+        open_orders = hl_client.get_open_orders()
+        
+        triggers = _identify_reduce_only_orders(open_orders, symbol)
+        
+        has_position = symbol in positions and abs(float(positions[symbol].get("size", 0))) > 0
+        
+        if has_position:
+            # Should have exactly 0-2 triggers (1 SL + 1 TP max)
+            if len(triggers) > 2:
+                print(f"[ASSERT][FAIL] {symbol} has {len(triggers)} triggers (expected <=2) after {action_type}")
+                print(f"[ASSERT] Triggers: {[{'oid': t.get('oid'), 'px': t.get('triggerPx')} for t in triggers]}")
+                # Emergency cleanup
+                print(f"[ASSERT] Emergency cleanup triggered")
+                _cleanup_all_triggers(hl_client, symbol)
+            else:
+                print(f"[ASSERT][OK] {symbol} has {len(triggers)} triggers after {action_type}")
+        else:
+            # No position → should have 0 triggers
+            if triggers:
+                print(f"[ASSERT][CLEANUP] {symbol} has {len(triggers)} orphan triggers (no position)")
+                _cleanup_all_triggers(hl_client, symbol)
+                
+    except Exception as e:
+        print(f"[ASSERT][ERROR] {e}")
+
+
+# ============================================================================
+# EXISTING CODE
+# ============================================================================
+
+
 def _format_resp(resp: Any) -> str:
     """Format response as compact JSON for logging"""
     if isinstance(resp, dict):
@@ -544,96 +678,21 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
         
         constraints = hl_client.get_symbol_constraints(symbol)
         tick_sz = constraints.get("tickSz", 1.0)
-        px_decimals = constraints.get("pxDecimals", 0)
         
-        # Quantize trigger price to tick size
-        from decimal import Decimal, ROUND_DOWN
-        trigger_px_decimal = Decimal(str(stop_price))
-        tick_decimal = Decimal(str(tick_sz))
-        trigger_px_quantized = float((trigger_px_decimal / tick_decimal).quantize(Decimal('1'), rounding=ROUND_DOWN) * tick_decimal)
+        # BRACKET MANAGER: Use validator helper
+        trigger_px_quantized, is_valid = _validate_and_adjust_trigger(
+            symbol, stop_price, position_side, mark_price, tick_sz, is_stop_loss=True
+        )
         
-        if position_side == "LONG":
-            # SL for LONG must be BELOW mark price (sell lower to cut losses)
-            if trigger_px_quantized >= mark_price:
-                print(f"[LIVE][REJECT] SET_STOP_LOSS {symbol} reason=invalid_trigger_side LONG_SL must be < mark (mark={mark_price} trigger={trigger_px_quantized})")
-                return False
-        else:  # SHORT
-            # SL for SHORT must be ABOVE mark price (buy higher to cut losses)
-            if trigger_px_quantized <= mark_price:
-                print(f"[LIVE][REJECT] SET_STOP_LOSS {symbol} reason=invalid_trigger_side SHORT_SL must be > mark (mark={mark_price} trigger={trigger_px_quantized})")
-                return False
+        if not is_valid or trigger_px_quantized is None:
+            print(f"[LIVE][REJECT] SET_STOP_LOSS {symbol} - validation failed")
+            return False
         
         print(f"[LIVE] SET_STOP_LOSS {symbol} stop=${trigger_px_quantized:.2f} size={position_size} side={position_side}")
         
-        # Get open orders for checks
-        open_orders = hl_client.get_open_orders()
-        open_orders_for_symbol = [o for o in open_orders if o.get("coin") == symbol]
-        
-        # PROTECTIVE ORDER MANAGER: Find existing SLs
-        existing_sl_orders = []
-        for o in open_orders_for_symbol:
-            is_reduce = o.get("reduceOnly", False)
-            trig_px = float(o.get("triggerPx", 0) or 0)
-            
-            # Heuristic for SL: 
-            # 1. Must be reduceOnly
-            # 2. Must be trigger
-            # 3. For LONG: Trigger < Mark (roughly) OR Trigger < Entry (if stop loss)
-            # To be safe, we assume any reduceOnly trigger on the "loss" side is a SL.
-            # But "loss side" moves.
-            # Simpler: If LONG, SL is Sell Trigger. If SHORT, SL is Buy Trigger.
-            o_side = o.get("side", "?") # 'A' (Ask/Sell) or 'B' (Bid/Buy)
-            
-            is_sl_candidate = False
-            if position_side == "LONG" and o_side == "A" and is_reduce and trig_px > 0:
-                 # Check if price is below mark (typical SL) or just trust it's SL
-                 # Double check against TP: TP is usually ABOVE mark for LONG.
-                 if trig_px < mark_price: 
-                     is_sl_candidate = True
-                 # Edge case: SL is above mark (locking profit)? That's valid too (Stop Win). 
-                 # But TP is usually "Take Profit Market" or Limit.
-                 # Let's check order type if available. 'OT' (Order Type)? 
-                 # Assuming triggers lower than mark for LONG are SLs.
-                 pass
-
-            # Heuristic v2 (User guidance): 
-            # LONG SL: Trigger < Mark. LONG TP: Trigger > Mark.
-            # This is robust enough for standard conditions.
-            if is_reduce and trig_px > 0:
-                if position_side == "LONG" and trig_px < mark_price:
-                    existing_sl_orders.append(o)
-                elif position_side == "SHORT" and trig_px > mark_price:
-                    existing_sl_orders.append(o)
-
-        # IDEMPOTENT CHECK
-        for sl_order in existing_sl_orders:
-            order_trigger_px = float(sl_order.get("triggerPx", 0))
-            price_diff_pct = abs(order_trigger_px - trigger_px_quantized) / trigger_px_quantized * 100
-            if price_diff_pct < 0.2: # Strict 0.2% tolerance
-                 print(f"[IDEMP] skip SET_STOP_LOSS {symbol} - equivalent SL exists oid={sl_order['oid']} px={order_trigger_px}")
-                 return True
-
-        # REPLACEMENT LOGIC
-        # If we have existing SLs (that didn't match), CANCEL THEM to make room/update
-        if existing_sl_orders:
-            print(f"[SMART] Canceling {len(existing_sl_orders)} old SLs for {symbol} to replace with new ${trigger_px_quantized:.2f}")
-            for sl_to_cancel in existing_sl_orders:
-                try:
-                    hl_client.cancel_order(symbol, sl_to_cancel["oid"])
-                except Exception as e:
-                    print(f"[SMART][WARN] Failed to cancel old SL {sl_to_cancel['oid']}: {e}")
-            # Wait a tick for propagation
-            import time; time.sleep(0.5)
-
-        # CHECK LIMITS AFTER CANCEL
-        # Re-check count (optimistic)
-        # We know we just cancelled len(existing_sl_orders).
-        remaining_count = len(open_orders_for_symbol) - len(existing_sl_orders)
-        
-        if remaining_count >= MAX_OPEN_ORDERS_PER_SYMBOL:
-             print(f"[CIRCUIT] skip SET_STOP_LOSS {symbol} - still full {remaining_count} >= {MAX_OPEN_ORDERS_PER_SYMBOL} (removed {len(existing_sl_orders)} SLs)")
-             # Last resort: Try to cancel OLDEST order if it's not a position?
-             return None
+        # BRACKET MANAGER: Cleanup ALL triggers before creating new one
+        cleaned_count = _cleanup_all_triggers(hl_client, symbol)
+        print(f"[BRACKET] Cleaned {cleaned_count} triggers before SET_STOP_LOSS")
 
         # Place trigger order
         resp = hl_client.place_trigger_order(
@@ -652,6 +711,9 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
             error_msg = _extract_error_message(resp)
             print(f"[LIVE][REJECT] {symbol} exchange_error={error_msg}")
             return False
+        
+        # POST-EXECUTION ASSERT
+        _post_execution_assert(hl_client, symbol, "SET_STOP_LOSS")
         
         _post_verify(hl_client, symbol, "SET_STOP_LOSS")
         return True
