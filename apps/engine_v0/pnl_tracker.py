@@ -1,171 +1,103 @@
 """
-Equity Snapshots Storage for PnL Windows
-Simple JSON-based storage for tracking equity over time.
+PnL Tracker using Hyperliquid Portfolio API
+Real PnL data from the exchange, not calculated from snapshots.
 """
 import os
-import json
 import time
-from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta
+from typing import Dict, Any, Optional
+from datetime import datetime
 
-# Storage file path
-SNAPSHOTS_FILE = os.path.join(os.path.dirname(__file__), "equity_snapshots.json")
-SNAPSHOT_INTERVAL_SECONDS = 300  # 5 minutes
-
-# In-memory cache
-_snapshots: List[Dict[str, Any]] = []
-_last_snapshot_time: float = 0
+# Cache
+_pnl_cache: Optional[Dict[str, Any]] = None
+_pnl_cache_time: float = 0
+PNL_CACHE_TTL = 120  # 2 minutes
 
 
-def _load_snapshots():
-    """Load snapshots from file"""
-    global _snapshots
-    if os.path.exists(SNAPSHOTS_FILE):
-        try:
-            with open(SNAPSHOTS_FILE, 'r') as f:
-                _snapshots = json.load(f)
-                # Clean up old snapshots (keep only last 365 days)
-                cutoff = time.time() - (365 * 24 * 3600)
-                _snapshots = [s for s in _snapshots if s.get("ts", 0) > cutoff]
-        except Exception as e:
-            print(f"[PNL][WARN] Failed to load snapshots: {e}")
-            _snapshots = []
-
-
-def _save_snapshots():
-    """Save snapshots to file"""
-    try:
-        with open(SNAPSHOTS_FILE, 'w') as f:
-            json.dump(_snapshots, f)
-    except Exception as e:
-        print(f"[PNL][WARN] Failed to save snapshots: {e}")
-
-
-def record_equity_snapshot(equity: float, realized_pnl: float = 0):
+def get_pnl_from_hyperliquid(hl_client=None) -> Dict[str, Any]:
     """
-    Record equity snapshot if enough time has passed since last snapshot.
-    
-    Args:
-        equity: Current account equity
-        realized_pnl: Realized PnL (if available)
-    """
-    global _last_snapshot_time, _snapshots
-    
-    now = time.time()
-    if now - _last_snapshot_time < SNAPSHOT_INTERVAL_SECONDS:
-        return  # Not time yet
-    
-    # Load if empty
-    if not _snapshots:
-        _load_snapshots()
-    
-    # Add new snapshot
-    snapshot = {
-        "ts": now,
-        "dt": datetime.now().isoformat(),
-        "equity": equity,
-        "realized": realized_pnl
-    }
-    _snapshots.append(snapshot)
-    _last_snapshot_time = now
-    
-    # Keep last 365 days worth (~105k snapshots at 5min interval)
-    # For safety, limit to 200k entries
-    if len(_snapshots) > 200000:
-        _snapshots = _snapshots[-100000:]
-    
-    _save_snapshots()
-    print(f"[PNL] Snapshot recorded: equity=${equity:.2f}")
-
-
-def get_pnl_windows() -> Dict[str, Dict[str, Any]]:
-    """
-    Calculate PnL for various time windows.
+    Get real PnL from Hyperliquid Portfolio API.
+    Uses caching to avoid excessive API calls.
     
     Returns:
-        {
-            "24h": {"pnl": float, "pnl_pct": float, "start_equity": float},
-            "7d": {...},
-            "30d": {...},
-            "90d": {...},
-            "180d": {...},
-            "365d": {...},
-            "current_equity": float,
-            "unrealized": float
-        }
+        dict with windows: 24h, 7d, 30d, allTime
     """
-    global _snapshots
-    
-    if not _snapshots:
-        _load_snapshots()
-    
-    if not _snapshots:
-        return {
-            "24h": {"pnl": "N/A", "pnl_pct": "N/A"},
-            "7d": {"pnl": "N/A", "pnl_pct": "N/A"},
-            "30d": {"pnl": "N/A", "pnl_pct": "N/A"},
-            "90d": {"pnl": "N/A", "pnl_pct": "N/A"},
-            "180d": {"pnl": "N/A", "pnl_pct": "N/A"},
-            "365d": {"pnl": "N/A", "pnl_pct": "N/A"},
-            "current_equity": "N/A",
-            "unrealized": "N/A"
-        }
+    global _pnl_cache, _pnl_cache_time
     
     now = time.time()
-    current_equity = _snapshots[-1]["equity"] if _snapshots else 0
     
-    windows = {
-        "24h": 24 * 3600,
-        "7d": 7 * 24 * 3600,
-        "30d": 30 * 24 * 3600,
-        "90d": 90 * 24 * 3600,
-        "180d": 180 * 24 * 3600,
-        "365d": 365 * 24 * 3600
-    }
+    # Return cached if fresh
+    if _pnl_cache and now - _pnl_cache_time < PNL_CACHE_TTL:
+        return _pnl_cache
     
-    result = {
-        "current_equity": current_equity,
-        "unrealized": 0  # Will be updated from state
-    }
+    # Need to fetch fresh data
+    if hl_client is None:
+        return _get_empty_pnl("no hl_client")
     
-    for window_name, seconds in windows.items():
-        target_time = now - seconds
+    try:
+        portfolio = hl_client.get_portfolio_pnl()
         
-        # Find closest snapshot to target time
-        closest = None
-        for s in _snapshots:
-            if s["ts"] <= target_time:
-                closest = s
-            else:
-                break
+        if "error" in portfolio:
+            print(f"[PNL][WARN] Portfolio error: {portfolio['error']}")
+            return _get_empty_pnl(portfolio["error"])
         
-        if closest:
-            start_equity = closest["equity"]
-            pnl = current_equity - start_equity
-            pnl_pct = (pnl / start_equity * 100) if start_equity > 0 else 0
-            result[window_name] = {
-                "pnl": pnl,
-                "pnl_pct": pnl_pct,
-                "start_equity": start_equity
-            }
-        else:
-            result[window_name] = {"pnl": "N/A", "pnl_pct": "N/A"}
-    
-    return result
+        result = {
+            "24h": {"pnl": portfolio.get("day", 0), "pnl_pct": "N/A"},
+            "7d": {"pnl": portfolio.get("week", 0), "pnl_pct": "N/A"},
+            "30d": {"pnl": portfolio.get("month", 0), "pnl_pct": "N/A"},
+            "90d": {"pnl": "N/A", "pnl_pct": "N/A"},  # Not directly available
+            "180d": {"pnl": "N/A", "pnl_pct": "N/A"},  # Not directly available
+            "365d": {"pnl": "N/A", "pnl_pct": "N/A"},  # Not directly available
+            "allTime": {"pnl": portfolio.get("allTime", 0), "pnl_pct": "N/A"},
+            "current_equity": "N/A",
+            "unrealized": "N/A",
+            "source": "hyperliquid",
+            "cached_at": datetime.now().isoformat()
+        }
+        
+        # Cache the result
+        _pnl_cache = result
+        _pnl_cache_time = now
+        
+        return result
+        
+    except Exception as e:
+        print(f"[PNL][ERROR] Failed to get PnL: {e}")
+        return _get_empty_pnl(str(e))
+
+
+def _get_empty_pnl(reason: str = "") -> Dict[str, Any]:
+    """Return empty PnL structure with reason"""
+    return {
+        "24h": {"pnl": f"N/A ({reason})" if reason else "N/A", "pnl_pct": "N/A"},
+        "7d": {"pnl": "N/A", "pnl_pct": "N/A"},
+        "30d": {"pnl": "N/A", "pnl_pct": "N/A"},
+        "90d": {"pnl": "N/A", "pnl_pct": "N/A"},
+        "180d": {"pnl": "N/A", "pnl_pct": "N/A"},
+        "365d": {"pnl": "N/A", "pnl_pct": "N/A"},
+        "allTime": {"pnl": "N/A", "pnl_pct": "N/A"},
+        "source": "error"
+    }
+
+
+def get_pnl_windows(hl_client=None) -> Dict[str, Any]:
+    """
+    Main entry point for PnL windows.
+    Alias for get_pnl_from_hyperliquid for backward compatibility.
+    """
+    return get_pnl_from_hyperliquid(hl_client)
 
 
 def format_pnl_windows_for_telegram(pnl_data: Dict[str, Any]) -> str:
     """Format PnL windows for Telegram message"""
     lines = ["📊 *PnL por Janela:*"]
     
-    for window in ["24h", "7d", "30d", "90d", "180d", "365d"]:
+    for window in ["24h", "7d", "30d", "allTime"]:
         data = pnl_data.get(window, {})
         pnl = data.get("pnl", "N/A")
-        pnl_pct = data.get("pnl_pct", "N/A")
         
-        if isinstance(pnl, float):
+        if isinstance(pnl, (int, float)):
             emoji = "🟢" if pnl >= 0 else "🔴"
-            lines.append(f"  {window}: {emoji} ${pnl:+.2f} ({pnl_pct:+.2f}%)")
+            lines.append(f"  {window}: {emoji} ${pnl:+.2f}")
         else:
             lines.append(f"  {window}: {pnl}")
     

@@ -443,6 +443,62 @@ class HLClient:
             traceback.print_exc()
             return []
     
+    def get_portfolio_pnl(self) -> Dict[str, Any]:
+        """
+        Fetch PnL windows from Hyperliquid Portfolio API.
+        Uses POST /info with type "portfolio".
+        
+        Returns:
+            dict with keys: day, week, month, allTime, and history arrays for extended windows
+        """
+        import time
+        try:
+            if not self.wallet_address:
+                return {"error": "No wallet address"}
+            
+            import httpx
+            with httpx.Client(timeout=5.0) as client:
+                resp = client.post(
+                    f"{self.api_url}/info",
+                    json={"type": "portfolio", "user": self.wallet_address}
+                )
+                
+                if resp.status_code != 200:
+                    print(f"[PNL][ERROR] Portfolio API returned {resp.status_code}")
+                    return {"error": f"HTTP {resp.status_code}"}
+                
+                data = resp.json()
+                
+                # Parse the portfolio response
+                # Structure: [[timestamp, {day: {pnl, vlm}, week: {...}, month: {...}, allTime: {...}}], ...]
+                # We want the most recent entry
+                if not data or not isinstance(data, list) or len(data) == 0:
+                    print(f"[PNL][WARN] Empty portfolio response")
+                    return {"error": "Empty response"}
+                
+                latest = data[-1]  # Most recent entry
+                if not isinstance(latest, list) or len(latest) < 2:
+                    return {"error": "Invalid format"}
+                
+                timestamp_ms = latest[0]
+                pnl_data = latest[1]
+                
+                result = {
+                    "timestamp": timestamp_ms,
+                    "day": float(pnl_data.get("day", {}).get("pnl", 0)),
+                    "week": float(pnl_data.get("week", {}).get("pnl", 0)),
+                    "month": float(pnl_data.get("month", {}).get("pnl", 0)),
+                    "allTime": float(pnl_data.get("allTime", {}).get("pnl", 0)),
+                    "raw": pnl_data  # Keep raw for debugging
+                }
+                
+                print(f"[PNL] Portfolio fetched: day=${result['day']:.2f} week=${result['week']:.2f} month=${result['month']:.2f} allTime=${result['allTime']:.2f}")
+                return result
+                
+        except Exception as e:
+            print(f"[PNL][ERROR] get_portfolio_pnl failed: {e}")
+            return {"error": str(e)}
+    
     def get_open_orders(self) -> list:
         """
         Get open orders (MCP-first: using info_client.open_orders)
