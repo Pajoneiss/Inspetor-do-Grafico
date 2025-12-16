@@ -646,8 +646,8 @@ def _execute_close_partial(action, is_paper, hl_client):
     pct = action.get("pct")
     
     if not pct:
-        print(f"[EXEC][ERROR] CLOSE_PARTIAL {symbol} missing pct")
-        return False
+        pct = 0.5  # Default to 50%
+        print(f"[EXEC][WARN] CLOSE_PARTIAL {symbol} missing pct, defaulting to 50%")
     
     if is_paper:
         print(f"[PAPER] CLOSE_PARTIAL {symbol} pct={pct}")
