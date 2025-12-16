@@ -835,14 +835,70 @@ def _post_verify(hl_client, symbol: str, action_type: str) -> None:
 def _execute_close_position(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
     """Execute CLOSE_POSITION action"""
     symbol = action.get("symbol", "?")
-    pct = action.get("pct", 1.0)
+    # v12.4 FIX: Handle None pct - default to 100% close
+    pct = action.get("pct")
+    if pct is None:
+        pct = 1.0  # Default to full close
     order_type = action.get("orderType", "MARKET")
     
     if is_paper:
         print(f"[PAPER] would CLOSE_POSITION {symbol} pct={pct:.1%} type={order_type}")
-    else:
-        print(f"[LIVE] closing position {symbol} pct={pct:.1%}")
-        # TODO: hl_client.close_position_market(symbol, pct)
+        return True
+    
+    # LIVE execution
+    print(f"[LIVE] closing position {symbol} pct={pct:.1%}")
+    
+    try:
+        positions = hl_client.get_positions_by_symbol()
+        if symbol not in positions:
+            print(f"[LIVE][WARN] CLOSE_POSITION {symbol} - no position found")
+            return None
+        
+        position = positions[symbol]
+        position_size = abs(float(position.get("size", 0)))
+        position_side = position.get("side", "LONG")
+        
+        if position_size <= 0:
+            print(f"[LIVE][WARN] CLOSE_POSITION {symbol} - position size is 0")
+            return None
+        
+        # Calculate close size
+        close_size = position_size * pct
+        close_side = "SELL" if position_side == "LONG" else "BUY"
+        
+        # Normalize size
+        constraints = hl_client.get_symbol_constraints(symbol)
+        sz_decimals = constraints.get("szDecimals", 5) if constraints else 5
+        from decimal import Decimal, ROUND_DOWN
+        size_decimal = Decimal(str(close_size))
+        size_factor = Decimal(10) ** sz_decimals
+        normalized_size = float((size_decimal * size_factor).quantize(Decimal('1'), rounding=ROUND_DOWN) / size_factor)
+        
+        if normalized_size <= 0:
+            print(f"[LIVE][WARN] CLOSE_POSITION {symbol} - normalized size is 0")
+            return None
+        
+        print(f"[LIVE] executing close: {close_side} {normalized_size} {symbol} reduce_only=True")
+        
+        is_buy = (close_side == "BUY")
+        resp = hl_client.place_market_order(
+            symbol=symbol,
+            is_buy=is_buy,
+            size=normalized_size,
+            reduce_only=True
+        )
+        print(f"[LIVE] resp={resp}")
+        
+        # Check success
+        if resp and resp.get("status") == "ok":
+            return True
+        return False
+        
+    except Exception as e:
+        print(f"[LIVE][ERROR] CLOSE_POSITION {symbol} failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 
 def _execute_move_stop_to_breakeven(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
