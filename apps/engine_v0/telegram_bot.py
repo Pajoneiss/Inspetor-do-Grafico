@@ -264,6 +264,20 @@ class TelegramBot:
                 if top1['symbol'] != holding:
                     text += f"\n⚖️ *Holding vs Top1:* {holding}={holding_score} vs {top1['symbol']}={top1['score']}\n"
         
+        # PnL Windows (with timeout protection)
+        try:
+            from pnl_tracker import get_pnl_windows, format_pnl_windows_for_telegram
+            
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor() as pool:
+                pnl_data = await loop.run_in_executor(pool, get_pnl_windows)
+            
+            pnl_text = format_pnl_windows_for_telegram(pnl_data)
+            if pnl_text:
+                text += f"\n{escape_md(pnl_text)}\n"
+        except Exception as e:
+            print(f"[TG][WARN] PnL windows fetch failed: {e}")
+        
         # External data (with timeout protection)
         try:
             from data_sources import get_all_external_data, format_external_data_for_telegram
@@ -296,40 +310,76 @@ class TelegramBot:
             return
             
         user_text = update.message.text.lower()
+        user_id = update.effective_user.id
         
-        # Simple intent detection
-        if any(cmd in user_text for cmd in ["abrir long", "comprar", "buy"]):
-            # Extract symbol
-            for sym in ["btc", "eth", "sol", "doge", "xrp"]:
-                if sym in user_text:
-                    await update.message.reply_text(
-                        f"🎯 Comando detectado: LONG {sym.upper()}\n"
-                        "⚠️ Funcionalidade em desenvolvimento"
-                    )
-                    return
-            await update.message.reply_text("❓ Qual símbolo? Ex: 'abrir long em BTC'")
+        # Log incoming chat message
+        print(f"[TG][CHAT] user={user_id} text={user_text[:50]}...")
+        
+        # Intent classification
+        intent = self._classify_intent(user_text)
+        print(f"[TG][CHAT] intent={intent}")
+        
+        if intent == "TRADE_COMMAND":
+            # Admin check for trade commands
+            if not is_admin(user_id):
+                await update.message.reply_text("❌ Apenas admins podem executar trades via chat")
+                return
             
-        elif any(cmd in user_text for cmd in ["abrir short", "vender", "sell"]):
-            for sym in ["btc", "eth", "sol", "doge", "xrp"]:
-                if sym in user_text:
-                    await update.message.reply_text(
-                        f"🎯 Comando detectado: SHORT {sym.upper()}\n"
-                        "⚠️ Funcionalidade em desenvolvimento"
-                    )
-                    return
-            await update.message.reply_text("❓ Qual símbolo? Ex: 'abrir short em ETH'")
+            # Parse trade command
+            action = self._parse_trade_command(user_text)
+            if action:
+                # Queue for execution (will be picked up by main loop)
+                _bot_state["pending_chat_actions"] = _bot_state.get("pending_chat_actions", [])
+                _bot_state["pending_chat_actions"].append(action)
+                
+                await update.message.reply_text(
+                    f"🎯 Comando detectado: {action.get('type', 'UNKNOWN')} {action.get('symbol', '')}\n"
+                    f"📊 Lado: {action.get('side', '?')}\n"
+                    "⏳ Enviado para execução..."
+                )
+                print(f"[TG][CHAT] actions={action}")
+            else:
+                await update.message.reply_text("❓ Não entendi o comando. Exemplos:\n• 'abrir long em BTC'\n• 'abrir short em ETH'")
             
-        elif any(cmd in user_text for cmd in ["fechar tudo", "fechar todas", "close all"]):
+        elif intent == "RISK_COMMAND":
+            # Admin check for risk commands
+            if not is_admin(user_id):
+                await update.message.reply_text("❌ Apenas admins podem executar comandos de risco")
+                return
+            
+            # Ask for confirmation with inline keyboard
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            keyboard = [[
+                InlineKeyboardButton("✅ CONFIRMAR", callback_data="confirm_risk_cmd"),
+                InlineKeyboardButton("❌ Cancelar", callback_data="cancel")
+            ]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            _bot_state["pending_risk_cmd"] = user_text
+            
             await update.message.reply_text(
-                "🚨 Comando: FECHAR TODAS\n"
-                "Use /panic para confirmar"
+                f"⚠️ *Comando de Risco*\n\n"
+                f"Você pediu: {user_text}\n\n"
+                "Confirma a execução?",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
             )
             
-        else:
-            # Generic response (placeholder for LLM chat)
+        elif intent == "QUESTION":
+            # For now, provide helpful response
             await update.message.reply_text(
-                "🤖 Recebi sua mensagem.\n"
-                "Chat com IA em desenvolvimento.\n\n"
+                "🤖 Chat com IA em desenvolvimento.\n\n"
+                "Por enquanto, use:\n"
+                "• /status - ver status atual\n"
+                "• 📊 Resumo Completo - dados detalhados\n"
+                "• 'abrir long em BTC' - executar trade\n"
+                "• /panic - emergência"
+            )
+        
+        else:
+            # Unknown intent
+            await update.message.reply_text(
+                "🤖 Recebi sua mensagem.\n\n"
                 "Comandos suportados:\n"
                 "• 'abrir long em BTC'\n"
                 "• 'abrir short em ETH'\n"
@@ -337,6 +387,58 @@ class TelegramBot:
                 "• /status\n"
                 "• /panic"
             )
+    
+    def _classify_intent(self, text: str) -> str:
+        """Classify user intent from message text"""
+        text = text.lower()
+        
+        # Trade commands
+        trade_keywords = ["abrir", "comprar", "vender", "buy", "sell", "long", "short"]
+        if any(kw in text for kw in trade_keywords):
+            return "TRADE_COMMAND"
+        
+        # Risk commands
+        risk_keywords = ["fechar tudo", "fechar todas", "close all", "liquidar", "panic"]
+        if any(kw in text for kw in risk_keywords):
+            return "RISK_COMMAND"
+        
+        # Questions (contains ?)
+        if "?" in text or any(q in text for q in ["como", "qual", "quanto", "por que", "o que"]):
+            return "QUESTION"
+        
+        return "UNKNOWN"
+    
+    def _parse_trade_command(self, text: str) -> Optional[Dict[str, Any]]:
+        """Parse trade command into action dict"""
+        text = text.lower()
+        
+        # Determine side
+        side = None
+        if any(kw in text for kw in ["long", "comprar", "buy"]):
+            side = "LONG"
+        elif any(kw in text for kw in ["short", "vender", "sell"]):
+            side = "SHORT"
+        
+        if not side:
+            return None
+        
+        # Find symbol
+        symbols = ["btc", "eth", "sol", "doge", "xrp", "ada", "link", "arb", "hype", "bnb"]
+        symbol = None
+        for s in symbols:
+            if s in text:
+                symbol = s.upper()
+                break
+        
+        if not symbol:
+            return None
+        
+        return {
+            "type": "PLACE_ORDER",
+            "symbol": symbol,
+            "side": side,
+            "source": "telegram_chat"
+        }
     
     def stop(self):
         """Stop the bot"""

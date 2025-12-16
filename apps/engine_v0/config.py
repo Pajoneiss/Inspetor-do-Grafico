@@ -56,6 +56,11 @@ TEST_ORDER_SIZE = float(os.getenv("TEST_ORDER_SIZE", "0.001"))
 # TEST_ORDER_SYMBOL will be set to first symbol in SYMBOL list if not specified
 TEST_ORDER_SYMBOL = os.getenv("TEST_ORDER_SYMBOL", "")
 
+# Rotation Configuration (disabled by default)
+ENABLE_ROTATION = os.getenv("ENABLE_ROTATION", "false").lower() == "true"
+ROTATE_MIN_DELTA_SCORE = int(os.getenv("ROTATE_MIN_DELTA_SCORE", "12"))
+ROTATE_CONFIRM_TICKS = int(os.getenv("ROTATE_CONFIRM_TICKS", "3"))
+
 
 def print_config():
     """Print configuration (without secrets)"""
