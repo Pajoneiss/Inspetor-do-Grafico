@@ -848,3 +848,52 @@ class HLClient:
             print(f"[HL][ERROR] place_trigger_order failed: {e}")
             traceback.print_exc()
             return {"status": "error", "response": str(e)}
+    
+    def cancel_order(self, symbol: str, oid) -> bool:
+        """
+        Cancel an open order by OID
+        CRITICAL FIX: This method was MISSING causing bracket manager to fail!
+        
+        Args:
+            symbol: Trading symbol (coin name)
+            oid: Order ID to cancel
+            
+        Returns:
+            bool: True if canceled successfully, False otherwise
+        """
+        try:
+            if not self.exchange_client:
+                print(f"[HL][ERROR] cancel_order - exchange_client not initialized")
+                return False
+            
+            # Convert OID to int if string
+            try:
+                oid_int = int(oid)
+            except (ValueError, TypeError):
+                print(f"[HL][ERROR] cancel_order - invalid OID format: {oid}")
+                return False
+            
+            print(f"[HL] Canceling order symbol={symbol} oid={oid_int}")
+            
+            # SDK cancel signature: cancel(name, oid)
+            response = self.exchange_client.cancel(symbol, oid_int)
+            
+            # Check response status
+            if isinstance(response, dict):
+                status = response.get("status")
+                if status == "ok":
+                    print(f"[HL][OK] Canceled oid={oid_int}")
+                    return True
+                else:
+                    error_msg = response.get("response", "unknown_error")
+                    print(f"[HL][FAIL] Cancel failed oid={oid_int} status={status} error={error_msg}")
+                    return False
+            else:
+                # Some SDKs return None/True on success
+                print(f"[HL][OK] Canceled oid={oid_int} (non-dict response)")
+                return True
+                
+        except Exception as e:
+            print(f"[HL][ERROR] cancel_order({symbol}, {oid}) exception: {e}")
+            traceback.print_exc()
+            return False
