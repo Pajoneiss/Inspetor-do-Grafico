@@ -473,11 +473,34 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
         # Get open orders for checks
         open_orders = hl_client.get_open_orders()
         
-        # CIRCUIT BREAKER: Check total open orders for symbol
+        # CIRCUIT BREAKER & SMART MANAGEMENT
         open_orders_for_symbol = [o for o in open_orders if o.get("coin") == symbol]
         if len(open_orders_for_symbol) >= MAX_OPEN_ORDERS_PER_SYMBOL:
-            print(f"[CIRCUIT] skip SET_STOP_LOSS {symbol} - {len(open_orders_for_symbol)} open orders >= max {MAX_OPEN_ORDERS_PER_SYMBOL}")
-            return None  # Skipped
+            # Try to find existing SL to replace (Upsert)
+            existing_sl = None
+            for o in open_orders_for_symbol:
+                is_reduce = o.get("reduceOnly", False)
+                trig_px = float(o.get("triggerPx", 0) or 0)
+                # Heuristic: SL is usually reduceOnly. For LONG, SL < mark.
+                if is_reduce and trig_px > 0:
+                    if position_side == "LONG" and trig_px < mark_price:
+                        existing_sl = o
+                        break
+                    elif position_side == "SHORT" and trig_px > mark_price:
+                        existing_sl = o
+                        break
+            
+            if existing_sl:
+                print(f"[SMART] Replacing existing SL (oid={existing_sl['oid']}) to make room for new SL")
+                try:
+                    hl_client.cancel_order(symbol, existing_sl["oid"])
+                    # Small delay to ensure cancel propagates inside engine state if needed
+                    import time; time.sleep(0.5) 
+                except Exception as e:
+                    print(f"[SMART][ERROR] Failed to cancel existing SL: {e}")
+            else:
+                print(f"[CIRCUIT] skip SET_STOP_LOSS {symbol} - {len(open_orders_for_symbol)} orders >= max {MAX_OPEN_ORDERS_PER_SYMBOL} (no existing SL to replace)")
+                return None
         
         # IDEMPOTENT CHECK: if similar trigger exists, skip
         for order in open_orders:
@@ -582,11 +605,33 @@ def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) 
         # Get open orders for checks
         open_orders = hl_client.get_open_orders()
         
-        # CIRCUIT BREAKER: Check total open orders for symbol
+        # CIRCUIT BREAKER & SMART MANAGEMENT
         open_orders_for_symbol = [o for o in open_orders if o.get("coin") == symbol]
         if len(open_orders_for_symbol) >= MAX_OPEN_ORDERS_PER_SYMBOL:
-            print(f"[CIRCUIT] skip SET_TAKE_PROFIT {symbol} - {len(open_orders_for_symbol)} open orders >= max {MAX_OPEN_ORDERS_PER_SYMBOL}")
-            return None  # Skipped
+            # Try to find existing TP to replace (Upsert)
+            existing_tp = None
+            for o in open_orders_for_symbol:
+                is_reduce = o.get("reduceOnly", False)
+                trig_px = float(o.get("triggerPx", 0) or 0)
+                # Heuristic: TP is usually reduceOnly. For LONG, TP > mark.
+                if is_reduce and trig_px > 0:
+                    if position_side == "LONG" and trig_px > mark_price:
+                        existing_tp = o
+                        break
+                    elif position_side == "SHORT" and trig_px < mark_price:
+                        existing_tp = o
+                        break
+            
+            if existing_tp:
+                print(f"[SMART] Replacing existing TP (oid={existing_tp['oid']}) to make room for new TP")
+                try:
+                    hl_client.cancel_order(symbol, existing_tp["oid"])
+                    import time; time.sleep(0.5)
+                except Exception as e:
+                    print(f"[SMART][ERROR] Failed to cancel existing TP: {e}")
+            else:
+                print(f"[CIRCUIT] skip SET_TAKE_PROFIT {symbol} - {len(open_orders_for_symbol)} orders >= max {MAX_OPEN_ORDERS_PER_SYMBOL} (no existing TP to replace)")
+                return None
         
         # IDEMPOTENT CHECK: if similar trigger exists, skip
         for order in open_orders:
@@ -662,7 +707,8 @@ def _execute_close_partial(action, is_paper, hl_client):
             return False
         
         position = positions[symbol]
-        position_size = abs(float(position.get("szi", 0)))
+        # CRITICAL FIX: use "size" not "szi"
+        position_size = abs(float(position.get("size", 0)))
         
         if position_size == 0:
             print(f"[LIVE][WARN] CLOSE_PARTIAL {symbol} skipped - zero size")
