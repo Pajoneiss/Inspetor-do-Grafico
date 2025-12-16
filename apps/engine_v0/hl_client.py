@@ -15,6 +15,45 @@ from config import (
 )
 
 
+def quantize_to_tick(price: float, tick_size: float, mode: str = "nearest") -> float:
+    """
+    Quantize price to valid tick size multiple.
+    
+    Args:
+        price: Raw price value
+        tick_size: Exchange tick size (e.g., 0.1, 1.0, 0.01)
+        mode: "nearest" (round to nearest), "down" (floor), "up" (ceil)
+    
+    Returns:
+        Price quantized to exact tick size multiple
+    """
+    from decimal import Decimal, ROUND_HALF_UP, ROUND_DOWN, ROUND_UP
+    
+    if tick_size <= 0:
+        return price
+    
+    price_d = Decimal(str(price))
+    tick_d = Decimal(str(tick_size))
+    
+    # Calculate number of ticks
+    ticks = price_d / tick_d
+    
+    if mode == "nearest":
+        quantized_ticks = ticks.quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+    elif mode == "down":
+        quantized_ticks = ticks.quantize(Decimal('1'), rounding=ROUND_DOWN)
+    elif mode == "up":
+        quantized_ticks = ticks.quantize(Decimal('1'), rounding=ROUND_UP)
+    else:
+        quantized_ticks = ticks.quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+    
+    result = float(quantized_ticks * tick_d)
+    
+    print(f"[TICK] raw={price:.6f} tick={tick_size} quantized={result:.6f} mode={mode}")
+    
+    return result
+
+
 class HLClient:
     """Hyperliquid client for read-only operations"""
     
@@ -813,17 +852,11 @@ class HLClient:
             constraints = self.get_symbol_constraints(symbol)
             tick_sz = constraints.get("tickSz", 0.01)
             
-            # Log tick size for debugging invalid price errors
-            print(f"[HL] {symbol} tickSz={tick_sz} raw_trigger={trigger_px_f}")
-            
-            # Round trigger price to tick size (use ROUND_HALF_UP for valid prices)
-            from decimal import Decimal, ROUND_HALF_UP
-            trigger_px_decimal = Decimal(str(trigger_px_f))
-            tick_decimal = Decimal(str(tick_sz))
-            trigger_px_rounded = float((trigger_px_decimal / tick_decimal).quantize(Decimal('1'), rounding=ROUND_HALF_UP) * tick_decimal)
+            # Use quantize_to_tick helper for robust price normalization
+            trigger_px_rounded = quantize_to_tick(trigger_px_f, tick_sz, mode="nearest")
             
             # Log types for debugging
-            print(f"[HL] place_trigger_order triggerPx type={type(trigger_px_rounded).__name__} val={trigger_px_rounded} size type={type(size_f).__name__} val={size_f}")
+            print(f"[HL] place_trigger_order symbol={symbol} triggerPx={trigger_px_rounded} size={size_f}")
             
             # Build trigger order - CRITICAL: all values must be float/int, NOT string
             # Signature: order(name, is_buy, sz, limit_px, order_type, reduce_only, cloid, builder)
