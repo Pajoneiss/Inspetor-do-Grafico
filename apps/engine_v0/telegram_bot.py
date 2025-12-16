@@ -201,6 +201,15 @@ class TelegramBot:
         elif data == "cancel":
             await query.edit_message_text("❌ Cancelado")
     
+def escape_md(text: str) -> str:
+    """Escape markdown v1 special chars"""
+    return str(text).replace("_", "\\_").replace("*", "\\*").replace("`", "\\`").replace("[", "\\[")
+
+class TelegramBot:
+    # ... (keeps existing init and other methods)
+
+    # ... (keeps _cmd_start, _cmd_status, etc. - we fix _send_full_summary below)
+
     async def _send_full_summary(self, query):
         """Send full summary with all info"""
         state = _bot_state.get("last_summary", {})
@@ -221,24 +230,35 @@ class TelegramBot:
             for sym, pos in positions.items():
                 pnl = pos.get("unrealized_pnl", 0)
                 pnl_emoji = "🟢" if pnl > 0 else "🔴" if pnl < 0 else "⚪"
-                text += f"  {sym}: {pos.get('side')} ${pos.get('size', 0):.4f} | PnL: {pnl_emoji} ${pnl:.2f}\n"
+                safe_sym = escape_md(sym)
+                text += f"  {safe_sym}: {pos.get('side')} ${pos.get('size', 0):.4f} | PnL: {pnl_emoji} ${pnl:.2f}\n"
         else:
             text += "📈 *Posições:* Nenhuma\n"
         
         # Trigger status
-        text += f"\n🎯 *Triggers:*\n{state.get('trigger_status', 'N/A')}\n"
+        triggers = state.get('trigger_status', 'N/A')
+        text += f"\n🎯 *Triggers:*\n{escape_md(triggers)}\n"
         
         # Scan
         if scan:
             text += "\n📡 *Top 5 Score:*\n"
             for s in scan[:5]:
-                text += f"  {s['symbol']}: {s['score']} | {s.get('trend', '?')} | {s.get('reason', '')}\n"
+                sym = escape_md(s['symbol'])
+                score = s['score']
+                trend = escape_md(s.get('trend', '?'))
+                reason = escape_md(s.get('reason', ''))
+                text += f"  {sym}: {score} | {trend} | {reason}\n"
         
         # Truncate if too long
         if len(text) > 4000:
             text = text[:4000] + "..."
         
-        await query.edit_message_text(text, parse_mode="Markdown")
+        try:
+            await query.edit_message_text(text, parse_mode="Markdown")
+        except Exception as e:
+            print(f"[TG][ERROR] Failed to edit message: {e}")
+            # Fallback to plain text if markdown fails
+            await query.edit_message_text(text.replace("*", "").replace("_", "").replace("`", ""), parse_mode=None)
     
     async def _handle_message(self, update, context):
         """Handle free text messages (chat mode)"""
