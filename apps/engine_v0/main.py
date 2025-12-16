@@ -233,9 +233,9 @@ def main():
                         else:
                             be_status = "INACTIVE"
                         
-                        # Build status line
-                        sl_str = f"SL=${sl_price:.2f}" if has_sl else "SL=MISSING!"
-                        tp_str = f"TP=${tp_price:.2f}" if has_tp else "TP=MISSING!"
+                        # Build status line (neutral, no alarm)
+                        sl_str = f"SL=${sl_price:.2f}" if has_sl else "SL=None"
+                        tp_str = f"TP=${tp_price:.2f}" if has_tp else "TP=None"
                         be_str = f"BE={be_status}({pnl_pct:.2f}%)"
                         trigger_status_lines.append(f"  - {pos_symbol}: {sl_str} | {tp_str} | {be_str}")
                         
