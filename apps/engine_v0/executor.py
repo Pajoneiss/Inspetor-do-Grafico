@@ -456,14 +456,14 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
         tick_decimal = Decimal(str(tick_sz))
         trigger_px_quantized = float((trigger_px_decimal / tick_decimal).quantize(Decimal('1'), rounding=ROUND_DOWN) * tick_decimal)
         
-        # VALIDATE TRIGGER SIDE
+        # VALIDATE TRIGGER SIDE (CRITICAL FIX: logic was inverted!)
         if position_side == "LONG":
-            # SL for LONG must be below mark price
+            # SL for LONG must be BELOW mark price (sell lower to cut losses)
             if trigger_px_quantized >= mark_price:
                 print(f"[LIVE][REJECT] SET_STOP_LOSS {symbol} reason=invalid_trigger_side LONG_SL must be < mark (mark={mark_price} trigger={trigger_px_quantized})")
                 return False
         else:  # SHORT
-            # SL for SHORT must be above mark price
+            # SL for SHORT must be ABOVE mark price (buy higher to cut losses)
             if trigger_px_quantized <= mark_price:
                 print(f"[LIVE][REJECT] SET_STOP_LOSS {symbol} reason=invalid_trigger_side SHORT_SL must be > mark (mark={mark_price} trigger={trigger_px_quantized})")
                 return False
