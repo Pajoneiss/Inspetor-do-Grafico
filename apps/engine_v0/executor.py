@@ -470,8 +470,16 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
         
         print(f"[LIVE] SET_STOP_LOSS {symbol} stop=${trigger_px_quantized:.2f} size={position_size} side={position_side}")
         
-        # IDEMPOTENT CHECK: if similar trigger exists, skip
+        # Get open orders for checks
         open_orders = hl_client.get_open_orders()
+        
+        # CIRCUIT BREAKER: Check total open orders for symbol
+        open_orders_for_symbol = [o for o in open_orders if o.get("coin") == symbol]
+        if len(open_orders_for_symbol) >= MAX_OPEN_ORDERS_PER_SYMBOL:
+            print(f"[CIRCUIT] skip SET_STOP_LOSS {symbol} - {len(open_orders_for_symbol)} open orders >= max {MAX_OPEN_ORDERS_PER_SYMBOL}")
+            return None  # Skipped
+        
+        # IDEMPOTENT CHECK: if similar trigger exists, skip
         for order in open_orders:
             if order.get("coin") == symbol:
                 # Check if this is a similar SL trigger
@@ -571,8 +579,16 @@ def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) 
         
         print(f"[LIVE] SET_TAKE_PROFIT {symbol} tp=${trigger_px_quantized:.2f} size={position_size} side={position_side}")
         
-        # IDEMPOTENT CHECK: if similar trigger exists, skip
+        # Get open orders for checks
         open_orders = hl_client.get_open_orders()
+        
+        # CIRCUIT BREAKER: Check total open orders for symbol
+        open_orders_for_symbol = [o for o in open_orders if o.get("coin") == symbol]
+        if len(open_orders_for_symbol) >= MAX_OPEN_ORDERS_PER_SYMBOL:
+            print(f"[CIRCUIT] skip SET_TAKE_PROFIT {symbol} - {len(open_orders_for_symbol)} open orders >= max {MAX_OPEN_ORDERS_PER_SYMBOL}")
+            return None  # Skipped
+        
+        # IDEMPOTENT CHECK: if similar trigger exists, skip
         for order in open_orders:
             if order.get("coin") == symbol:
                 order_trigger_px = float(order.get("triggerPx", 0) or 0)
