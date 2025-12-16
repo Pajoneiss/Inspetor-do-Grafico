@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["python311", "python311Packages.pip"]
+
+[phases.install]
+cmds = ["pip install -r apps/engine_v0/requirements.txt"]
+
+[start]
+cmd = "cd apps/engine_v0 && python main.py"
