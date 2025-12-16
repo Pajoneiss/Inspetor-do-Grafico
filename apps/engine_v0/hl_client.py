@@ -626,7 +626,48 @@ class HLClient:
             print(f"[HL][ERROR] get_funding_info({symbol}) failed: {e}")
             traceback.print_exc()
             return {}
-    
+
+    def get_account_state(self) -> Dict[str, Any]:
+        """
+        Get full account state (wrapper for user_state)
+        Fixes AttributeError: 'HLClient' object has no attribute 'get_account_state'
+        """
+        try:
+            if not self.info_client or not self.wallet_address:
+                return {}
+            
+            return self.info_client.user_state(self.wallet_address)
+        except Exception as e:
+            print(f"[HL][ERROR] get_account_state failed: {e}")
+            return {}
+
+    def close_position(self, symbol: str, size: float) -> Dict[str, Any]:
+        """
+        Close position for a symbol (Market Order reduce-only)
+        Fixes AttributeError: 'HLClient' object has no attribute 'close_position'
+        """
+        try:
+            # Determine side to close
+            positions = self.get_positions_by_symbol()
+            if symbol not in positions:
+                return {"status": "error", "response": "No position found"}
+            
+            pos = positions[symbol]
+            is_buy = (pos["side"] == "SHORT") # Close SHORT by BUYing
+            
+            print(f"[HL] Closing {symbol} {pos['side']} size={size} (is_buy={is_buy})")
+            
+            return self.place_market_order(
+                symbol=symbol,
+                is_buy=is_buy,
+                size=size,
+                reduce_only=True
+            )
+            
+        except Exception as e:
+            print(f"[HL][ERROR] close_position({symbol}) failed: {e}")
+            return {"status": "error", "response": str(e)}
+
     def place_market_order(self, symbol: str, is_buy: bool, size: float, reduce_only: bool = False, slippage: float = None) -> dict:
         """
         Place market order using SDK market_open
