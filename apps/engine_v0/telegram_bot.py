@@ -52,6 +52,11 @@ class TelegramBot:
         
     def start(self):
         """Start bot in background thread"""
+        # SINGLE-START GUARD: prevent multiple starts
+        if self.running or (self._thread and self._thread.is_alive()):
+            print("[TG][WARN] Bot already running, skipping start")
+            return
+            
         if not ENABLE_TELEGRAM or not TELEGRAM_BOT_TOKEN:
             print("[TG] Telegram disabled or no token")
             return
@@ -75,9 +80,10 @@ class TelegramBot:
             print(f"[TG][ERROR] Bot crashed: {e}")
     
     async def _async_main(self):
-        """Async main for telegram bot"""
+        """Async main for telegram bot with conflict retry"""
         from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
         from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters
+        import telegram.error
         
         app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
         
@@ -93,11 +99,29 @@ class TelegramBot:
         
         await app.initialize()
         await app.start()
-        await app.updater.start_polling()
         
-        # Keep running
+        # Retry loop with exponential backoff for Conflict errors
+        retry_delay = 30  # Start with 30s
+        max_retry_delay = 300  # Max 5 minutes
+        
         while self.running:
-            await asyncio.sleep(1)
+            try:
+                await app.updater.start_polling(drop_pending_updates=True)
+                
+                # Keep running - reset retry delay on success
+                retry_delay = 30
+                while self.running:
+                    await asyncio.sleep(1)
+                    
+            except telegram.error.Conflict as e:
+                print(f"[TG][WARN] Conflict error (another instance running?), retrying in {retry_delay}s")
+                await asyncio.sleep(retry_delay)
+                retry_delay = min(retry_delay * 2, max_retry_delay)  # Exponential backoff
+                continue
+            except Exception as e:
+                print(f"[TG][ERROR] Polling error: {e}, retrying in {retry_delay}s")
+                await asyncio.sleep(retry_delay)
+                continue
         
         await app.stop()
     
