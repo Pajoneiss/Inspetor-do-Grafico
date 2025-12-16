@@ -507,6 +507,18 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
     
     # LIVE execution
     try:
+        # GATE 1: Check if position already exists for this symbol
+        positions = hl_client.get_positions_by_symbol()
+        if symbol in positions:
+            pos = positions[symbol]
+            existing_size = abs(float(pos.get("size", 0)))
+            existing_side = pos.get("side", "?")
+            if existing_size > 0:
+                print(f"[LIVE][GATE] PLACE_ORDER {symbol} blocked - position already exists")
+                print(f"[LIVE][GATE] Existing: {existing_side} size={existing_size}")
+                print(f"[LIVE][GATE] Use ADD_TO_POSITION to increase size, not PLACE_ORDER")
+                return False  # Blocked
+        
         # Import normalizer functions
         from normalizer import normalize_place_order
         
@@ -524,6 +536,7 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
         if normalized is None:
             print(f"[REJECT] {symbol} reason={reject_reason}")
             return
+
         
         # Log before execution
         print(f"[LIVE] action=PLACE_ORDER payload={_format_resp(normalized)}")
