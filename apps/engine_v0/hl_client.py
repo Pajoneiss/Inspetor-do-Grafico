@@ -42,8 +42,14 @@ class HLClient:
         self._init_clients()
     
     def _init_clients(self):
-        """Initialize Hyperliquid SDK clients"""
-        try:
+        """Initialize Hyperliquid SDK clients with retry for rate limits"""
+        import time
+        
+        max_retries = 3
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
             print(f"[HL] Initializing clients for {self.network}...")
             print(f"[HL] API URL: {self.api_url}")
             print(f"[HL] Wallet: ***{self.wallet_address[-6:] if self.wallet_address else 'NOT_SET'}")
@@ -62,9 +68,22 @@ class HLClient:
             
             print("[HL] Clients initialized successfully")
             
-        except Exception as e:
-            print(f"[HL][ERROR] Failed to initialize clients: {e}")
-            traceback.print_exc()
+            except Exception as e:
+                error_str = str(e)
+                
+                # Check if rate limited
+                if "429" in error_str or "rate limit" in error_str.lower():
+                    if attempt < max_retries - 1:
+                        wait_time = retry_delay * (2 ** attempt)
+                        print(f"[HL][WARN] Rate limited, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        print(f"[HL][ERROR] Rate limited after {max_retries} attempts")
+                
+                print(f"[HL][ERROR] Failed to initialize clients: {e}")
+                traceback.print_exc()
+                return
     
     def get_account_summary(self) -> Dict[str, Any]:
         """
