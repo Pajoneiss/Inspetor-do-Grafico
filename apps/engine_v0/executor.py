@@ -725,15 +725,39 @@ def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) 
         traceback.print_exc()
 
 
-def _execute_cancel_all(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
-    """Execute CANCEL_ALL action"""
+def _execute_cancel_all(action: Dict[str, Any], is_paper: bool, hl_client) -> bool:
+    """Execute CANCEL_ALL_ORDERS action (Safe)"""
     symbol = action.get("symbol")
     
     if is_paper:
         print(f"[PAPER] would CANCEL_ALL {symbol if symbol else 'all symbols'}")
-    else:
-        print(f"[LIVE] canceling all orders {symbol if symbol else 'all symbols'}")
-        # TODO: hl_client.cancel_all(symbol)
+        return True
+    
+    # LIVE execution
+    if not symbol:
+        print("[LIVE][WARN] CANCEL_ALL requires symbol")
+        return False
+        
+    # Check if there are orders to cancel first
+    try:
+        open_orders = hl_client.get_open_orders()
+        open_orders_for_symbol = [o for o in open_orders if o.get("coin") == symbol]
+        
+        if not open_orders_for_symbol:
+            print(f"[LIVE] CANCEL_ALL_ORDERS {symbol} skipped (0 open orders)")
+            return True
+            
+    except Exception as e:
+        print(f"[LIVE][WARN] failed to check open orders for cancel: {e}")
+    
+    print(f"[LIVE] canceling all orders {symbol}")
+    try:
+        resp = hl_client.cancel_all_orders(symbol)
+        print(f"[LIVE] resp={_format_resp(resp)}")
+        return True
+    except Exception as e:
+        print(f"[LIVE][ERROR] CANCEL_ALL_ORDERS {symbol} failed: {e}")
+        return False
 
 
 def _execute_close_partial(action, is_paper, hl_client):
