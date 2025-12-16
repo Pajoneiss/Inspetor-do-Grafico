@@ -69,8 +69,8 @@ def _identify_reduce_only_orders(open_orders, symbol):
 def _cleanup_all_triggers(hl_client, symbol):
     """
     Cancela TODAS as ordens reduce-only trigger antes de recriar.
-    Estratégia: Delete ALL, Create 1 (ao invés de tentar identificar qual é qual).
-    Returns: número de ordens canceladas
+    CRITICAL FIX: Agora ABORTA se qualquer cancel falhar (evita empilhamento).
+    Returns: número de ordens canceladas (ou -1 se falhou)
     """
     try:
         open_orders = hl_client.get_open_orders()
@@ -84,30 +84,56 @@ def _cleanup_all_triggers(hl_client, symbol):
         
         triggers = _identify_reduce_only_orders(open_orders, symbol)
         
-        if triggers:
-            print(f"[BRACKET] Cleaning {len(triggers)} reduce-only triggers for {symbol}")
-            for t in triggers:
-                try:
-                    oid = t.get("oid") or t.get("id") or t.get("order_id")
-                    if not oid:
-                        print(f"[BRACKET][ERROR] Trigger missing OID: {t}")
-                        continue
-                    
-                    hl_client.cancel_order(symbol, oid)
+        if not triggers:
+            return 0  # Nothing to cancel
+        
+        print(f"[BRACKET] Cleaning {len(triggers)} reduce-only triggers for {symbol}")
+        
+        # CRITICAL: Abort if ANY cancel fails
+        canceled_count = 0
+        failed_cancels = []
+        
+        for t in triggers:
+            try:
+                oid = t.get("oid") or t.get("id") or t.get("order_id")
+                if not oid:
+                    print(f"[BRACKET][ERROR] Trigger missing OID: {t}")
+                    failed_cancels.append("missing_oid")
+                    continue
+                
+                # Call cancel_order (which NOW EXISTS!)
+                success = hl_client.cancel_order(symbol, oid)
+                
+                if success:
+                    canceled_count += 1
                     trigger_info = t.get("triggerPx") or t.get("limitPx") or t.get("order_type") or "unknown"
                     print(f"[BRACKET] Canceled oid={oid} info={trigger_info}")
-                except Exception as e:
-                    print(f"[BRACKET][WARN] Failed to cancel {t.get('oid')}: {e}")
-            
-            import time
-            time.sleep(0.5)  # Propagation delay
+                else:
+                    failed_cancels.append(oid)
+                    print(f"[BRACKET][FAIL] Could not cancel oid={oid}")
+                    
+            except Exception as e:
+                failed_cancels.append(str(e))
+                print(f"[BRACKET][ERROR] Exception canceling {t.get('oid')}: {e}")
         
-        return len(triggers)
+        # ABORT CHECK: If any cancels failed, return error
+        if failed_cancels:
+            print(f"[BRACKET][ABORT] {len(failed_cancels)} cancels failed: {failed_cancels}")
+            print(f"[BRACKET][ABORT] NOT creating new triggers to avoid trigger spam!")
+            return -1  # Signal failure
+        
+        print(f"[BRACKET][OK] Successfully canceled {canceled_count}/{len(triggers)} triggers")
+        
+        import time
+        time.sleep(0.5)  # Propagation delay
+        
+        return canceled_count
+        
     except Exception as e:
         print(f"[BRACKET][ERROR] Cleanup failed for {symbol}: {e}")
         import traceback
         traceback.print_exc()
-        return 0
+        return -1  # Signal failure
 
 
 def _validate_and_adjust_trigger(symbol, trigger_price, position_side, mark_price, tick_sz, is_stop_loss):
