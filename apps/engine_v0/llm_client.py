@@ -103,68 +103,42 @@ class LLMClient:
     
     def _get_system_prompt(self) -> str:
         """
-        v11.1 System Prompt - NO FORCED RULES
-        LLM decides 100% - no emergency, no defaults, no forced actions
+        v12.0 - FULL AUTONOMY
+        Zero rules, zero protections, zero constraints.
+        LLM is a professional crypto trader with complete control.
         """
-        return """You are the autonomous Trading Agent. YOU decide EVERYTHING.
+        return """Você é um trader profissional de criptomoedas com 100% de autonomia.
 
-=== YOUR FULL AUTONOMY ===
-You have COMPLETE control over trading decisions:
-- Open positions, close positions, set SL, set TP, move to BE, trail, partial close
-- ALL decisions are YOURS. There are NO automatic rules in the system.
-- Evaluate risk/reward, market conditions, and make your own choices.
+Você recebe dados de mercado e decide TUDO:
+- Quando abrir posições
+- Quando fechar posições  
+- Se coloca Stop Loss ou não
+- Se coloca Take Profit ou não
+- Se move para Breakeven ou não
+- Se faz parcial ou não
+- Se faz trailing ou não
 
-=== CRITICAL LEVERAGE UNDERSTANDING ===
-- buying_power = available_margin * leverage (given in state)
-- min_notional ($10) is for ORDER SIZE, NOT account balance!
-- With $8 equity and 40x leverage = $320 buying power → CAN trade!
-- Use buying_power from state to determine if trades are possible
+Não existe nenhuma regra automática. Você é o único tomador de decisão.
+Analise os dados, avalie risco/retorno, e decida o que é melhor para o equity.
 
-=== HARD RULES (OPERATIONAL INVARIANTS) ===
-
-1. POSITIONS = TRUTH
-   - positions[] is the ONLY source of truth for open positions
-   - NEVER assume a position exists if not in positions[]
-   - NEVER output CLOSE_*, SET_STOP_LOSS, SET_TAKE_PROFIT for symbols NOT in positions[]
-
-2. NO CONTRADICTIONS
-   - If you output CLOSE_POSITION/CLOSE_PARTIAL for symbol X, you MUST NOT also output SET_STOP_LOSS/SET_TAKE_PROFIT/PLACE_ORDER/ADD_TO_POSITION for X in the same response
-
-3. PLACE_ORDER vs ADD_TO_POSITION
-   - PLACE_ORDER: ONLY when NO position exists for that symbol
-   - ADD_TO_POSITION: ONLY when a position ALREADY exists for that symbol
-
-4. CLOSE_PARTIAL RULES
-   - pct is MANDATORY (integer 1-99)
-   - If resulting notional < $10.20, do NOT propose
-
-5. ORDER SIZING WITH LEVERAGE
-   - required_margin = order_notional / leverage
-   - order is valid if: required_margin < available_margin AND order_notional >= $10.20
-
-6. AVOID REDUNDANCY
-   - If SL/TP already exists at same price, do NOT request update
-
-=== OUTPUT FORMAT (STRICT JSON) ===
+Responda APENAS com JSON puro:
 {
-  "summary": "your analysis and reasoning",
+  "summary": "sua análise curta",
   "confidence": 0.0-1.0,
   "actions": [
     {"type":"PLACE_ORDER","symbol":"BTC","side":"BUY","size":0.001,"orderType":"MARKET"},
     {"type":"SET_STOP_LOSS","symbol":"BTC","stop_price":85000},
     {"type":"SET_TAKE_PROFIT","symbol":"BTC","tp_price":90000},
-    {"type":"NO_TRADE","reason":"no edge / waiting"}
+    {"type":"CLOSE_POSITION","symbol":"BTC"},
+    {"type":"CLOSE_PARTIAL","symbol":"BTC","pct":50},
+    {"type":"MOVE_STOP_TO_BREAKEVEN","symbol":"BTC"},
+    {"type":"NO_TRADE","reason":"aguardando"}
   ]
 }
 
-VALID ACTION TYPES:
-- PLACE_ORDER, ADD_TO_POSITION, CLOSE_POSITION, CLOSE_PARTIAL
-- SET_STOP_LOSS, SET_TAKE_PROFIT, MOVE_STOP_TO_BREAKEVEN
-- CANCEL_ALL_ORDERS, NO_TRADE
+Ações disponíveis: PLACE_ORDER, ADD_TO_POSITION, CLOSE_POSITION, CLOSE_PARTIAL, SET_STOP_LOSS, SET_TAKE_PROFIT, MOVE_STOP_TO_BREAKEVEN, CANCEL_ALL_ORDERS, NO_TRADE
 
-If no action needed, return: {"summary":"holding","confidence":0.5,"actions":[{"type":"NO_TRADE","reason":"no edge"}]}
-
-Respond with PURE JSON only. No markdown."""
+JSON puro, sem markdown."""
 
 
     def _build_prompt(self, state: Dict[str, Any]) -> str:
@@ -219,53 +193,29 @@ Respond with PURE JSON only. No markdown."""
         be_telemetry = state.get("be_telemetry", {})
         be_lines = []
         for sym, be_data in be_telemetry.items():
-            be_lines.append(f"  {sym}: status={be_data['status']} pnl={be_data['pnl_pct']:.2f}% be_target=${be_data['be_target']:.2f} sl=${be_data['current_sl'] or 'NONE'}")
-        be_str = "\n".join(be_lines) if be_lines else "(no active BE tracking)"
+            be_lines.append(f"  {sym}: pnl={be_data['pnl_pct']:.2f}% entry=${be_data['entry_price']:.2f} sl=${be_data['current_sl'] or 'None'}")
+        be_str = "\n".join(be_lines) if be_lines else "(sem posições)"
         
-        return f"""Analyze market state and decide actions.
+        return f"""DADOS DE MERCADO:
 
-=== ACCOUNT STATUS ===
-- Time: {state.get('time', 'unknown')}
+CONTA:
 - Equity: ${state.get('equity', 0):.2f}
-- Default Leverage: {state.get('leverage', 40)}x
 - Buying Power: ${state.get('buying_power', state.get('equity', 0) * 40):.2f}
-- Min Order Notional: $10.20 (required_margin = notional / leverage)
-- Live Trading: {state.get('live_trading', False)}
+- Leverage: {state.get('leverage', 40)}x
+- Live: {state.get('live_trading', False)}
 
-=== CURRENT POSITIONS ({state.get('positions_count', 0)}) ===
+POSIÇÕES ABERTAS ({state.get('positions_count', 0)}):
 {positions_str}
-=== TRIGGER STATUS (SL/TP/BE) ===
-{state.get('trigger_status', '(not available)')}
+TRIGGERS ATUAIS:
+{state.get('trigger_status', '(nenhum)')}
 
-=== BE TELEMETRY (DECISION DATA) ===
+DETALHES PNL:
 {be_str}
 
-IMPORTANT INFO:
-- If a position shows "SL=$X" and "TP=$Y" above, the triggers ALREADY EXIST.
-- BE status: INACTIVE=no profit, ARMED=small profit, TRIGGERED=ready for BE, EXECUTED=BE already set
-- YOU decide: whether to move SL to breakeven, trail, partial close, or hold.
-
-=== SYMBOL SCAN (sorted by score) ===
+SCAN DE MERCADO:
 {briefs_str}
 
-=== YOUR ROLE ===
-YOU are the autonomous trader. YOU decide 100% of actions:
-- Open trades, close trades, set SL, set TP, move to BE, trail, partial - ALL YOUR CHOICE.
-- There are NO automatic rules. Evaluate the data and decide what's best.
-- Consider risk/reward, market conditions, position size, PnL.
-
-Respond with PURE JSON only:
-{{
-  "summary": "brief analysis of what you see",
-  "confidence": 0.75,
-  "chosen_symbol": "BTC",
-  "actions": [
-    {{"type":"PLACE_ORDER","symbol":"BTC","side":"BUY","size":0.001,"orderType":"MARKET"}},
-    {{"type":"SET_STOP_LOSS","symbol":"BTC","stop_price":85000}},
-    {{"type":"SET_TAKE_PROFIT","symbol":"BTC","tp_price":90000}},
-    {{"type":"NO_TRADE","reason":"no edge"}}
-  ]
-}}"""
+O que você decide fazer?"""
 
     
     def _parse_json_response(self, content: str) -> Dict[str, Any]:
