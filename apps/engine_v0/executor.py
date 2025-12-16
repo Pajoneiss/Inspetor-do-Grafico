@@ -227,8 +227,10 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
         # Log before execution
         print(f"[LIVE] action=PLACE_ORDER payload={_format_resp(normalized)}")
         
-        # DEFAULT TARGET LEVERAGE (Safety)
-        target_leverage = int(normalized.get("leverage", 20)) # Default to 20x if not set
+        # DEFAULT TARGET LEVERAGE (Majors 50x, Alts 20x)
+        majors = ["BTC", "ETH", "SOL"]
+        default_lev = 50 if symbol in majors else 20
+        target_leverage = int(normalized.get("leverage", default_lev))
         margin_mode = normalized.get("margin_mode", "isolated")
         
         # 1. ALWAYS ENSURE LEVERAGE/MARGIN MODE
@@ -236,7 +238,6 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
             is_cross = (margin_mode == "cross")
             print(f"[LIVE] Ensuring {target_leverage}x {margin_mode} for {symbol}...")
             hl_client.update_leverage(symbol, target_leverage, is_cross)
-            # Small delay for propagation
             time.sleep(0.5)
         except Exception as e:
             print(f"[LIVE][WARN] Update leverage failed: {e}")
@@ -258,7 +259,14 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
             buying_power = available_margin * target_leverage * 0.90
             
             print(f"[LIVE] Margin Calc: Avail=${available_margin:.2f} Lev={target_leverage}x Power=${buying_power:.2f} Req=${required_notional:.2f}")
-            
+
+            # ADD-ON GATE: Block small adds if no power
+            positions = hl_client.get_positions_by_symbol()
+            if symbol in positions and abs(float(positions[symbol].get("size", 0))) > 0:
+                 if buying_power < 10.0:
+                      print(f"[LIVE][REJECT] Add-on blocked. Available buying power ${buying_power:.2f} < $10 min")
+                      return
+
             if required_notional > buying_power:
                 print(f"[LIVE][WARN] Insufficient buying power for size={current_size} (${required_notional:.2f})")
                 
@@ -435,7 +443,7 @@ def _execute_move_stop_to_breakeven(action: Dict[str, Any], is_paper: bool, hl_c
         print(f"[PAPER] would MOVE_STOP_TO_BREAKEVEN {symbol}")
         return
     
-    # LIVE execution - convert to SET_STOP_LOSS at entry price
+    # LIVE execution - convert to SET_STOP_LOSS with SAFE TRIGGER
     try:
         positions = hl_client.get_positions_by_symbol()
         
@@ -444,9 +452,58 @@ def _execute_move_stop_to_breakeven(action: Dict[str, Any], is_paper: bool, hl_c
             return
         
         position = positions[symbol]
-        entry_price = position["entry_price"]
+        entry_price = float(position["entry_price"])
+        position_size = abs(float(position["size"]))
+        position_side = position["side"] # LONG or SHORT
         
-        print(f"[LIVE] MOVE_STOP_TO_BREAKEVEN {symbol} entry=${entry_price:.2f}")
+        # Get mark price for validation
+        mark_price = hl_client.get_last_price(symbol)
+        if not mark_price:
+            print(f"[LIVE][ERROR] MOVE_STOP_TO_BREAKEVEN {symbol} - failed to get mark price")
+            return
+
+        # Constraints for rounding
+        constraints = hl_client.get_symbol_constraints(symbol)
+        tick_sz = constraints.get("tickSz", 1.0)
+        
+        # Calculate Safe Trigger with Epsilon
+        # Epsilon = 0.05% of mark or 1 tick, whichever is larger
+        epsilon = max(float(tick_sz), mark_price * 0.0005)
+        
+        if position_side == "LONG":
+            # For LONG, SL must be < Mark.
+            # We want BE = Entry. But if Entry >= Mark, we must lower it.
+            # Safe Trigger = min(Entry, Mark - epsilon)
+            raw_trigger = min(entry_price, mark_price - epsilon)
+        else:
+            # For SHORT, SL must be > Mark.
+            # Safe Trigger = max(Entry, Mark + epsilon)
+            raw_trigger = max(entry_price, mark_price + epsilon)
+            
+        # Quantize
+        from decimal import Decimal, ROUND_DOWN, ROUND_UP
+        tick_decimal = Decimal(str(tick_sz))
+        # Round down for LONG SL (safer), Up for SHORT SL? 
+        # Actually standard quantize is fine, but strictly staying on side matters.
+        # Let's use simple quantize.
+        trigger_px = float((Decimal(str(raw_trigger)) / tick_decimal).quantize(Decimal('1'), rounding=ROUND_DOWN) * tick_decimal)
+        
+        print(f"[LIVE] MOVE_STOP_TO_BREAKEVEN {symbol} entry=${entry_price:.2f} mark=${mark_price:.2f} safe_trigger=${trigger_px:.2f}")
+
+        # Construct Action for SET_STOP_LOSS
+        sl_action = {
+            "type": "SET_STOP_LOSS",
+            "symbol": symbol,
+            "stop_price": trigger_px
+        }
+        
+        # Delegate to SET_STOP_LOSS handler (which already has dedupe logic!)
+        _execute_set_stop_loss(sl_action, is_paper, hl_client)
+        
+    except Exception as e:
+        print(f"[LIVE][ERROR] MOVE_STOP_TO_BREAKEVEN {symbol} failed: {e}")
+        import traceback
+        traceback.print_exc()
         
         # Convert to SET_STOP_LOSS action
         set_sl_action = {
