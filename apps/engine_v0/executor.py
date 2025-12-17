@@ -697,11 +697,12 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
             price = float(price)
             current_size = normalized["size"]
             required_notional = current_size * price
+            required_margin = required_notional / target_leverage
             
             # Buying Power = Available Margin * Leverage * Buffer (90%)
             buying_power = available_margin * target_leverage * 0.90
             
-            print(f"[LIVE] Margin Calc: Avail=${available_margin:.2f} Lev={target_leverage}x Power=${buying_power:.2f} Req=${required_notional:.2f}")
+            print(f"[LIVE] Margin Calc: Avail=${available_margin:.2f} Lev={target_leverage}x Power=${buying_power:.2f} Notional=${required_notional:.2f} ReqMargin=${required_margin:.2f}")
 
             # ADD-ON GATE: Block small adds if no power
             positions = hl_client.get_positions_by_symbol()
