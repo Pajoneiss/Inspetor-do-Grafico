@@ -397,6 +397,10 @@ def main():
                                     score -= 5
                                     reasons.append("high ATR")
                                 
+                                # Factor 6: Micro-conviction variance (prevents flat scores)
+                                # RSI distance from 50 (normalized to range -2 to +2)
+                                score += (rsi - 50) * 0.04
+
                                 # Clamp score
                                 score = max(0, min(100, score))
                                 momentum = "STRONG" if rsi > 60 or rsi < 40 else "NEUTRAL"
@@ -411,7 +415,6 @@ def main():
                                 "trend": trend,
                                 "momentum": momentum,
                                 "rsi": round(rsi, 1),
-                                "score": round(score, 0),
                                 "reason": " + ".join(reasons[:2]) if reasons else ""
                             }
                         

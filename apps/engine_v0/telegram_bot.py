@@ -809,6 +809,92 @@ Responda como se VOCÊ fosse o bot operando. Diga "Eu estou...", "Minha posiçã
         text += f"\n📡 Scan: {scan_info.get('scanned', '?')}/{scan_info.get('total', '?')} symbols"
         
         await update.message.reply_text(text, parse_mode="Markdown")
+
+    async def chat_handler(self, update, context):
+        """Handler para o comando /chat"""
+        # Se o usuário apenas digitou /chat sem argumentos, ativa o modo chat
+        if not context.args:
+            _bot_state["chat_mode"] = True
+            await update.message.reply_text(
+                "💬 *Modo Chat Ativado*\n\n"
+                "Você agora pode conversar diretamente comigo sem usar comandos.\n"
+                "Digite sua mensagem ou 'sair' para encerrar.",
+                parse_mode="Markdown"
+            )
+        else:
+            # Se forneceu argumentos, processa como uma pergunta única
+            await self._handle_chat_question(update, ' '.join(context.args))
+
+    async def ajuda_handler(self, update, context):
+        """Handler para o comando /ajuda /help"""
+        text = (
+            "❓ *AJUDA - BOT HYPERLIQUID*\n\n"
+            "*Comandos:* \n"
+            "• /start - Inicia o bot e mostra menu\n"
+            "• /status - Mostra equity e posições\n"
+            "• /chat - Ativa modo de conversa com IA\n"
+            "• /ajuda - Mostra esta mensagem\n"
+            "• /panic - (Admin) Fecha tudo e desliga IA\n\n"
+            "*Botões do Menu:* \n"
+            "• 🤖 IA: ON/OFF - Liga/Desliga trading automático\n"
+            "• 📰 Notícias - Resumo das últimas notícias\n"
+            "• 📊 Resumo - Status completo do mercado\n"
+            "• 💬 Chat - Conversa direta com a IA"
+        )
+        await update.message.reply_text(text, parse_mode="Markdown")
+
+    async def _handle_chat_question(self, update, question):
+        """Processa uma pergunta via chat usando LLM (centralizado)"""
+        try:
+            import openai
+            import os
+            
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                await update.message.reply_text("❌ OpenAI API key não configurada")
+                return
+            
+            client = openai.OpenAI(api_key=api_key)
+            
+            # Get current state for context
+            state = _bot_state.get('last_summary', {})
+            equity = state.get('equity', 0)
+            positions = state.get('positions', {})
+            scan = _bot_state.get('last_scan', [])
+            
+            # Build position details strings
+            pos_text = ""
+            for sym, pos in positions.items():
+                pos_text += f"- {sym}: {pos.get('side')} ${pos.get('size', 0)} | PnL ${pos.get('unrealized_pnl', 0):.2f}\n"
+            if not pos_text: pos_text = "Nenhuma\n"
+
+            system_prompt = f"""Você é o " Ladder Labs IA Trader", um bot profissional operando na Hyperliquid.
+CONTEXTO ATUAL:
+- Equity: ${equity:.2f}
+- Posições: {len(positions)}
+{pos_text}
+- Top 5 Mercado: {', '.join([f"{s['symbol']}:{s['score']}" for s in scan[:5]])}
+
+Responda sempre na PRIMEIRA PESSOA ("Eu", "Meu"). Seja direto, analítico e assertivo. Responda em Português."""
+
+            await update.message.reply_text("💭 Pensando...")
+
+            response = client.chat.completions.create(
+                model=os.getenv("AI_MODEL", "gpt-4o-mini"),
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": question}
+                ],
+                temperature=0.7,
+                max_tokens=400
+            )
+            
+            answer = response.choices[0].message.content.strip()
+            await update.message.reply_text(f"🤖 {answer}")
+            
+        except Exception as e:
+            print(f"[TG][CHAT][ERROR] {e}")
+            await update.message.reply_text(f"❌ Erro ao processar pergunta: {str(e)[:50]}...")
     
     def stop(self):
         """Stop the bot"""

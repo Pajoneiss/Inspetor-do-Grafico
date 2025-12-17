@@ -1,0 +1,49 @@
+/* 
+   Engine V0 - Extreme Proportional Scaling (50%)
+   Using zoom for perfect proportionality of all elements including text and charts.
+*/
+
+html,
+body {
+    zoom: 0.55 !important;
+    /* Slightly more than 50% for better readability */
+    -moz-transform: scale(0.55);
+    -moz-transform-origin: 0 0;
+    width: 182% !important;
+    /* Offset for scale */
+    height: 182% !important;
+    overflow-x: hidden;
+}
+
+/* Fix for overlapping elements when scaled */
+.card,
+div[class*="card"] {
+    margin: 8px !important;
+}
+
+/* Ensure font sizes scale down properly even if hardcoded */
+* {
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Sidebar adjustments for 50% view */
+.sidebar {
+    width: 200px !important;
+    min-width: 200px !important;
+}
+
+/* Header adjustments */
+.header {
+    padding: 10px 20px !important;
+}
+
+/* Re-adjust text sizes to ensure they stay sharp */
+h1,
+h2,
+h3,
+h4,
+.text-xl,
+.text-2xl,
+.text-3xl {
+    letter-spacing: -0.02em !important;
+}

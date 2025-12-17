@@ -662,19 +662,21 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
         
         constraints = hl_client.get_symbol_constraints(symbol)
         
-        # ========== PRE-CHECKS GATE ==========
-        # Validate BEFORE normalization to avoid wasting API calls
-        pre_check_result, pre_check_msg = _pre_check_order(action, price, constraints, hl_client)
-        if not pre_check_result:
-            print(f"[PRE-CHECK][SKIP] {symbol} {pre_check_msg}")
-            return None  # Skipped
-        
-        # Normalize order
+        # Normalize order FIRST (this handles downsizing/formatting)
         normalized, reject_reason = normalize_place_order(action, price, constraints)
         
         if normalized is None:
             print(f"[REJECT] {symbol} reason={reject_reason}")
             return False
+
+        # ========== PRE-CHECKS GATE ==========
+        # Validate AFTER normalization to ensure we check realistic account sizes
+        normalized_action = action.copy()
+        normalized_action["size"] = normalized["size"]
+        pre_check_result, pre_check_msg = _pre_check_order(normalized_action, price, constraints, hl_client)
+        if not pre_check_result:
+            print(f"[PRE-CHECK][SKIP] {symbol} {pre_check_msg}")
+            return None  # Skipped
 
         
         # Log before execution
