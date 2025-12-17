@@ -239,6 +239,57 @@ def api_market():
         })
 
 
+@app.route('/api/cmc/trending')
+def api_cmc_trending():
+    """Get trending coins from CoinMarketCap"""
+    try:
+        from data_sources import fetch_cmc_trending
+        trending = fetch_cmc_trending()
+        return jsonify({
+            "ok": True,
+            "data": trending
+        })
+    except Exception as e:
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/cmc/gainers-losers')
+def api_cmc_gainers_losers():
+    """Get top gainers and losers from CoinMarketCap"""
+    try:
+        from data_sources import fetch_cmc_gainers_losers
+        data = fetch_cmc_gainers_losers()
+        return jsonify({
+            "ok": True,
+            "data": data
+        })
+    except Exception as e:
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/cmc/global')
+def api_cmc_global():
+    """Get enhanced global metrics from CoinMarketCap"""
+    try:
+        from data_sources import fetch_cmc
+        data = fetch_cmc()
+        return jsonify({
+            "ok": True,
+            "data": data
+        })
+    except Exception as e:
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 500
+
+
 @app.route('/api/health')
 def api_health():
     """Health check endpoint"""

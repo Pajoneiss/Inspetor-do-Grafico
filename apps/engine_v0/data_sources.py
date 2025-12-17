@@ -9,9 +9,8 @@ import json
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 
-# API Keys (optional)
-CRYPTOPANIC_API_KEY = os.environ.get("CRYPTOPANIC_API_KEY", "")
-CMC_API_KEY = os.environ.get("CMC_API_KEY", "")
+# Import API keys from config
+from config import CMC_API_KEY, CRYPTOPANIC_API_KEY
 
 # Cache storage
 _cache: Dict[str, Dict[str, Any]] = {}
@@ -204,6 +203,97 @@ def fetch_cmc() -> Dict[str, Any]:
         print(f"[MARKET][WARN] CMC failed: {e}, falling back to CoinGecko")
     
     return fetch_coingecko_global()
+
+
+def fetch_cmc_trending() -> List[Dict[str, Any]]:
+    """
+    Fetch trending coins from CoinMarketCap
+    Returns: [{name, symbol, price, volume_24h, percent_change_24h, market_cap}, ...]
+    """
+    if not CMC_API_KEY:
+        return []
+    
+    cache_key = "cmc_trending"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+    
+    try:
+        import httpx
+        headers = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
+        with httpx.Client(timeout=4.0, headers=headers) as client:
+            resp = client.get("https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/most-visited")
+            if resp.status_code == 200:
+                data = resp.json().get("data", [])
+                trending = []
+                for coin in data[:10]:  # Top 10
+                    quote = coin.get("quote", {}).get("USD", {})
+                    trending.append({
+                        "name": coin.get("name", ""),
+                        "symbol": coin.get("symbol", ""),
+                        "price": quote.get("price", 0),
+                        "volume_24h": quote.get("volume_24h", 0),
+                        "percent_change_24h": quote.get("percent_change_24h", 0),
+                        "market_cap": quote.get("market_cap", 0)
+                    })
+                _set_cache(cache_key, trending, TTL_MARKET)
+                print(f"[CMC] Trending fetched: {len(trending)} coins")
+                return trending
+    except Exception as e:
+        print(f"[CMC][WARN] Trending fetch failed: {e}")
+    
+    return []
+
+
+def fetch_cmc_gainers_losers() -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Fetch top gainers and losers from CoinMarketCap
+    Returns: {gainers: [...], losers: [...]}
+    """
+    if not CMC_API_KEY:
+        return {"gainers": [], "losers": []}
+    
+    cache_key = "cmc_gainers_losers"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+    
+    try:
+        import httpx
+        headers = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
+        with httpx.Client(timeout=4.0, headers=headers) as client:
+            resp = client.get("https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/gainers-losers")
+            if resp.status_code == 200:
+                data = resp.json().get("data", {})
+                
+                gainers = []
+                for coin in data.get("gainers", [])[:5]:  # Top 5
+                    quote = coin.get("quote", {}).get("USD", {})
+                    gainers.append({
+                        "name": coin.get("name", ""),
+                        "symbol": coin.get("symbol", ""),
+                        "price": quote.get("price", 0),
+                        "percent_change_24h": quote.get("percent_change_24h", 0)
+                    })
+                
+                losers = []
+                for coin in data.get("losers", [])[:5]:  # Top 5
+                    quote = coin.get("quote", {}).get("USD", {})
+                    losers.append({
+                        "name": coin.get("name", ""),
+                        "symbol": coin.get("symbol", ""),
+                        "price": quote.get("price", 0),
+                        "percent_change_24h": quote.get("percent_change_24h", 0)
+                    })
+                
+                result = {"gainers": gainers, "losers": losers}
+                _set_cache(cache_key, result, TTL_MARKET)
+                print(f"[CMC] Gainers/Losers fetched: {len(gainers)} gainers, {len(losers)} losers")
+                return result
+    except Exception as e:
+        print(f"[CMC][WARN] Gainers/Losers fetch failed: {e}")
+    
+    return {"gainers": [], "losers": []}
 
 
 def fetch_macro() -> Dict[str, Any]:

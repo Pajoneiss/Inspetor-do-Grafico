@@ -13,6 +13,10 @@ AI_ENABLED = os.getenv("AI_ENABLED", "true").lower() == "true"
 # AI Configuration
 AI_MODEL = os.getenv("AI_MODEL") or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+
+# External APIs
+CMC_API_KEY = os.getenv("CMC_API_KEY", "6356c1e6bffd4582bd013608d544225a")  # CoinMarketCap API key
+CRYPTOPANIC_API_KEY = os.getenv("CRYPTOPANIC_API_KEY", "")
 AI_CALL_INTERVAL_SECONDS = int(os.getenv("AI_CALL_INTERVAL_SECONDS", "30"))  # Legacy fallback
 LLM_MIN_SECONDS = int(os.getenv("LLM_MIN_SECONDS", "5"))  # Minimum between AI calls
 LLM_STATE_CHANGE_THRESHOLD = float(os.getenv("LLM_STATE_CHANGE_THRESHOLD", "0.5"))  # % change to force call
