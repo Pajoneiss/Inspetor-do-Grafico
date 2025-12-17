@@ -174,22 +174,29 @@ export default function AnalyticsPage() {
                                 <div className="card-header">
                                     <span className="card-title">Daily P&L (Last 7 Days)</span>
                                 </div>
-                                <div className="h-48 flex items-end justify-between gap-2 mt-4">
-                                    {data.dailyPnL.map((day, i) => (
-                                        <div key={i} className="flex-1 flex flex-col items-center">
-                                            <div
-                                                className={`w-full rounded-t-lg transition-all ${day.pnl >= 0 ? 'bg-[var(--accent-green)]' : 'bg-[var(--accent-red)]'}`}
-                                                style={{
-                                                    height: `${Math.abs(day.pnl) * 30}px`,
-                                                    minHeight: '4px'
-                                                }}
-                                            ></div>
-                                            <span className="text-xs text-[var(--text-muted)] mt-2">{day.date}</span>
-                                            <span className={`text-xs ${day.pnl >= 0 ? 'text-[var(--accent-green)]' : 'text-[var(--accent-red)]'}`}>
-                                                {day.pnl >= 0 ? '+' : ''}{day.pnl.toFixed(2)}
-                                            </span>
-                                        </div>
-                                    ))}
+                                <div className="h-48 flex items-end justify-between gap-2 mt-4 overflow-hidden">
+                                    {(() => {
+                                        const maxAbsPnl = Math.max(...data.dailyPnL.map(d => Math.abs(d.pnl)), 1);
+                                        return data.dailyPnL.map((day, i) => {
+                                            const heightPercent = (Math.abs(day.pnl) / maxAbsPnl) * 100;
+                                            return (
+                                                <div key={i} className="flex-1 flex flex-col items-center">
+                                                    <div
+                                                        className={`w-full rounded-t-lg transition-all ${day.pnl >= 0 ? 'bg-[var(--accent-green)]' : 'bg-[var(--accent-red)]'}`}
+                                                        style={{
+                                                            height: `${Math.min(heightPercent, 100)}%`,
+                                                            minHeight: '4px',
+                                                            maxHeight: '100%'
+                                                        }}
+                                                    ></div>
+                                                    <span className="text-xs text-[var(--text-muted)] mt-2">{day.date}</span>
+                                                    <span className={`text-xs ${day.pnl >= 0 ? 'text-[var(--accent-green)]' : 'text-[var(--accent-red)]'}`}>
+                                                        {day.pnl >= 0 ? '+' : ''}{day.pnl.toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            );
+                                        });
+                                    })()}
                                 </div>
                             </div>
                         </>

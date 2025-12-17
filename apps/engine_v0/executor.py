@@ -715,15 +715,17 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
         if not success:
             error_msg = _extract_error_message(resp)
             print(f"[LIVE][REJECT] {symbol} exchange_error={error_msg}")
-            return
+            return False
         
         # Post-verification only if successful
         _post_verify(hl_client, symbol, "PLACE_ORDER")
+        return True
         
     except Exception as e:
         print(f"[LIVE][ERROR] PLACE_ORDER {symbol} failed: {e}")
         import traceback
         traceback.print_exc()
+        return False
 
 
 def _parse_response_success(resp: dict) -> bool:
@@ -789,16 +791,62 @@ def _extract_error_message(resp: dict) -> str:
     return "unknown_error"
 
 
+def _reconcile_position(hl_client, symbol: str, max_attempts: int = 5) -> bool:
+    """
+    Reconcile position after order execution with retry logic.
+    Returns True if position/fill confirmed, False otherwise.
+    """
+    retry_delays = [0.25, 0.5, 1.0, 2.0, 3.0]
+    
+    for attempt in range(max_attempts):
+        try:
+            # Get current positions and recent fills
+            positions = hl_client.get_positions_by_symbol()
+            fills = hl_client.get_recent_fills(limit=10)
+            
+            # Check if position exists
+            if symbol in positions:
+                pos = positions[symbol]
+                pos_size = abs(float(pos.get("size", 0)))
+                if pos_size > 0:
+                    print(f"[RECONCILE][OK] {symbol} position confirmed (size={pos_size}) after {attempt+1} attempt(s)")
+                    return True
+            
+            # Check if fill exists for this symbol
+            if fills:
+                recent_fill_symbols = [f.get("coin") for f in fills[:5]]
+                if symbol in recent_fill_symbols:
+                    print(f"[RECONCILE][OK] {symbol} fill confirmed in recent fills after {attempt+1} attempt(s)")
+                    return True
+            
+            # If not last attempt, wait and retry
+            if attempt < max_attempts - 1:
+                delay = retry_delays[attempt]
+                print(f"[RECONCILE][RETRY] {symbol} not found, retrying in {delay}s... (attempt {attempt+1}/{max_attempts})")
+                time.sleep(delay)
+        
+        except Exception as e:
+            print(f"[RECONCILE][ERROR] attempt {attempt+1}: {e}")
+            if attempt < max_attempts - 1:
+                time.sleep(retry_delays[attempt])
+    
+    # All attempts failed
+    print(f"[RECONCILE][WARN] {symbol} not confirmed after {max_attempts} attempts")
+    print(f"[RECONCILE][HINT] Possible causes: min notional, size decimals, margin, leverage")
+    return False
+
+
 def _post_verify(hl_client, symbol: str, action_type: str) -> None:
     """Post-execution verification"""
     try:
-        # Get current positions
-        positions = hl_client.get_positions_by_symbol()
+        # For PLACE_ORDER, use reconciliation with retry
+        if action_type == "PLACE_ORDER":
+            _reconcile_position(hl_client, symbol)
         
-        # Get recent fills
+        # Final verification log (for all action types)
+        positions = hl_client.get_positions_by_symbol()
         fills = hl_client.get_recent_fills(limit=5)
         
-        # Log verification
         positions_count = len(positions)
         positions_compact = {k: f"{v['side']} {v['size']}" for k, v in list(positions.items())[:3]}
         
@@ -813,10 +861,6 @@ def _post_verify(hl_client, symbol: str, action_type: str) -> None:
             print(f"[VERIFY] last_fills={fills_compact}")
         else:
             print(f"[VERIFY] last_fills=[]")
-        
-        # Warning if no position after PLACE_ORDER
-        if action_type == "PLACE_ORDER" and symbol not in positions:
-            print(f"[VERIFY][WARN] No position for {symbol} after LIVE order. Likely reject (min notional/decimals/margin/leverage). Check resp above.")
         
     except Exception as e:
         print(f"[VERIFY][ERROR] {e}")
