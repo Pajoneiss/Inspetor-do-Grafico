@@ -90,9 +90,26 @@ def index():
     return send_from_directory(DASHBOARD_OLD_PATH, 'index.html')
 
 
+@app.route('/_next/<path:subpath>')
+def serve_next_assets(subpath):
+    """Serve Next.js _next static assets (CSS, JS, etc.)"""
+    return send_from_directory(os.path.join(DASHBOARD_NEXT_PATH, '_next'), subpath)
+
+
+@app.route('/ai/')
+def serve_ai_page():
+    """Serve AI page"""
+    if os.path.exists(os.path.join(DASHBOARD_NEXT_PATH, 'ai', 'index.html')):
+        return send_from_directory(os.path.join(DASHBOARD_NEXT_PATH, 'ai'), 'index.html')
+    return "Not found", 404
+
+
 @app.route('/<path:filename>')
-def serve_next_static(filename):
+def serve_static(filename):
     """Serve static files from Next.js build or fallback dashboard"""
+    # Skip API routes
+    if filename.startswith('api/'):
+        return "Not found", 404
     # Try Next.js build first
     if os.path.exists(DASHBOARD_NEXT_PATH):
         next_file = os.path.join(DASHBOARD_NEXT_PATH, filename)
