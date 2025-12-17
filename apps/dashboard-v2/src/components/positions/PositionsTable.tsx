@@ -22,71 +22,79 @@ interface PositionsTableProps {
 export default function PositionsTable({ positions, loading }: PositionsTableProps) {
     if (loading) {
         return (
-            <div className="bg-dark-card rounded-xl border border-dark-border p-4 animate-pulse">
-                <div className="h-4 w-32 bg-dark-border rounded mb-4" />
-                <div className="space-y-3">
-                    {[1, 2, 3].map(i => <div key={i} className="h-8 bg-dark-border rounded" />)}
+            <div className="glass rounded-2xl p-6 animate-pulse">
+                <div className="h-4 w-32 bg-white/5 rounded-full mb-6" />
+                <div className="space-y-4">
+                    {[1, 2, 3].map(i => <div key={i} className="h-10 bg-white/5 rounded-xl" />)}
                 </div>
             </div>
         )
     }
 
     return (
-        <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
-            <div className="px-4 py-3 border-b border-dark-border flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-text-primary">Open Positions</span>
-                    <span className="px-1.5 py-0.5 bg-dark-border rounded text-[10px] font-bold text-text-muted">{positions.length}</span>
+        <div className="glass rounded-2xl overflow-hidden animate-in">
+            <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between bg-white/5 backdrop-blur-md">
+                <div className="flex items-center gap-3">
+                    <span className="text-sm font-black text-[var(--color-text-primary)] uppercase tracking-widest">Active Fleet</span>
+                    <span className="px-2 py-0.5 bg-[var(--color-accent-cyan)]/10 text-[var(--color-accent-cyan)] rounded-full text-[10px] font-black neon-glow-cyan">{positions.length}</span>
                 </div>
-                <div className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
-                    Total uPnL: <span className={positions.reduce((a, b) => a + b.unrealizedPnl, 0) >= 0 ? 'text-profit' : 'text-loss'}>
-                        ${positions.reduce((a, b) => a + b.unrealizedPnl, 0).toFixed(2)}
+                <div className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase tracking-widest">
+                    Fleet uPnL: <span className={`text-sm tracking-tighter ml-2 ${positions.reduce((a, b) => a + b.unrealizedPnl, 0) >= 0 ? 'text-[var(--color-profit)] neon-glow-emerald' : 'text-[var(--color-loss)] neon-glow-ruby'}`}>
+                        ${positions.reduce((a, b) => a + b.unrealizedPnl, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                 </div>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-[11px] border-collapse">
                     <thead>
-                        <tr className="bg-dark-bg/30 text-text-muted uppercase tracking-tighter text-[9px] font-bold border-b border-dark-border">
-                            <th className="text-left px-4 py-2">Symbol</th>
-                            <th className="text-left px-2 py-2">Side</th>
-                            <th className="text-right px-2 py-2">Size</th>
-                            <th className="text-right px-2 py-2">Entry</th>
-                            <th className="text-right px-2 py-2">Mark</th>
-                            <th className="text-right px-2 py-2">uPnL</th>
-                            <th className="text-right px-2 py-2">ROE</th>
-                            <th className="text-right px-4 py-2">SL / TP</th>
+                        <tr className="bg-white/5 text-[var(--color-text-muted)] uppercase tracking-widest text-[9px] font-black border-b border-white/5">
+                            <th className="text-left px-6 py-4">Symbol</th>
+                            <th className="text-left px-2 py-4">Side</th>
+                            <th className="text-right px-2 py-4">Size</th>
+                            <th className="text-right px-2 py-4">Entry</th>
+                            <th className="text-right px-2 py-4">Mark</th>
+                            <th className="text-right px-2 py-4">uPnL</th>
+                            <th className="text-right px-2 py-4">ROE</th>
+                            <th className="text-right px-6 py-4">Execution Guard</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-white/5">
                         {!positions.length ? (
                             <tr>
-                                <td colSpan={8} className="text-center py-8 text-text-muted italic">No open positions found</td>
+                                <td colSpan={8} className="text-center py-12 text-[var(--color-text-muted)] font-medium italic opacity-50">No active positions currently patrolling.</td>
                             </tr>
                         ) : (
                             positions.map((p, i) => (
-                                <tr key={i} className="border-b border-dark-border/50 hover:bg-dark-border/10 transition-colors">
-                                    <td className="px-4 py-2.5 font-bold text-text-primary">{p.symbol}</td>
-                                    <td className="px-2 py-2.5">
-                                        <span className={`px-1.5 py-0.5 rounded-[3px] font-black text-[9px] ${p.side.toLowerCase() === 'long' ? 'bg-profit/10 text-profit border border-profit/20' : 'bg-loss/10 text-loss border border-loss/20'
+                                <tr key={i} className="group hover:bg-white/5 transition-all duration-300">
+                                    <td className="px-6 py-4 font-black text-sm text-[var(--color-text-primary)] tracking-tight">{p.symbol}</td>
+                                    <td className="px-2 py-4">
+                                        <span className={`px-2 py-1 rounded-md font-black text-[9px] tracking-widest ${p.side.toLowerCase() === 'long' ? 'bg-[var(--color-profit)]/10 text-[var(--color-profit)] border border-[var(--color-profit)]/20 shadow-[0_0_10px_rgba(0,255,136,0.1)]' : 'bg-[var(--color-loss)]/10 text-[var(--color-loss)] border border-[var(--color-loss)]/20 shadow-[0_0_10px_rgba(255,59,105,0.1)]'
                                             }`}>
                                             {p.side.toUpperCase()}
                                         </span>
                                     </td>
-                                    <td className="px-2 py-2.5 text-right font-medium text-text-secondary">
-                                        {p.size.toFixed(4)} {p.leverage && <span className="text-[9px] opacity-50 px-1 bg-dark-border rounded">{p.leverage}x</span>}
+                                    <td className="px-2 py-4 text-right font-bold text-[var(--color-text-secondary)]">
+                                        {p.size.toFixed(4)} {p.leverage && <span className="text-[9px] opacity-70 px-1.5 py-0.5 bg-white/10 rounded ml-1">{p.leverage}x</span>}
                                     </td>
-                                    <td className="px-2 py-2.5 text-right text-text-muted">${p.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                    <td className="px-2 py-2.5 text-right text-text-secondary">${p.markPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                    <td className={`px-2 py-2.5 text-right font-bold ${p.unrealizedPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
+                                    <td className="px-2 py-4 text-right text-[var(--color-text-muted)] font-medium">${p.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                    <td className="px-2 py-4 text-right text-[var(--color-text-secondary)] font-semibold">${p.markPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                    <td className={`px-2 py-4 text-right font-black text-sm tracking-tighter ${p.unrealizedPnl >= 0 ? 'text-[var(--color-profit)] text-glow' : 'text-[var(--color-loss)] text-glow'}`}>
                                         ${p.unrealizedPnl.toFixed(2)}
                                     </td>
-                                    <td className={`px-2 py-2.5 text-right font-bold ${p.roe >= 0 ? 'text-profit' : 'text-loss'}`}>
+                                    <td className={`px-2 py-4 text-right font-black text-sm tracking-tighter ${p.roe >= 0 ? 'text-[var(--color-profit)]' : 'text-[var(--color-loss)]'}`}>
                                         {p.roe.toFixed(2)}%
                                     </td>
-                                    <td className="px-4 py-2.5 text-right flex flex-col items-end">
-                                        <div className="text-[10px] font-bold text-loss">{p.stopLoss ? `$${p.stopLoss.toLocaleString()}` : '--'}</div>
-                                        <div className="text-[10px] font-bold text-profit">{p.takeProfit ? `$${p.takeProfit.toLocaleString()}` : '--'}</div>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex flex-col items-end gap-1">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-[8px] font-black text-[var(--color-loss)] opacity-50 uppercase">SL</span>
+                                                <span className="text-[11px] font-black text-[var(--color-loss)] opacity-90">{p.stopLoss ? `$${p.stopLoss.toLocaleString()}` : '--'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-[8px] font-black text-[var(--color-profit)] opacity-50 uppercase">TP</span>
+                                                <span className="text-[11px] font-black text-[var(--color-profit)] opacity-90">{p.takeProfit ? `$${p.takeProfit.toLocaleString()}` : '--'}</span>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                             ))

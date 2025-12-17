@@ -229,19 +229,84 @@ SCAN DE MERCADO (TOP SIGNALS):
 O que você decide fazer? Pense como um gestor de fundo de hedge."""
 
     def _parse_json_response(self, content: str) -> Dict[str, Any]:
-        """Parse JSON response from AI"""
-        try:
-            # Try direct parse
-            return json.loads(content)
-        except json.JSONDecodeError:
-            # Try to extract JSON
-            start = content.find("{")
-            end = content.rfind("}") + 1
-            if start >= 0 and end > start:
-                try:
-                    return json.loads(content[start:end])
-                except:
-                    pass
+        """
+        Parse JSON response from AI with robust repair for truncation
+        """
+        if not content:
+            return {"summary": "empty_response", "confidence": 0.0, "actions": []}
             
-            print(f"[LLM][ERROR] invalid_json: {content[:100]}")
+        try:
+            # 1. Clean markdown if present
+            clean_content = content.replace("```json", "").replace("```", "").strip()
+            
+            # 2. Try direct parse
+            try:
+                return json.loads(clean_content)
+            except json.JSONDecodeError:
+                pass
+                
+            # 3. Robust Extraction and Repair
+            # Find first { and last }
+            start = clean_content.find("{")
+            if start < 0:
+                print(f"[LLM][ERROR] No JSON object found in response")
+                return {"summary": "no_json_found", "confidence": 0.0, "actions": []}
+                
+            json_str = clean_content[start:]
+            
+            # Try to fix truncated JSON
+            # Count braces and brackets
+            open_braces = json_str.count("{")
+            close_braces = json_str.count("}")
+            open_brackets = json_str.count("[")
+            close_brackets = json_str.count("]")
+            
+            # If truncated in the middle of a string or array
+            temp_str = json_str
+            
+            # Fix unclosed quotes in the last line if any
+            lines = temp_str.split('\n')
+            if lines:
+                last_line = lines[-1]
+                if last_line.count('"') % 2 != 0:
+                    lines[-1] = last_line + '"'
+                temp_str = '\n'.join(lines)
+            
+            # Add missing closing symbols
+            while open_brackets > close_brackets:
+                temp_str += "]"
+                close_brackets += 1
+            while open_braces > close_braces:
+                temp_str += "}"
+                close_braces += 1
+                
+            # Try parsing the repaired string
+            try:
+                return json.loads(temp_str)
+            except json.JSONDecodeError as e:
+                # If still failing, try to find the last valid object boundary
+                # This is a last resort "best effort"
+                last_comma = temp_str.rfind(",")
+                if last_comma > 0:
+                    retry_str = temp_str[:last_comma].strip()
+                    # Re-balance after truncation
+                    o_br = retry_str.count("{")
+                    c_br = retry_str.count("}")
+                    o_bk = retry_str.count("[")
+                    c_bk = retry_str.count("]")
+                    while o_bk > c_bk:
+                        retry_str += "]"
+                        c_bk += 1
+                    while o_br > c_br:
+                        retry_str += "}"
+                        c_br += 1
+                    try:
+                        return json.loads(retry_str)
+                    except:
+                        pass
+            
+            print(f"[LLM][ERROR] Failed to repair JSON: {content[:100]}...")
             return {"summary": "invalid_json", "confidence": 0.0, "actions": []}
+        except Exception as e:
+            print(f"[LLM][ERROR] Json parser exception: {e}")
+            return {"summary": "parser_error", "confidence": 0.0, "actions": []}

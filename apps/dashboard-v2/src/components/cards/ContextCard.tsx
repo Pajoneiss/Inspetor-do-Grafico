@@ -100,32 +100,33 @@ export default function ContextCard({ market, scanner, aiThinking, loading }: Co
     }
 
     const renderAI = () => (
-        <div className="py-2 space-y-2">
-            <div className="bg-dark-bg/50 border border-dark-border p-2 rounded-lg">
-                <div className="text-[9px] font-bold text-accent-cyan uppercase mb-1">Latest Decision</div>
-                <div className="text-xs text-text-primary font-medium leading-tight">
-                    {aiThinking?.objective || 'Analyzing current market regime...'}
+        <div className="py-2 space-y-3">
+            <div className="bg-white/5 border border-white/5 p-3 rounded-xl backdrop-blur-md">
+                <div className="text-[9px] font-black text-[var(--color-accent-cyan)] uppercase mb-1.5 tracking-widest text-glow">Intelligence Flow</div>
+                <div className="text-xs text-[var(--color-text-primary)] font-medium leading-relaxed">
+                    {aiThinking?.objective || 'Calibrating risk parameters against current market volatility...'}
                 </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-                <div className="bg-dark-bg/30 p-2 rounded border border-dark-border/50">
-                    <div className="text-[8px] font-bold text-text-muted uppercase mb-0.5">Confidence</div>
-                    <div className="text-sm font-bold text-text-primary">{(aiThinking?.confidence || 0.85 * 100).toFixed(0)}%</div>
+            <div className="grid grid-cols-2 gap-3">
+                <div className="glass p-3 rounded-xl">
+                    <div className="text-[8px] font-bold text-[var(--color-text-muted)] uppercase mb-1 tracking-wider">Confidence</div>
+                    <div className="text-sm font-black text-[var(--color-text-primary)] tracking-tight">{(aiThinking?.confidence || 0.85 * 100).toFixed(0)}%</div>
                 </div>
-                <div className="bg-dark-bg/30 p-2 rounded border border-dark-border/50">
-                    <div className="text-[8px] font-bold text-text-muted uppercase mb-0.5">Regime</div>
-                    <div className="text-sm font-bold text-accent-cyan">{aiThinking?.tags?.regime || 'Trending'}</div>
+                <div className="glass p-3 rounded-xl">
+                    <div className="text-[8px] font-bold text-[var(--color-text-muted)] uppercase mb-1 tracking-wider">Regime</div>
+                    <div className="text-sm font-black text-[var(--color-accent-cyan)] neon-glow-cyan px-2 py-0.5 rounded-md bg-[var(--color-accent-cyan)]/10 w-fit">{aiThinking?.tags?.regime || 'Trending'}</div>
                 </div>
             </div>
-            <div className="text-[10px] text-text-muted italic leading-snug">
-                Next review: {(aiThinking?.next_check || '3m 42s')}
+            <div className="text-[10px] text-[var(--color-text-muted)] font-medium italic flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent-cyan)] animate-pulse shadow-[0_0_5px_currentColor]" />
+                Next iteration: {(aiThinking?.next_check || '2m 14s')}
             </div>
         </div>
     )
 
     return (
-        <div className="bg-dark-card rounded-xl border border-dark-border flex flex-col h-full overflow-hidden">
-            <div className="flex border-b border-dark-border bg-dark-bg/30">
+        <div className="glass rounded-2xl flex flex-col h-full overflow-hidden animate-in">
+            <div className="flex border-b border-white/5 bg-white/5 backdrop-blur-md">
                 <TabButton active={activeTab === 'sentiment'} label="Sentiment" onClick={() => setActiveTab('sentiment')} />
                 <TabButton active={activeTab === 'scanner'} label="Scanner" onClick={() => setActiveTab('scanner')} />
                 <TabButton active={activeTab === 'ai'} label="AI Insight" onClick={() => setActiveTab('ai')} />
@@ -133,9 +134,9 @@ export default function ContextCard({ market, scanner, aiThinking, loading }: Co
             <div className="p-4 flex-1">
                 {loading ? (
                     <div className="h-full flex flex-col gap-4 animate-pulse">
-                        <div className="h-4 w-1/2 bg-dark-border rounded" />
-                        <div className="h-20 w-full bg-dark-border rounded" />
-                        <div className="h-10 w-full bg-dark-border rounded" />
+                        <div className="h-4 w-1/2 bg-white/5 rounded" />
+                        <div className="h-20 w-full bg-white/5 rounded" />
+                        <div className="h-10 w-full bg-white/5 rounded" />
                     </div>
                 ) : (
                     <>

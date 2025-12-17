@@ -54,22 +54,28 @@ export default function Sidebar({ activePage }: SidebarProps = {}) {
                         <Link
                             key={item.id}
                             href={item.href}
-                            className={`sidebar-item ${isActive ? 'active' : ''}`}
+                            className={`sidebar-item group ${isActive ? 'active shadow-[0_0_20px_rgba(0,229,255,0.15)] bg-white/5' : ''}`}
                         >
-                            <Icon className="w-5 h-5" />
-                            <span>{item.label}</span>
+                            <Icon className={`w-5 h-5 transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-[var(--accent-cyan)]' : ''}`} />
+                            <span className={isActive ? 'font-bold' : ''}>{item.label}</span>
+                            {isActive && (
+                                <div className="ml-auto w-1 h-4 rounded-full bg-[var(--accent-cyan)] shadow-[0_0_10px_var(--accent-cyan)]" />
+                            )}
                         </Link>
                     );
                 })}
             </nav>
 
             {/* Bot Status */}
-            <div className="p-4 border-t border-[var(--border)]">
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-[var(--bg-card)]">
-                    <div className="status-dot" />
+            <div className="p-4 mt-auto border-t border-[var(--border)]">
+                <div className="flex items-center gap-3 p-4 rounded-2xl glass glass-hover">
+                    <div className="relative">
+                        <div className="status-dot" />
+                        <div className="absolute inset-0 status-dot blur-sm opacity-50" />
+                    </div>
                     <div>
-                        <p className="text-xs font-medium text-[var(--text-primary)]">Bot Running</p>
-                        <p className="text-[10px] text-[var(--text-muted)]">GLOBAL_IA Mode</p>
+                        <p className="text-[11px] font-bold text-[var(--text-primary)] tracking-tight">Active Engine</p>
+                        <p className="text-[10px] font-medium text-[var(--accent-green)] opacity-80 uppercase tracking-wider">Operational</p>
                     </div>
                 </div>
             </div>

@@ -669,16 +669,6 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
             print(f"[REJECT] {symbol} reason={reject_reason}")
             return False
 
-        # ========== PRE-CHECKS GATE ==========
-        # Validate AFTER normalization to ensure we check realistic account sizes
-        normalized_action = action.copy()
-        normalized_action["size"] = normalized["size"]
-        pre_check_result, pre_check_msg = _pre_check_order(normalized_action, price, constraints, hl_client)
-        if not pre_check_result:
-            print(f"[PRE-CHECK][SKIP] {symbol} {pre_check_msg}")
-            return None  # Skipped
-
-        
         # Log before execution
         print(f"[LIVE] action=PLACE_ORDER payload={_format_resp(normalized)}")
         
@@ -719,7 +709,7 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
                  if buying_power < 10.0:
                       print(f"[LIVE][REJECT] Add-on blocked. Available buying power ${buying_power:.2f} < $10 min")
                       return
-
+            
             if required_notional > buying_power:
                 print(f"[LIVE][WARN] Insufficient buying power for size={current_size} (${required_notional:.2f})")
                 
@@ -749,6 +739,15 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
             if available_margin < required_margin:
                  print(f"[LIVE][REJECT] Still insufficient margin after adjust. Avail=${available_margin:.2f} Need=${required_margin:.2f}")
                  return
+
+        # ========== PRE-CHECKS GATE ==========
+        # Validate AFTER normalization AND dynamic sizing to ensure we check realistic account sizes
+        normalized_action = action.copy()
+        normalized_action["size"] = normalized["size"]
+        pre_check_result, pre_check_msg = _pre_check_order(normalized_action, price, constraints, hl_client)
+        if not pre_check_result:
+            print(f"[PRE-CHECK][SKIP] {symbol} {pre_check_msg}")
+            return None  # Skipped
         
         # Execute market order
         is_buy = (side == "BUY")
