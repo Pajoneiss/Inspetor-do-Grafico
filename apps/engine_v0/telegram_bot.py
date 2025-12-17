@@ -183,75 +183,7 @@ class TelegramBot:
         
         await update.message.reply_text(text, parse_mode="Markdown")
     
-    async def chat_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Chat with the AI about its strategy and reasoning"""
-        if not context.args:
-            await update.message.reply_text(
-                "Usage: /chat <your question>\n\n"
-                "Example: /chat como você decide usar leverage?\n"
-                "Example: /chat qual seu estilo de trading?"
-            )
-            return
-        
-        question = ' '.join(context.args)
-        
-        try:
-            # Import here to avoid circular dependency
-            from llm_client import LLMClient
-            from config import OPENAI_API_KEY, AI_MODEL
-            
-            llm_client = LLMClient(api_key=OPENAI_API_KEY, model=AI_MODEL)
-            
-            # Build context
-            context_parts = [f"User question: {question}"]
-            
-            # Get current state if available
-            state = get_bot_state() # Use the global get_bot_state function
-            equity = state.get('last_summary', {}).get('equity', 0)
-            positions = state.get('last_summary', {}).get('positions', {})
-            context_parts.append(f"Current equity: ${equity:.2f}")
-            context_parts.append(f"Open positions: {len(positions)}")
-            
-            # Call OpenAI
-            import openai
-            client = openai.OpenAI(api_key=OPENAI_API_KEY)
-            
-            response = client.chat.completions.create(
-                model=AI_MODEL or "gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": """You are "Ladder Labs IA Trader", a professional discretionary crypto derivatives trader.
-
-YOUR IDENTITY:
-- Professional trader operating on Hyperliquid mainnet
-- Use multi-timeframe analysis for decision-making
-- Focus on risk-adjusted returns, not just wins
-- Manage stops dynamically based on market structure (2-5% for volatile assets, 1-3% for BTC)
-- Calculate position size based on equity and risk ($10-50 notional for small accounts)
-- Use leverage strategically (1-50x) based on conviction, system auto-caps to exchange limits
-
-Answer questions about your trading style, reasoning, and strategy in Portuguese or English.
-Be specific, honest, and concise."""
-                    },
-                    {
-                        "role": "user",
-                        "content": question
-                    }
-                ],
-                temperature=0.7,
-                max_tokens=300
-            )
-            
-            answer = response.choices[0].message.content.strip()
-            await update.message.reply_text(f"🤖 {answer}")
-            
-        except Exception as e:
-            print(f"[TG] Chat error: {e}")
-            await update.message.reply_text(f"❌ Erro no chat: {str(e)}")
-    
-    
-    async def resumo_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def _cmd_panic(self, update, context):
         """Handle /panic command - emergency close all"""
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
         
