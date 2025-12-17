@@ -165,7 +165,7 @@ OUTPUT FORMAT (STRICT JSON ONLY - NO MARKDOWN)
       "side": "BUY" | "SELL" | "LONG" | "SHORT" | null,
       "size": <calculate based on risk/equity, suggest $10-50 notional>,
       "price": <null for MARKET, specific price for LIMIT>,
-      "stop_price": <entry +/- (2-5% for volatile, 1-3% for BTC)>,
+      "stop_price": <calculate based on market structure and support/resistance>,
       "tp_price": <null or specific target based on R:R>,
       "leverage": <1-50x based on conviction and volatility>,
       "reason": "short, specific justification"
