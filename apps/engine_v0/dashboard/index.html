@@ -471,11 +471,23 @@
             }).format(value);
         }
 
-        // Format time ago
-        function timeAgo(isoString) {
-            if (!isoString) return '-';
-            const date = new Date(isoString);
-            const seconds = Math.floor((new Date() - date) / 1000);
+        // Format time ago - uses epoch ms for robustness
+        function timeAgo(epochMsOrIso, serverTimeMs) {
+            if (!epochMsOrIso) return '-';
+
+            let timestampMs;
+            if (typeof epochMsOrIso === 'number') {
+                timestampMs = epochMsOrIso;
+            } else {
+                // Fallback: parse ISO string (ensure UTC by appending Z if missing)
+                const isoStr = epochMsOrIso.endsWith('Z') ? epochMsOrIso : epochMsOrIso + 'Z';
+                timestampMs = new Date(isoStr).getTime();
+            }
+
+            // Use server time if available for accuracy, else client time
+            const referenceMs = serverTimeMs || Date.now();
+            const seconds = Math.max(0, Math.floor((referenceMs - timestampMs) / 1000));
+
             if (seconds < 60) return `${seconds}s ago`;
             if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
             if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
@@ -492,7 +504,12 @@
                     document.getElementById('equity').textContent = formatCurrency(data.equity);
                     document.getElementById('buyingPower').textContent = formatCurrency(data.buying_power);
                     document.getElementById('positionsCount').textContent = data.positions_count;
-                    document.getElementById('lastUpdate').textContent = timeAgo(data.last_update);
+
+                    // Use ms epoch for accurate time display
+                    document.getElementById('lastUpdate').textContent = timeAgo(
+                        data.last_update_ms || data.last_update,
+                        data.server_time_ms
+                    );
 
                     const statusDot = document.getElementById('statusDot');
                     const statusText = document.getElementById('statusText');
