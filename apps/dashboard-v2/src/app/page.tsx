@@ -122,7 +122,7 @@ export default function DashboardPage() {
       <Sidebar />
 
       {/* Main Content */}
-      <main className="ml-[240px] flex-1">
+      <main className="main-content">
         {/* Header */}
         <Header
           wallet="0x...04bA24"

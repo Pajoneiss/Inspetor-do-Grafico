@@ -65,7 +65,8 @@ export function AiThoughts() {
                 const res = await fetch(`${API_BASE}/api/ai/thoughts?limit=50`);
                 if (res.ok) {
                     const json = await res.json();
-                    if (json.ok && json.data) {
+                    // Only update if we got actual data, otherwise keep mock
+                    if (json.ok && json.data && json.data.length > 0) {
                         setThoughts(json.data);
                     }
                 }
@@ -176,8 +177,8 @@ export function AiThoughts() {
                                 </div>
                                 <div className="flex items-center gap-1">
                                     <span className={`text-xs font-medium ${thought.confidence >= 0.8 ? 'text-[var(--profit)]' :
-                                            thought.confidence >= 0.6 ? 'text-[var(--accent-cyan)]' :
-                                                'text-[var(--text-muted)]'
+                                        thought.confidence >= 0.6 ? 'text-[var(--accent-cyan)]' :
+                                            'text-[var(--text-muted)]'
                                         }`}>
                                         {Math.round(thought.confidence * 100)}%
                                     </span>

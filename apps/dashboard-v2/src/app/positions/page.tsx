@@ -71,7 +71,7 @@ export default function PositionsPage() {
     return (
         <div className="min-h-screen flex">
             <Sidebar activePage="positions" />
-            <main className="ml-[240px] flex-1">
+            <main className="main-content">
                 <Header lastUpdate={lastUpdate} onRefresh={() => window.location.reload()} />
 
                 <div className="p-6">

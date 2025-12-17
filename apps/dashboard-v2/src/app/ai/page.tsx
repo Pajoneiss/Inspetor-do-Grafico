@@ -13,7 +13,7 @@ export default function AiPage() {
         <div className="min-h-screen flex">
             <Sidebar />
 
-            <main className="ml-[240px] flex-1">
+            <main className="main-content">
                 <Header
                     wallet="0x...04bA24"
                     network="mainnet"

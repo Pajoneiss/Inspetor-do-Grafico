@@ -189,6 +189,13 @@ body {
   align-items: center;
 }
 
+/* Main content area - offset from sidebar */
+.main-content {
+  margin-left: 240px;
+  flex: 1;
+  min-height: 100vh;
+}
+
 /* =========================================
    Badge Styles
    ========================================= */

@@ -118,7 +118,7 @@ export default function LogsPage() {
     return (
         <div className="min-h-screen flex">
             <Sidebar activePage="logs" />
-            <main className="ml-[240px] flex-1">
+            <main className="main-content">
                 <Header lastUpdate={lastUpdate} onRefresh={() => window.location.reload()} />
 
                 <div className="p-6">
@@ -137,8 +137,8 @@ export default function LogsPage() {
                                     key={f}
                                     onClick={() => setFilter(f)}
                                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${filter === f
-                                            ? 'bg-[var(--accent-cyan)] text-[var(--bg-primary)]'
-                                            : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                                        ? 'bg-[var(--accent-cyan)] text-[var(--bg-primary)]'
+                                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                                         }`}
                                 >
                                     {f.charAt(0).toUpperCase() + f.slice(1)}

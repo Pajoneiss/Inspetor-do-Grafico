@@ -95,6 +95,30 @@ class LLMClient:
             
             print(f'[LLM] decision actions={actions_count} summary="{summary}" conf={confidence:.2f}')
             
+            # Send to dashboard API for AI Thoughts feed
+            try:
+                from dashboard_api import add_ai_thought
+                symbols = list(set([a.get("symbol", "ALL") for a in actions if a.get("symbol")]))
+                if not symbols:
+                    symbols = ["ALL"]
+                thought = {
+                    "symbols": symbols,
+                    "summary": summary,
+                    "confidence": confidence,
+                    "actions": [
+                        {
+                            "type": a.get("type", "UNKNOWN"),
+                            "symbol": a.get("symbol", "ALL"),
+                            "status": "executed" if a.get("type") != "NO_TRADE" else "skipped",
+                            "reason": a.get("reason", "")
+                        }
+                        for a in actions
+                    ]
+                }
+                add_ai_thought(thought)
+            except Exception as e:
+                print(f"[LLM] Failed to add thought to dashboard: {e}")
+            
             return decision
             
         except Exception as e:
