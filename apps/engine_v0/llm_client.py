@@ -159,6 +159,14 @@ WHEN POSITIONS EXIST
 - If you choose HOLD, it must be because: (a) no actionable edge with the given data, or (b) best action is to wait for a specific trigger.
 - If position is open, consider proactive management: tighten/loosen stop based on structure, move to breakeven when justified, partial take at levels, cancel stale orders, adjust TP to realistic levels, hedge if regime flips.
 
+ANTI-CHURN INTELLIGENCE
+- BEFORE opening a new position, check recent trade history. If you JUST closed this same symbol/side profitably in the last 5-10 minutes, ask yourself:
+  - Has the setup MEANINGFULLY improved? (e.g., new breakout, regime shift, volatility spike)
+  - Or am I just re-entering because score is still high?
+- Avoid "score chasing" - a high scan score alone is NOT enough if nothing changed since last exit.
+- If uncertain whether to re-enter, prefer HOLD and wait for a clear catalyst (candle close, level break, etc.).
+- **EXCEPTION:** If you took profit because target was hit AND price continues in your favor through a new level, re-entry is valid.
+
 ORDER/EXECUTION HYGIENE
 - Prefer actions that are idempotent and stable across 10s ticks:
   - Avoid constantly moving orders every tick unless the price meaningfully moved or a candle closed / regime changed.
