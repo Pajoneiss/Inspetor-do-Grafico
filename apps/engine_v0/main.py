@@ -24,6 +24,7 @@ from config import (
 )
 from hl_client import HLClient
 from executor import execute
+from data_sources import get_all_external_data
 
 # v11.0: Telegram bot integration
 try:
@@ -107,6 +108,8 @@ def main():
     last_state_hash = None  # For state-based throttle
     last_equity = 0.0  # Track equity changes
     rotate_offset = 0  # For ROTATE mode
+    last_external_fetch = 0  # For data_sources throttle
+    external_data = {}
 
     
     try:
@@ -440,6 +443,17 @@ def main():
                         traceback.print_exc()
                         # Continue without vision data - don't crash
                     
+                    # v12.7: Fetch external data (F&G, News, Macro) - Throttle to 5 mins
+                    if current_time - last_external_fetch > 300:
+                        try:
+                            print("[DATA] Fetching external market data (F&G, Macro, News)...")
+                            external_data = get_all_external_data()
+                            last_external_fetch = current_time
+                        except Exception as e:
+                            print(f"[DATA][ERROR] Failed to fetch external data: {e}")
+                    
+                    state["market_data"] = external_data
+                    
                     # Log Hyperliquid status
                     prices_ok = len(prices)
                     positions_symbols = list(positions_by_symbol.keys())
@@ -485,9 +499,11 @@ def main():
                                 },
                                 "positions": dashboard_positions,
                                 "market": {
-                                    "fear_greed": market_data.get("fear_greed", 50),
-                                    "btc_dominance": market_data.get("btc_dominance", 0),
-                                    "top_symbols": top_syms
+                                    "fear_greed": external_data.get("fear_greed", {}).get("value", 50),
+                                    "btc_dominance": external_data.get("market", {}).get("btc_dominance", 0),
+                                    "top_symbols": top_syms,
+                                    "macro": external_data.get("macro", {}),
+                                    "news": external_data.get("news", [])[:5]
                                 }
                             })
                         except Exception as e:
