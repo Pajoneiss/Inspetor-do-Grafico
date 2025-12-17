@@ -10,16 +10,16 @@ interface MetricProps {
 }
 
 const KpiCard = ({ label, value, delta, deltaColor, loading }: MetricProps) => (
-    <div className="glass glass-hover rounded-xl p-4 flex flex-col justify-between animate-in">
-        <div className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-[0.1em] font-bold">{label}</div>
-        <div className="flex items-baseline gap-2 mt-2">
+    <div className="glass glass-hover rounded-xl p-4 flex flex-col justify-between animate-in min-h-[88px]">
+        <div className="text-[11px] text-[var(--color-text-secondary)] uppercase tracking-[0.12em] font-semibold mb-2">{label}</div>
+        <div className="flex items-baseline gap-2">
             {loading ? (
-                <div className="h-8 w-24 bg-[var(--glass-border)] animate-pulse rounded-md" />
+                <div className="h-9 w-28 bg-[var(--glass-border)] animate-pulse rounded-lg" />
             ) : (
                 <>
-                    <span className="text-2xl font-black text-[var(--color-text-primary)] tracking-tighter">{value}</span>
+                    <span className="text-3xl font-black text-[var(--color-text-primary)] tracking-tight leading-none">{value}</span>
                     {delta !== undefined && (
-                        <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md ${deltaColor === 'profit' ? 'bg-[var(--color-accent-green)]/10 text-[var(--color-accent-green)] neon-glow-emerald' :
+                        <span className={`text-xs font-bold px-2 py-1 rounded-md ${deltaColor === 'profit' ? 'bg-[var(--color-accent-green)]/10 text-[var(--color-accent-green)] neon-glow-emerald' :
                             deltaColor === 'loss' ? 'bg-[var(--color-loss)]/10 text-[var(--color-loss)] neon-glow-ruby' : 'bg-white/5 text-[var(--color-text-muted)]'
                             }`}>
                             {delta}
@@ -72,7 +72,7 @@ export default function MetricStrip({ account, loading }: MetricStripProps) {
     ]
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 mb-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-4">
             {metrics.map((m, i) => (
                 <KpiCard key={i} {...m} loading={loading} />
             ))}

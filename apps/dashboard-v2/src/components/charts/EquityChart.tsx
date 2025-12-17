@@ -19,13 +19,22 @@ const Card = ({ children, className = '' }: { children: React.ReactNode; classNa
 export default function EquityChart({ data, loading }: EquityChartProps) {
     if (loading || !data?.length) {
         return (
-            <Card className="h-full min-h-[350px] flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="relative">
-                        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-[var(--color-accent-cyan)]" />
-                        <div className="absolute inset-0 animate-pulse rounded-full h-10 w-10 border-2 border-[var(--color-accent-cyan)]/20 shadow-[0_0_15px_var(--color-accent-cyan)]" />
+            <Card className="h-full min-h-[350px]">
+                <div className="flex flex-col h-full">
+                    {/* Header Skeleton */}
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex flex-col gap-2">
+                            <div className="h-3 w-32 bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer rounded" />
+                            <div className="h-8 w-40 bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer rounded-lg" />
+                        </div>
+                        <div className="flex gap-1.5 p-1 rounded-xl bg-white/5 border border-white/5">
+                            {['24H', '1W', '1M', 'All'].map(r => (
+                                <div key={r} className="w-12 h-7 bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer rounded-lg" />
+                            ))}
+                        </div>
                     </div>
-                    <span className="text-[var(--color-text-muted)] text-[10px] font-black uppercase tracking-widest animate-pulse">Syncing Equity Core...</span>
+                    {/* Chart Skeleton */}
+                    <div className="flex-1 w-full bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer rounded-xl" />
                 </div>
             </Card>
         )

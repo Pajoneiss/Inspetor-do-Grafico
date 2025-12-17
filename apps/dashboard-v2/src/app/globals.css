@@ -53,18 +53,18 @@
   --gradient-purple: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
   --gradient-ocean: linear-gradient(135deg, #2E3192 0%, #1BFFFF 100%);
 
-  /* Glassmorphism */
-  --glass-bg: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  /* Glassmorphism - IMPROVED VISIBILITY */
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
 
-  /* Shadows */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.25);
-  --shadow-glow-green: 0 0 20px rgba(124, 255, 107, 0.3);
-  --shadow-glow-red: 0 0 20px rgba(255, 107, 107, 0.3);
-  --shadow-glow-cyan: 0 0 20px rgba(77, 215, 255, 0.3);
+  /* Shadows - ENHANCED */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-glow-green: 0 0 24px rgba(124, 255, 107, 0.4);
+  --shadow-glow-red: 0 0 24px rgba(255, 107, 107, 0.4);
+  --shadow-glow-cyan: 0 0 24px rgba(77, 215, 255, 0.4);
 }
 
 /* Typography */
