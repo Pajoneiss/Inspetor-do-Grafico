@@ -9,9 +9,20 @@ import threading
 from datetime import datetime, timezone
 from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
+from openai import OpenAI
 
 # State file for persistence
 STATE_FILE = os.path.join(os.path.dirname(__file__), "dashboard_state.json")
+
+# OpenAI client for AI chat
+openai_client = None
+try:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        openai_client = OpenAI(api_key=api_key)
+        print("[DASHBOARD] OpenAI client initialized for chat")
+except Exception as e:
+    print(f"[DASHBOARD] OpenAI init failed: {e}")
 
 # Create Flask app
 app = Flask(__name__, static_folder='dashboard', static_url_path='')
@@ -329,7 +340,7 @@ def api_ai_thoughts():
 
 @app.route('/api/ai/ask', methods=['POST'])
 def api_ai_ask():
-    """Answer questions about the bot (READ-ONLY, blocks commands)"""
+    """Chat with the AI about its strategy and reasoning"""
     data = request.get_json() or {}
     question = data.get('question', '').strip()
     
@@ -343,35 +354,105 @@ def api_ai_ask():
             "message": "Trading commands (buy, sell, open, close, etc.) are only allowed via Telegram."
         }), 400
     
-    # Simple Q&A responses
+    # If OpenAI not available, fallback to basic FAQ
+    if not openai_client:
+        with _state_lock:
+            state = _dashboard_state.copy()
+        
+        question_lower = question.lower()
+        
+        if any(word in question_lower for word in ['equity', 'balance', 'saldo']):
+            equity = state.get('account', {}).get('equity', 0)
+            answer = f"Your current equity is ${equity:.2f}"
+        elif any(word in question_lower for word in ['position', 'posição']):
+            positions = state.get('positions', [])
+            if positions:
+                symbols = ", ".join([p.get('symbol', '?') for p in positions])
+                answer = f"You have {len(positions)} open positions: {symbols}"
+            else:
+                answer = "You have no open positions."
+        else:
+            answer = "I can answer questions about your equity and positions. For more detailed analysis, OpenAI integration is needed."
+        
+        return jsonify({"ok": True, "answer": answer, "server_time_ms": int(time.time() * 1000)})
+    
+    # Get current state for context
     with _state_lock:
         state = _dashboard_state.copy()
     
-    question_lower = question.lower()
+    # Build context for AI
+    equity = state.get('account', {}).get('equity', 0)
+    positions = state.get('positions', [])
+    market = state.get('market', {})
     
-    if any(word in question_lower for word in ['equity', 'balance', 'saldo', 'quanto']):
-        equity = state.get('account', {}).get('equity', 0)
-        buying_power = state.get('account', {}).get('buying_power', 0)
-        answer = f"Your current equity is ${equity:.2f} with buying power of ${buying_power:.2f}."
-    elif any(word in question_lower for word in ['position', 'posição', 'posicao']):
-        positions = state.get('positions', [])
-        if positions:
-            symbols = ", ".join([p.get('symbol', '?') for p in positions])
-            answer = f"You have {len(positions)} open positions: {symbols}"
-        else:
-            answer = "You have no open positions."
-    elif any(word in question_lower for word in ['status', 'running', 'funcionando']):
-        status = state.get('engine_status', 'unknown')
-        update = state.get('last_update', 'N/A')
-        answer = f"Engine is {status}. Last update: {update}."
-    else:
-        answer = "I can answer questions about your equity, positions, and bot status. For trading commands, please use Telegram."
+    context_parts = [
+        f"Current equity: ${equity:.2f}",
+        f"Open positions: {len(positions)}"
+    ]
     
-    return jsonify({
-        "ok": True,
-        "answer": answer,
-        "server_time_ms": int(time.time() * 1000)
-    })
+    if positions:
+        for p in positions[:3]:  # Max 3 positions in context
+            context_parts.append(
+                f"- {p.get('symbol')}: {p.get('side')} {p.get('size')} @ ${p.get('entry_price', 0):.2f}"
+            )
+    
+    if market:
+        fear_greed = market.get('fear_greed', 50)
+        context_parts.append(f"Fear & Greed: {fear_greed}")
+    
+    context = "\n".join(context_parts)
+    
+    # Call OpenAI with AI identity
+    try:
+        response = openai_client.chat.completions.create(
+            model=os.getenv("AI_MODEL", "gpt-4o-mini"),
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"""You are "Ladder Labs IA Trader", a professional discretionary crypto derivatives trader.
+
+YOUR IDENTITY:
+- Professional trader operating on Hyperliquid mainnet
+- Use multi-timeframe analysis for decision-making
+- Focus on risk-adjusted returns, not just wins
+- Manage stops dynamically based on market structure and support/resistance
+- Calculate position size based on account equity and risk tolerance ($10-50 notional for small accounts)
+- Use leverage strategically (1-50x) based on conviction and volatility
+- System auto-caps leverage to exchange limits if you exceed them
+- For volatile assets (ETH, SOL), you use 2-5% stop distance
+- For BTC, you use 1-3% stop distance
+- You consider swing levels and structure when placing stops
+
+YOUR CURRENT STATE:
+{context}
+
+Answer questions about your trading style, reasoning, and strategy.
+Be specific and honest. If you don't have enough data to answer, say so.
+Keep answers concise and practical."""
+                },
+                {
+                    "role": "user",
+                    "content": question
+                }
+            ],
+            temperature=0.7,
+            max_tokens=300
+        )
+        
+        answer = response.choices[0].message.content.strip()
+        
+        return jsonify({
+            "ok": True,
+            "answer": answer,
+            "server_time_ms": int(time.time() * 1000)
+        })
+        
+    except Exception as e:
+        print(f"[DASHBOARD] AI chat error: {e}")
+        return jsonify({
+            "error": "AI chat failed",
+            "message": str(e)
+        }), 500
 
 
 def run_dashboard_server(port: int = 8080, host: str = "0.0.0.0"):
