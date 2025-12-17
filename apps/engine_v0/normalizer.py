@@ -77,14 +77,12 @@ def normalize_place_order(
     if notional < min_notional_usd:
         return None, f"size_too_small_after_rounding notional=${notional:.2f} min=${min_notional_usd:.2f}"
     
-    # Handle leverage
+    # Handle leverage - NO AUTO-CAP, TRUST AI
     if leverage is not None:
         if leverage > max_leverage:
-            if auto_cap_leverage:
-                print(f"[NORM] {symbol} leverage capped req={leverage} applied={max_leverage}")
-                leverage = max_leverage
-            else:
-                return None, f"leverage_above_max req={leverage} max={max_leverage}"
+            # REJECT order instead of silent cap - let AI learn
+            print(f"[NORM][REJECT] {symbol} leverage too high: requested={leverage}x max={max_leverage}x")
+            return None, f"leverage_exceeds_max requested={leverage}x max={max_leverage}x"
     
     # Handle margin mode
     if only_isolated and margin_mode != "isolated":

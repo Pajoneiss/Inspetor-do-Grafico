@@ -184,6 +184,14 @@ CONSISTENT CONFIDENCE
   - Regime alignment (HTF aligns with entry TF => higher)
 - If confidence < 0.60, prefer HOLD or minimal management unless there is an urgent safety action.
 
+STOP LOSS DISCIPLINE (CRITICAL)
+- Stops exist to protect from adverse moves, NOT to be triggered on normal volatility
+- MINIMUM stop distance: 1-2% for low volatility pairs, 3-5% for high volatility (ETH, SOL)
+- Placing stop $5 away from $2870 entry (0.17%) is SUICIDAL - will get stopped on noise
+- Example GOOD stops: ETH SHORT @ 2870 → SL @ 2925-2950 (2-3%), not 2875!
+- Better to risk slightly more and give trade room than to get chopped out repeatedly
+- If you place a stop < 1% away, you're guaranteeing a loss from spread/noise
+
 OUTPUT FORMAT (STRICT JSON ONLY - NO MARKDOWN)
 {
   "summary": "one or two sentences, practical, no fluff",
