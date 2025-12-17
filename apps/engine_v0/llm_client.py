@@ -215,9 +215,63 @@ IMPORTANT
 - Pure JSON only, no markdown blocks, no ```json```.
 - LEVERAGE: You decide leverage per trade (1-50x). Include "leverage" field in PLACE_ORDER/ADD_TO_POSITION actions."""
 
+    
+    def _build_trading_prompt(self, state: Dict[str, Any]) -> str:
+        """Build comprehensive trading prompt from state"""
+        prompt_parts = []
+        
+        # Core state
+        prompt_parts.append(f"## Current State")
+        prompt_parts.append(f"Equity: ${state.get('equity', 0):.2f}")
+        prompt_parts.append(f"Buying Power: ${state.get('buying_power', 0):.2f}")
+        
+        # Positions
+        positions = state.get("positions", {})
+        if positions:
+            prompt_parts.append(f"\n## Open Positions ({len(positions)})")
+            for sym, pos in positions.items():
+                pnl = pos.get("unrealized_pnl", 0)
+                prompt_parts.append(
+                    f"- {sym}: {pos.get('side')} {pos.get('size')} @ ${pos.get('entry_price', 0):.2f} "
+                    f"(PnL: ${pnl:.2f})"
+                )
+        
+        # EXCHANGE CONSTRAINTS (AI needs to know!)
+        try:
+            hl_client = state.get("_hl_client")
+            scan = state.get("scan", [])
+            if hl_client and scan:
+                prompt_parts.append(f"\n## Exchange Leverage Limits")
+                for s in scan[:8]:  # Top 8 symbols
+                    sym = s['symbol']
+                    try:
+                        constraints = hl_client.get_symbol_constraints(sym)
+                        max_lev = constraints.get("maxLeverage", 50)
+                        prompt_parts.append(f"- {sym}: Max {max_lev}x (will auto-cap if you exceed)")
+                    except:
+                        pass
+        except Exception as e:
+            print(f"[LLM] Leverage limits error: {e}")
+        
+        # Snapshot
+        snapshot = state.get("snapshot", {})
+        scan = state.get("scan", [])
+        
+        if scan:
+            prompt_parts.append(f"\n## Top Scan Signals")
+            for s in scan[:5]:
+                prompt_parts.append(f"- {s['symbol']}: score={s['score']} trend={s.get('trend', '?')}")
+        
+        # Market data
+        if snapshot:
+            prompt_parts.append(f"\n## Market Snapshot")
+            for sym, data in list(snapshot.items())[:5]:
+                price = data.get("price", 0)
+                prompt_parts.append(f"- {sym}: ${price:.2f}")
+        
+        return "\n".join(prompt_parts)
 
     def _build_prompt(self, state: Dict[str, Any]) -> str:
-
         """Build prompt for AI"""
         # Format positions
         positions_str = ""

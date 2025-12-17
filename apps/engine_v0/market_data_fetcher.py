@@ -132,31 +132,30 @@ def get_market_data() -> Dict[str, Any]:
     return _fetcher.get_macro_data()
 
 
-def generate_daily_summary() -> str:
-    """Generate human-readable daily market summary"""
-    data = get_market_data()
+def generate_daily_summary(data: Dict[str, Any]) -> str:
+    """
+    Generate human-readable daily market summary
+    """
+    fear_greed = data.get("fear_greed", 50)
+    fg_label = "Extreme Fear" if fear_greed < 25 else "Fear" if fear_greed < 45 else "Neutral" if fear_greed < 55 else "Greed" if fear_greed < 75 else "Extreme Greed"
     
-    # Fear & Greed emoji
-    fg = data.get("fear_greed", 50)
-    if fg < 25:
-        fg_emoji = "😱 Extreme Fear"
-    elif fg < 45:
-        fg_emoji = "😨 Fear"
-    elif fg < 55:
-        fg_emoji = "😐 Neutral"
-    elif fg < 75:
-        fg_emoji = "😄 Greed"
-    else:
-        fg_emoji = "🤑 Extreme Greed"
+    btc_24h = data.get("btc_24h", 0) # Corrected from btc_24h_change
+    btc_emoji = "📈" if btc_24h > 0 else "📉" if btc_24h < 0 else "➖" # Added "➖" for 0 change
     
-    # BTC 24h emoji
-    btc_24h = data.get("btc_24h", 0)
-    btc_emoji = "📈" if btc_24h > 0 else "📉" if btc_24h < 0 else "➖"
+    mcap = data.get("total_mcap", "N/A") # Corrected from total_market_cap
+    btc_dom = data.get("btc_dominance", 0)
     
-    # Build summary
-    summary = f"{fg_emoji} ({fg}/100)\n"
-    summary += f"{btc_emoji} BTC 24h: {btc_24h:+.2f}%\n"
-    summary += f"💰 Market Cap: {data.get('total_mcap', 'N/A')}\n"
-    summary += f"📊 BTC Dominance: {data.get('btc_dominance', 0):.1f}%"
+    usd_brl = data.get("usd_brl", 0)
     
+    summary = f"""📊 MERCADO HOJE:
+😱 Fear & Greed: {fear_greed} ({fg_label})
+{btc_emoji} BTC 24h: {btc_24h:+.1f}%
+💰 Market Cap: {mcap}
+👑 BTC Dom: {btc_dom:.1f}%
+
+💵 USD/BRL: R$ {usd_brl:.2f}
+
+📰 CALENDÁRIO ECONÔMICO (UTC-3):
+(Integração futura com calendario economico)
+"""
     return summary
