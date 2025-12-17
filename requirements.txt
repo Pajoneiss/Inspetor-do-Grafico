@@ -25,3 +25,6 @@ flask>=3.0.0
 flask-cors>=4.0.0
 
 # OpenAI SDK for AI decisions (BLOCO 3)
+
+# MCP Server (FastMCP)
+fastmcp>=0.1.0
