@@ -93,15 +93,34 @@ def index():
 @app.route('/_next/<path:subpath>')
 def serve_next_assets(subpath):
     """Serve Next.js _next static assets (CSS, JS, etc.)"""
-    return send_from_directory(os.path.join(DASHBOARD_NEXT_PATH, '_next'), subpath)
+    asset_path = os.path.join(DASHBOARD_NEXT_PATH, '_next', subpath)
+    if os.path.exists(asset_path):
+        return send_from_directory(os.path.join(DASHBOARD_NEXT_PATH, '_next'), subpath)
+    return "Not found", 404
 
 
 @app.route('/ai/')
+@app.route('/ai')
 def serve_ai_page():
     """Serve AI page"""
     if os.path.exists(os.path.join(DASHBOARD_NEXT_PATH, 'ai', 'index.html')):
         return send_from_directory(os.path.join(DASHBOARD_NEXT_PATH, 'ai'), 'index.html')
-    return "Not found", 404
+    # Fallback to main index for SPA routing
+    return send_from_directory(DASHBOARD_NEXT_PATH, 'index.html')
+
+
+# SPA routes - serve index.html for client-side routing
+@app.route('/analytics/')
+@app.route('/analytics')
+@app.route('/positions/')
+@app.route('/positions')
+@app.route('/logs/')
+@app.route('/logs')
+def serve_spa_routes():
+    """Serve index.html for SPA routes that don't have static pages"""
+    if os.path.exists(os.path.join(DASHBOARD_NEXT_PATH, 'index.html')):
+        return send_from_directory(DASHBOARD_NEXT_PATH, 'index.html')
+    return send_from_directory(DASHBOARD_OLD_PATH, 'index.html')
 
 
 @app.route('/<path:filename>')
@@ -115,10 +134,16 @@ def serve_static(filename):
         next_file = os.path.join(DASHBOARD_NEXT_PATH, filename)
         if os.path.exists(next_file):
             return send_from_directory(DASHBOARD_NEXT_PATH, filename)
+        # Check for directory with index.html
+        if os.path.isdir(next_file) and os.path.exists(os.path.join(next_file, 'index.html')):
+            return send_from_directory(next_file, 'index.html')
     # Fallback to old dashboard
     old_file = os.path.join(DASHBOARD_OLD_PATH, filename)
     if os.path.exists(old_file):
         return send_from_directory(DASHBOARD_OLD_PATH, filename)
+    # SPA fallback - serve index.html for unknown routes
+    if os.path.exists(os.path.join(DASHBOARD_NEXT_PATH, 'index.html')):
+        return send_from_directory(DASHBOARD_NEXT_PATH, 'index.html')
     # 404
     return "Not found", 404
 
