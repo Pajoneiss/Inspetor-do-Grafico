@@ -174,29 +174,56 @@ export default function AnalyticsPage() {
                                 <div className="card-header">
                                     <span className="card-title">Daily P&L (Last 7 Days)</span>
                                 </div>
-                                <div className="h-48 flex items-end justify-between gap-2 mt-4 overflow-hidden">
-                                    {(() => {
-                                        const maxAbsPnl = Math.max(...data.dailyPnL.map(d => Math.abs(d.pnl)), 1);
-                                        return data.dailyPnL.map((day, i) => {
-                                            const heightPercent = (Math.abs(day.pnl) / maxAbsPnl) * 100;
-                                            return (
-                                                <div key={i} className="flex-1 flex flex-col items-center">
-                                                    <div
-                                                        className={`w-full rounded-t-lg transition-all ${day.pnl >= 0 ? 'bg-[var(--accent-green)]' : 'bg-[var(--accent-red)]'}`}
-                                                        style={{
-                                                            height: `${Math.min(heightPercent, 100)}%`,
-                                                            minHeight: '4px',
-                                                            maxHeight: '100%'
-                                                        }}
-                                                    ></div>
-                                                    <span className="text-xs text-[var(--text-muted)] mt-2">{day.date}</span>
-                                                    <span className={`text-xs ${day.pnl >= 0 ? 'text-[var(--accent-green)]' : 'text-[var(--accent-red)]'}`}>
-                                                        {day.pnl >= 0 ? '+' : ''}{day.pnl.toFixed(2)}
-                                                    </span>
-                                                </div>
-                                            );
-                                        });
-                                    })()}
+                                <div className="relative h-64 mt-4 px-4">
+                                    {/* Zero line */}
+                                    <div className="absolute left-4 right-4 top-1/2 border-t border-[var(--border)] opacity-30"></div>
+
+                                    <div className="h-full flex items-center justify-between gap-3">
+                                        {(() => {
+                                            // Find max absolute value for scaling
+                                            const maxAbsPnl = Math.max(...data.dailyPnL.map(d => Math.abs(d.pnl)), 0.01);
+
+                                            return data.dailyPnL.map((day, i) => {
+                                                // Calculate height as percentage of max, ensuring visible bars
+                                                const heightRatio = Math.abs(day.pnl) / maxAbsPnl;
+                                                const heightPercent = Math.max(heightRatio * 45, 3); // Max 45% of container, min 3%
+                                                const isPositive = day.pnl >= 0;
+
+                                                return (
+                                                    <div key={i} className="flex-1 flex flex-col items-center justify-center h-full group">
+                                                        <div className="flex-1 flex flex-col justify-center items-center w-full relative">
+                                                            {/* Bar */}
+                                                            <div
+                                                                className={`w-full rounded-lg transition-all duration-300 group-hover:opacity-80 relative ${isPositive ? 'bg-gradient-to-t from-[var(--accent-green)] to-green-400' : 'bg-gradient-to-b from-[var(--accent-red)] to-red-400'
+                                                                    }`}
+                                                                style={{
+                                                                    height: `${heightPercent}%`,
+                                                                    boxShadow: isPositive
+                                                                        ? '0 -4px 12px rgba(16, 185, 129, 0.3)'
+                                                                        : '0 4px 12px rgba(239, 68, 68, 0.3)'
+                                                                }}
+                                                            >
+                                                                {/* Value on hover */}
+                                                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                                                    <span className={`text-sm font-bold ${isPositive ? 'text-[var(--accent-green)]' : 'text-[var(--accent-red)]'}`}>
+                                                                        {isPositive ? '+' : ''}{day.pnl.toFixed(2)}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Date label */}
+                                                        <div className="mt-2 flex flex-col items-center">
+                                                            <span className="text-xs text-[var(--text-muted)]">{day.date}</span>
+                                                            <span className={`text-xs font-medium ${isPositive ? 'text-[var(--accent-green)]' : 'text-[var(--accent-red)]'}`}>
+                                                                {isPositive ? '+' : ''}{day.pnl.toFixed(2)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            });
+                                        })()}
+                                    </div>
                                 </div>
                             </div>
                         </>

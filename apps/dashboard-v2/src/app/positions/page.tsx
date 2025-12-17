@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import PositionMiniChart from '@/components/positions/PositionMiniChart';
 
 interface Position {
     symbol: string;
@@ -153,6 +154,17 @@ export default function PositionsPage() {
                                                 {position.liquidationPrice ? `$${formatPrice(position.liquidationPrice)}` : '—'}
                                             </p>
                                         </div>
+                                    </div>
+
+                                    {/* Mini Chart */}
+                                    <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                                        <PositionMiniChart
+                                            symbol={position.symbol}
+                                            entryPrice={position.entryPrice}
+                                            markPrice={position.markPrice}
+                                            side={position.side}
+                                            roe={position.roe}
+                                        />
                                     </div>
                                 </div>
                             ))}
