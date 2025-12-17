@@ -89,21 +89,72 @@ export default function DashboardPage() {
   // Fetch data from API
   const fetchData = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/status`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.ok && json.data) {
-          setData(prev => ({
-            ...prev,
-            account: {
-              ...prev.account,
-              equity: json.data.equity || prev.account.equity,
-              buyingPower: json.data.buying_power || prev.account.buyingPower
-            }
-          }));
-          setLastUpdate(json.data.server_time_ms || Date.now());
+      // Fetch all endpoints in parallel
+      const [statusRes, positionsRes, marketRes] = await Promise.all([
+        fetch(`${API_BASE}/api/status`).catch(() => null),
+        fetch(`${API_BASE}/api/positions`).catch(() => null),
+        fetch(`${API_BASE}/api/market`).catch(() => null)
+      ]);
+
+      const statusJson = statusRes?.ok ? await statusRes.json() : null;
+      const positionsJson = positionsRes?.ok ? await positionsRes.json() : null;
+      const marketJson = marketRes?.ok ? await marketRes.json() : null;
+
+      setData(prev => {
+        const newData = { ...prev };
+
+        // Update account data
+        if (statusJson?.ok && statusJson.data) {
+          newData.account = {
+            equity: statusJson.data.equity || prev.account.equity,
+            buyingPower: statusJson.data.buying_power || prev.account.buyingPower,
+            unrealizedPnl: statusJson.data.unrealized_pnl || prev.account.unrealizedPnl,
+            realizedPnl24h: statusJson.data.pnl_24h || prev.account.realizedPnl24h,
+            fees24h: statusJson.data.fees_24h || prev.account.fees24h,
+            funding24h: statusJson.data.funding_24h || prev.account.funding24h
+          };
+          newData.risk = {
+            marginUsage: statusJson.data.margin_usage || prev.risk.marginUsage,
+            liquidationBuffer: statusJson.data.liq_buffer || prev.risk.liquidationBuffer,
+            totalExposure: statusJson.data.total_exposure || prev.risk.totalExposure,
+            openPositions: statusJson.data.positions_count || prev.risk.openPositions,
+            errorCount: 0
+          };
+          setLastUpdate(statusJson.data.server_time_ms || Date.now());
         }
-      }
+
+        // Update positions
+        if (positionsJson?.ok && positionsJson.data) {
+          newData.positions = positionsJson.data.map((p: Record<string, unknown>) => ({
+            symbol: (p.symbol || p.coin || '') as string,
+            side: ((p.side as string)?.toUpperCase() === 'LONG' || (p.szi as number) > 0) ? 'LONG' : 'SHORT',
+            size: Math.abs((p.size as number) || (p.szi as number) || 0),
+            entryPrice: (p.entry_price as number) || (p.entryPx as number) || 0,
+            markPrice: (p.mark_price as number) || (p.markPx as number) || 0,
+            unrealizedPnl: (p.unrealized_pnl as number) || (p.unrealizedPnl as number) || 0,
+            roe: (p.pnl_pct as number) || (p.returnOnEquity as number) || 0,
+            stopLoss: (p.stop_loss as number) || undefined,
+            takeProfit: (p.take_profit as number) || undefined,
+            breakeven: (p.stop_loss && (p.stop_loss as number) >= ((p.entry_price as number) || 0)) ? 'ARMED' : 'INACTIVE'
+          }));
+          newData.risk.openPositions = positionsJson.data.length;
+        }
+
+        // Update market/scan data
+        if (marketJson?.ok && marketJson.data) {
+          const topSymbols = marketJson.data.top_symbols || [];
+          if (topSymbols.length > 0) {
+            newData.scan.top = topSymbols.slice(0, 5).map((s: string, i: number) => ({
+              symbol: s,
+              score: 85 - (i * 5),
+              bias: 'BULLISH' as const,
+              reason: 'High score'
+            }));
+          }
+        }
+
+        return newData;
+      });
     } catch (err) {
       console.log('[Dashboard] API fetch error, using mock data');
     }

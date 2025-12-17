@@ -169,14 +169,28 @@ def serve_static(filename):
 def api_status():
     """Get current bot status"""
     with _state_lock:
+        account = _dashboard_state.get("account", {})
+        positions = _dashboard_state.get("positions", [])
+        
+        # Calculate derived metrics
+        equity = account.get("equity", 0)
+        total_exposure = sum(abs(p.get("size", 0) * p.get("entry_price", 0)) for p in positions)
+        total_unrealized = sum(p.get("unrealized_pnl", 0) for p in positions)
+        margin_usage = (total_exposure / equity * 100) if equity > 0 else 0
+        
         return jsonify({
             "ok": True,
             "data": {
-                "equity": _dashboard_state["account"]["equity"],
-                "buying_power": _dashboard_state["account"]["buying_power"],
-                "positions_count": _dashboard_state["account"]["positions_count"],
-                "engine_status": _dashboard_state["engine_status"],
-                "last_update": _dashboard_state["last_update"],
+                "equity": equity,
+                "buying_power": account.get("buying_power", 0),
+                "positions_count": len(positions),
+                "unrealized_pnl": total_unrealized,
+                "margin_usage": round(margin_usage, 1),
+                "liq_buffer": 100 - margin_usage if margin_usage < 100 else 0,
+                "total_exposure": round(total_exposure, 2),
+                "pnl_24h": account.get("pnl_24h", 0),
+                "engine_status": _dashboard_state.get("engine_status", "stopped"),
+                "last_update": _dashboard_state.get("last_update", ""),
                 "last_update_ms": _dashboard_state.get("last_update_ms", 0),
                 "server_time_ms": int(time.time() * 1000)
             }
