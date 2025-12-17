@@ -130,8 +130,11 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 24px;
+  padding: 28px;
+  /* Increased from 24px */
   transition: all 0.2s ease;
+  line-height: 1.6;
+  /* Better text spacing */
 }
 
 .card:hover {
@@ -143,7 +146,12 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  /* Increased from 16px */
+  padding-bottom: 12px;
+  /* Added padding */
+  border-bottom: 1px solid var(--border);
+  /* Visual separator */
 }
 
 .card-title {
@@ -151,19 +159,22 @@ body {
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
+  /* Increased from 0.5px */
 }
 
 .card-value {
   font-size: 28px;
   font-weight: 700;
   color: var(--text-primary);
+  line-height: 1.2;
 }
 
 .card-value-sm {
   font-size: 20px;
   font-weight: 600;
   color: var(--text-primary);
+  line-height: 1.3;
 }
 
 /* =========================================
