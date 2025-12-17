@@ -23,9 +23,10 @@ from config import (
 # BRACKET MANAGER HELPERS (Definitive Order Hygiene)
 # ==================================================================
 
-# Rate limiting for bracket updates
-_bracket_last_update: Dict[str, float] = {}  # symbol -> timestamp
-MIN_BRACKET_UPDATE_INTERVAL = 60  # seconds between same SL/TP updates
+# Rate limiting for bracket updates - REMOVED FOR AI AUTONOMY
+# AI is professional trader and can manage update frequency
+_bracket_last_update: Dict[str, float] = {}  # symbol -> timestamp (tracking only, no enforcement)
+MIN_BRACKET_UPDATE_INTERVAL = 0  # NO COOLDOWN - AI decides when to update
 
 
 def _find_existing_trigger(hl_client, symbol, trigger_type, mark_price, position_side):
