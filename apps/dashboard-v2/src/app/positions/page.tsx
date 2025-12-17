@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
-import CandlestickChart from '@/components/positions/CandlestickChart';
+import PositionMiniChart from '@/components/positions/PositionMiniChart';
 
 interface Position {
     symbol: string;
@@ -97,74 +97,73 @@ export default function PositionsPage() {
                             </div>
                         </div>
                     ) : positions.length > 0 ? (
-                        <div className="space-y-4">
+                        <div className="grid gap-3">
                             {positions.map((position, index) => (
-                                <div key={index} className="card hover:border-[var(--accent-cyan)] transition-colors">
-                                    <div className="flex items-center justify-between">
-                                        {/* Symbol & Side */}
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xl font-bold text-[var(--text-primary)]">{position.symbol}</span>
-                                                <span className={`badge ${position.side === 'LONG' ? 'badge-green' : 'badge-red'}`}>
-                                                    {position.side}
-                                                </span>
-                                                <span className="badge badge-outline">{position.leverage}x</span>
-                                            </div>
+                                <div key={index} className="card p-4 hover:border-[var(--accent-cyan)] transition-all hover:shadow-lg">
+                                    {/* Top Row: Symbol + PnL */}
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-lg font-bold text-[var(--text-primary)]">{position.symbol}</span>
+                                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${position.side === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                {position.side}
+                                            </span>
+                                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                                                {position.leverage}x
+                                            </span>
                                         </div>
-
-                                        {/* P&L */}
                                         <div className="text-right">
-                                            <p className={`text-xl font-bold ${position.unrealizedPnl >= 0 ? 'text-[var(--accent-green)]' : 'text-[var(--accent-red)]'}`}>
+                                            <p className={`text-lg font-bold ${position.unrealizedPnl >= 0 ? 'text-[var(--accent-green)]' : 'text-[var(--accent-red)]'}`}>
                                                 {position.unrealizedPnl >= 0 ? '+' : ''}${position.unrealizedPnl.toFixed(2)}
                                             </p>
-                                            <p className={`text-sm ${position.roe >= 0 ? 'text-[var(--accent-green)]' : 'text-[var(--accent-red)]'}`}>
+                                            <p className={`text-xs ${position.roe >= 0 ? 'text-[var(--accent-green)]' : 'text-[var(--accent-red)]'}`}>
                                                 {position.roe >= 0 ? '+' : ''}{position.roe.toFixed(2)}% ROE
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-4 pt-4 border-t border-[var(--border)]">
-                                        <div>
-                                            <p className="text-xs text-[var(--text-muted)]">Size</p>
-                                            <p className="text-sm font-medium text-[var(--text-primary)]">{position.size}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-[var(--text-muted)]">Entry</p>
-                                            <p className="text-sm font-medium text-[var(--text-primary)]">${formatPrice(position.entryPrice)}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-[var(--text-muted)]">Mark</p>
-                                            <p className="text-sm font-medium text-[var(--text-primary)]">${formatPrice(position.markPrice)}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-[var(--text-muted)]">Stop Loss</p>
-                                            <p className="text-sm font-medium text-[var(--accent-red)]">
-                                                {position.stopLoss ? `$${formatPrice(position.stopLoss)}` : '—'}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-[var(--text-muted)]">Take Profit</p>
-                                            <p className="text-sm font-medium text-[var(--accent-green)]">
-                                                {position.takeProfit ? `$${formatPrice(position.takeProfit)}` : '—'}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-[var(--text-muted)]">Liq. Price</p>
-                                            <p className="text-sm font-medium text-[var(--accent-orange)]">
-                                                {position.liquidationPrice ? `$${formatPrice(position.liquidationPrice)}` : '—'}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Candlestick Chart */}
-                                    <div className="mt-4 pt-4 border-t border-[var(--border)]">
-                                        <CandlestickChart
+                                    {/* Chart */}
+                                    <div className="mb-3">
+                                        <PositionMiniChart
                                             symbol={position.symbol}
                                             entryPrice={position.entryPrice}
                                             markPrice={position.markPrice}
                                             side={position.side}
                                             roe={position.roe}
                                         />
+                                    </div>
+
+                                    {/* Compact Info Grid */}
+                                    <div className="grid grid-cols-3 gap-2 text-xs">
+                                        <div className="bg-[var(--bg-secondary)] rounded px-2 py-1.5">
+                                            <p className="text-[var(--text-muted)] mb-0.5">Entry</p>
+                                            <p className="text-[var(--text-primary)] font-medium">${formatPrice(position.entryPrice)}</p>
+                                        </div>
+                                        <div className="bg-[var(--bg-secondary)] rounded px-2 py-1.5">
+                                            <p className="text-[var(--text-muted)] mb-0.5">Mark</p>
+                                            <p className="text-[var(--text-primary)] font-medium">${formatPrice(position.markPrice)}</p>
+                                        </div>
+                                        <div className="bg-[var(--bg-secondary)] rounded px-2 py-1.5">
+                                            <p className="text-[var(--text-muted)] mb-0.5">Size</p>
+                                            <p className="text-[var(--text-primary)] font-medium">{position.size}</p>
+                                        </div>
+                                        <div className="bg-[var(--bg-secondary)] rounded px-2 py-1.5">
+                                            <p className="text-[var(--text-muted)] mb-0.5">SL</p>
+                                            <p className="text-[var(--accent-red)] font-medium">
+                                                {position.stopLoss ? `$${formatPrice(position.stopLoss)}` : '—'}
+                                            </p>
+                                        </div>
+                                        <div className="bg-[var(--bg-secondary)] rounded px-2 py-1.5">
+                                            <p className="text-[var(--text-muted)] mb-0.5">TP</p>
+                                            <p className="text-[var(--accent-green)] font-medium">
+                                                {position.takeProfit ? `$${formatPrice(position.takeProfit)}` : '—'}
+                                            </p>
+                                        </div>
+                                        <div className="bg-[var(--bg-secondary)] rounded px-2 py-1.5">
+                                            <p className="text-[var(--text-muted)] mb-0.5">Liq</p>
+                                            <p className="text-[var(--accent-orange)] font-medium">
+                                                {position.liquidationPrice ? `$${formatPrice(position.liquidationPrice)}` : '—'}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             ))}

@@ -14,40 +14,34 @@ export default function PositionMiniChart({ symbol, entryPrice, markPrice, side,
     const [priceHistory, setPriceHistory] = useState<number[]>([]);
 
     useEffect(() => {
-        // Generate realistic price history based on current state
         const generateHistory = () => {
-            const points = 30;
+            const points = 40;
             const history: number[] = [];
             const priceRange = Math.abs(markPrice - entryPrice);
-            const volatility = priceRange * 0.3;
+            const volatility = Math.max(priceRange * 0.2, markPrice * 0.003);
 
-            // Start from entry, move towards current mark
             for (let i = 0; i < points; i++) {
                 const progress = i / (points - 1);
-                // Interpolate between entry and mark with some noise
                 const basePrice = entryPrice + (markPrice - entryPrice) * progress;
                 const noise = (Math.random() - 0.5) * volatility;
                 history.push(basePrice + noise);
             }
 
-            // Ensure last point is current mark price
             history[points - 1] = markPrice;
-
             return history;
         };
 
         setPriceHistory(generateHistory());
 
-        // Update every 10 seconds with slight variation
         const interval = setInterval(() => {
             setPriceHistory(prev => {
+                if (prev.length === 0) return prev;
                 const newHistory = [...prev.slice(1)];
-                const lastPrice = prev[prev.length - 1];
-                const variation = lastPrice * (Math.random() - 0.5) * 0.002; // 0.2% variation
+                const variation = markPrice * (Math.random() - 0.5) * 0.002;
                 newHistory.push(markPrice + variation);
                 return newHistory;
             });
-        }, 10000);
+        }, 8000);
 
         return () => clearInterval(interval);
     }, [entryPrice, markPrice]);
@@ -58,48 +52,48 @@ export default function PositionMiniChart({ symbol, entryPrice, markPrice, side,
     const minPrice = Math.min(...priceHistory, entryPrice);
     const priceRange = maxPrice - minPrice || 1;
 
-    // Calculate positions
-    const entryY = ((maxPrice - entryPrice) / priceRange) * 100;
+    const paddedMax = maxPrice + priceRange * 0.1;
+    const paddedMin = minPrice - priceRange * 0.1;
+    const paddedRange = paddedMax - paddedMin;
 
-    // Generate SVG path
+    const priceToY = (price: number) => ((paddedMax - price) / paddedRange) * 100;
+    const entryY = priceToY(entryPrice);
+
     const points = priceHistory.map((price, index) => {
         const x = (index / (priceHistory.length - 1)) * 100;
-        const y = ((maxPrice - price) / priceRange) * 100;
+        const y = priceToY(price);
         return `${x},${y}`;
     }).join(' ');
 
     const isProfit = roe >= 0;
     const lineColor = isProfit ? 'rgb(16, 185, 129)' : 'rgb(239, 68, 68)';
-    const entryColor = side === 'LONG' ? 'rgb(16, 185, 129)' : 'rgb(239, 68, 68)';
+    const fillOpacity = Math.min(Math.abs(roe) / 100, 0.3);
 
     return (
-        <div className="relative w-full h-24 bg-[var(--bg-secondary)] rounded-lg p-2 overflow-hidden group">
-            {/* Chart */}
+        <div className="relative w-full h-16 bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] rounded-lg overflow-hidden">
             <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                {/* Area fill */}
                 <defs>
-                    <linearGradient id={`gradient-${symbol}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" style={{ stopColor: lineColor, stopOpacity: 0.3 }} />
+                    <linearGradient id={`grad-${symbol}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style={{ stopColor: lineColor, stopOpacity: fillOpacity }} />
                         <stop offset="100%" style={{ stopColor: lineColor, stopOpacity: 0 }} />
                     </linearGradient>
                 </defs>
 
-                {/* Area under line */}
+                {/* Area fill */}
                 <polygon
                     points={`0,100 ${points} 100,100`}
-                    fill={`url(#gradient-${symbol})`}
+                    fill={`url(#grad-${symbol})`}
                 />
 
-                {/* Entry price line */}
+                {/* Entry line */}
                 <line
                     x1="0"
                     y1={entryY}
                     x2="100"
                     y2={entryY}
-                    stroke={entryColor}
+                    stroke="rgba(255,255,255,0.2)"
                     strokeWidth="0.5"
                     strokeDasharray="2,2"
-                    opacity="0.5"
                 />
 
                 {/* Price line */}
@@ -107,47 +101,26 @@ export default function PositionMiniChart({ symbol, entryPrice, markPrice, side,
                     points={points}
                     fill="none"
                     stroke={lineColor}
-                    strokeWidth="1.5"
+                    strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    style={{
+                        filter: `drop-shadow(0 0 4px ${lineColor})`
+                    }}
                 />
 
-                {/* Entry marker */}
+                {/* Current marker */}
                 <circle
-                    cx="15"
-                    cy={entryY}
-                    r="1.5"
-                    fill={entryColor}
-                    opacity="0.8"
-                />
-
-                {/* Current price marker */}
-                <circle
-                    cx="95"
-                    cy={((maxPrice - markPrice) / priceRange) * 100}
+                    cx="98"
+                    cy={priceToY(markPrice)}
                     r="2"
                     fill={lineColor}
                     className="animate-pulse"
+                    style={{
+                        filter: `drop-shadow(0 0 3px ${lineColor})`
+                    }}
                 />
             </svg>
-
-            {/* Overlay labels on hover */}
-            <div className="absolute inset-0 bg-[var(--bg-primary)] bg-opacity-95 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 text-xs">
-                <div className="flex items-center gap-2">
-                    <span className="text-[var(--text-muted)]">Entry:</span>
-                    <span className="font-bold" style={{ color: entryColor }}>${entryPrice.toFixed(4)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-[var(--text-muted)]">Current:</span>
-                    <span className="font-bold" style={{ color: lineColor }}>${markPrice.toFixed(4)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-[var(--text-muted)]">ROE:</span>
-                    <span className="font-bold" style={{ color: lineColor }}>
-                        {roe >= 0 ? '+' : ''}{roe.toFixed(2)}%
-                    </span>
-                </div>
-            </div>
         </div>
     );
 }
