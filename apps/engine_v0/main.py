@@ -426,6 +426,11 @@ def main():
                         
                         if scores_flat:
                             print(f"[SCAN][WARN] scores_flat detected → check indicator pipeline")
+                            print(f"[SCAN][DEBUG] All scores: {all_scores}")
+                            if symbols:
+                                first_sym = symbols[0]
+                                first_brief = symbol_briefs.get(first_sym, {})
+                                print(f"[SCAN][DEBUG] {first_sym} detail: RSI={first_brief.get('rsi', '?')}, trend={first_brief.get('trend', '?')}, price=${first_brief.get('price', 0):.2f}")
                         print(f"[SCAN] top5=[{top_str}] bottom3=[{bottom_str}]")
 
                         
