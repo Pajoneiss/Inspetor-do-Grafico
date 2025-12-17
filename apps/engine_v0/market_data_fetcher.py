@@ -76,14 +76,22 @@ class MarketDataFetcher:
         return {}
     
     def _get_fear_greed(self) -> int:
-        """Get Fear & Greed Index from alternative.me"""
+        """Get Fear & Greed Index from alternative.me with cache"""
         try:
             url = f"{self.alternative_base}/fng/"
             resp = requests.get(url, timeout=10)
             if resp.status_code == 200:
-                return int(resp.json()["data"][0]["value"])
-        except:
-            pass
+                data = resp.json()
+                value = int(data["data"][0]["value"])
+                timestamp = data["data"][0].get("timestamp", "")
+                
+                # Log for debugging
+                print(f"[MACRO] Fear & Greed: {value} (timestamp: {timestamp})")
+                return value
+        except Exception as e:
+            print(f"[MACRO] Fear & Greed fetch error: {e}")
+        
+        print("[MACRO] Fear & Greed fallback: 50")
         return 50  # Neutral fallback
     
     def _get_usd_brl(self) -> float:
