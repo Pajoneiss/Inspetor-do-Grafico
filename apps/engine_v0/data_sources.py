@@ -48,14 +48,17 @@ def fetch_fear_greed() -> Dict[str, Any]:
     cache_key = "fear_greed"
     cached = _get_cache(cache_key)
     if cached:
+        print(f"[FEAR] Using cached: {cached['value']}")
         return cached
     
     try:
         import httpx
         with httpx.Client(timeout=4.0) as client:
             resp = client.get("https://api.alternative.me/fng/?limit=1")
+            print(f"[FEAR] API response status: {resp.status_code}")
             if resp.status_code == 200:
                 data = resp.json()
+                print(f"[FEAR] Raw API data: {data}")
                 if data.get("data"):
                     fg = data["data"][0]
                     result = {
@@ -64,12 +67,13 @@ def fetch_fear_greed() -> Dict[str, Any]:
                         "timestamp": fg.get("timestamp", "")
                     }
                     _set_cache(cache_key, result, TTL_FEAR)
-                    print(f"[NEWS] Fear&Greed fetched: {result['value']} ({result['classification']})")
+                    print(f"[FEAR] Final value: {result['value']} ({result['classification']})")
                     return result
     except Exception as e:
-        print(f"[NEWS][WARN] Fear&Greed failed: {e}")
+        print(f"[FEAR][ERROR] API failed: {e}")
     
     return {"value": "N/A", "classification": "N/A", "timestamp": ""}
+
 
 
 def fetch_cryptopanic() -> List[Dict[str, str]]:
