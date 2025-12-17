@@ -613,8 +613,8 @@ def _pre_check_order(action: Dict[str, Any], price: float, constraints: dict, hl
             total_margin_used = float(margin_summary.get("totalMarginUsed", 0))
             available_margin = max(0.0, account_value - total_margin_used)
             
-            # Required margin = notional / leverage * 1.2 (safety buffer)
-            required_margin = (notional / leverage) * 1.2
+            # Required margin = notional / leverage (no buffer - buying power already has 0.90 buffer)
+            required_margin = notional / leverage
             
             if available_margin < required_margin:
                 return False, f"margin_insufficient avail=${available_margin:.2f} need=${required_margin:.2f}"
@@ -707,8 +707,8 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
             # ADD-ON GATE: Block small adds if no power
             positions = hl_client.get_positions_by_symbol()
             if symbol in positions and abs(float(positions[symbol].get("size", 0))) > 0:
-                 if buying_power < 10.0:
-                      print(f"[LIVE][REJECT] Add-on blocked. Available buying power ${buying_power:.2f} < $10 min")
+                 if buying_power < 5.0:
+                      print(f"[LIVE][REJECT] Add-on blocked. Available buying power ${buying_power:.2f} < $5 min")
                       return
             
             if required_notional > buying_power:
