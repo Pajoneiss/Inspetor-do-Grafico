@@ -1,49 +1,114 @@
 /* 
-   Engine V0 - Extreme Proportional Scaling (50%)
-   Using zoom for perfect proportionality of all elements including text and charts.
+   Engine V0 - Premium Dashboard UI Redesign (Refined)
+   Focus: Fixed proportions, centered layout, premium typography.
 */
 
-html,
-body {
-    zoom: 0.55 !important;
-    /* Slightly more than 50% for better readability */
-    -moz-transform: scale(0.55);
-    -moz-transform-origin: 0 0;
-    width: 182% !important;
-    /* Offset for scale */
-    height: 182% !important;
-    overflow-x: hidden;
+:root {
+    --bg-primary: #0a0c10;
+    --bg-secondary: #0d0f14;
+    --bg-card: rgba(17, 20, 26, 0.7);
+    --border: rgba(255, 255, 255, 0.08);
+    --accent-cyan: #00f2ff;
+    --accent-green: #00ff88;
+    --accent-red: #ff4d4d;
+    --accent-yellow: #ffcc00;
+    --text-primary: #f0f2f5;
+    --text-muted: #8a919e;
 }
 
-/* Fix for overlapping elements when scaled */
-.card,
-div[class*="card"] {
-    margin: 8px !important;
+/* 1. Global Centering & Constraints */
+.main-content {
+    background: var(--bg-primary) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
 }
 
-/* Ensure font sizes scale down properly even if hardcoded */
-* {
-    -webkit-font-smoothing: antialiased;
+.main-content>div.p-6 {
+    width: 100% !important;
+    max-width: 1400px !important;
+    /* PREVENTS STRETCHING */
+    padding: 32px !important;
 }
 
-/* Sidebar adjustments for 50% view */
-.sidebar {
-    width: 200px !important;
-    min-width: 200px !important;
+/* 2. Grid Overrides */
+div[class*="grid-cols-1 lg:grid-cols-3"] {
+    display: grid !important;
+    grid-template-columns: repeat(12, 1fr) !important;
+    gap: 24px !important;
 }
 
-/* Header adjustments */
-.header {
-    padding: 10px 20px !important;
+/* Small Cards (Span 3 each) */
+.metric-card-group {
+    grid-column: span 3 !important;
 }
 
-/* Re-adjust text sizes to ensure they stay sharp */
+/* Wide Cards (Span 9) */
+.lg\:col-span-2 {
+    grid-column: span 8 !important;
+    /* Adjusted to balance with a span 4 side block */
+}
+
+/* 3. Card Aesthetics (Glassmorphism) */
+.card {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 16px !important;
+    padding: 24px !important;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 4. Typography Scalability */
 h1,
 h2,
-h3,
-h4,
-.text-xl,
-.text-2xl,
+h3 {
+    font-weight: 700 !important;
+    color: var(--text-primary);
+}
+
 .text-3xl {
-    letter-spacing: -0.02em !important;
+    font-size: 2rem !important;
+}
+
+.text-lg {
+    font-size: 1.1rem !important;
+}
+
+/* 5. Sentiment Gauge Look */
+/* Targets the Fear & Greed progress bar if possible */
+div[role="progressbar"] {
+    height: 12px !important;
+    border-radius: 6px !important;
+    background: #1a1e26 !important;
+    overflow: hidden;
+}
+
+div[role="progressbar"]>div {
+    background: linear-gradient(90deg, var(--accent-red), var(--accent-yellow), var(--accent-green)) !important;
+    border-radius: 6px !important;
+}
+
+/* 6. Sidebar Proportions */
+.sidebar {
+    width: 260px !important;
+    min-width: 260px !important;
+    background: var(--bg-secondary) !important;
+    border-right: 1px solid var(--border) !important;
+}
+
+/* 7. Position Table Proportions */
+.card:has(table) {
+    grid-column: span 12 !important;
+    /* Tables keep full width visibility */
+}
+
+table {
+    font-size: 0.85rem !important;
+}
+
+/* Utility to hide skeleton on prod if needed */
+.skeleton {
+    background: linear-gradient(90deg, #161b22 25%, #21262d 50%, #161b22 75%) !important;
+    background-size: 200% 100% !important;
 }
