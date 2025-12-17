@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
-import PositionMiniChart from '@/components/positions/PositionMiniChart';
+import CandlestickChart from '@/components/positions/CandlestickChart';
 
 interface Position {
     symbol: string;
@@ -156,9 +156,9 @@ export default function PositionsPage() {
                                         </div>
                                     </div>
 
-                                    {/* Mini Chart */}
+                                    {/* Candlestick Chart */}
                                     <div className="mt-4 pt-4 border-t border-[var(--border)]">
-                                        <PositionMiniChart
+                                        <CandlestickChart
                                             symbol={position.symbol}
                                             entryPrice={position.entryPrice}
                                             markPrice={position.markPrice}

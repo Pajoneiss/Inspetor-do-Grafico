@@ -582,6 +582,50 @@ def execute(actions: List[Dict[str, Any]], live_trading: bool, hl_client=None) -
     # Alternative: {k: v for k, v in _action_history.items() if v >= cutoff_time}
 
 
+def _pre_check_order(action: Dict[str, Any], price: float, constraints: dict, hl_client) -> tuple:
+    """
+    Pre-flight validation BEFORE sending order to exchange.
+    Returns: (success: bool, message: str)
+    """
+    symbol = action.get("symbol", "?")
+    size = action.get("size", 0)
+    leverage = action.get("leverage", 20)
+    
+    # 1. Check minimum notional (Hyperliquid requires ~$10 minimum)
+    notional = size * price
+    if notional < MIN_NOTIONAL_USD:
+        return False, f"notional=${notional:.2f} < min=${MIN_NOTIONAL_USD}"
+    
+    # 2. Check size decimals
+    sz_decimals = constraints.get("szDecimals", 5) if constraints else 5
+    size_str = f"{size:.{sz_decimals}f}"
+    if '.' in size_str:
+        decimal_places = len(size_str.split('.')[1].rstrip('0'))
+        if decimal_places > sz_decimals:
+            return False, f"size_decimals={decimal_places} > max={sz_decimals}"
+    
+    # 3. Check margin availability with safety buffer (1.2x)
+    try:
+        account_state = hl_client.get_account_state()
+        if account_state:
+            margin_summary = account_state.get("marginSummary", {})
+            account_value = float(margin_summary.get("accountValue", 0))
+            total_margin_used = float(margin_summary.get("totalMarginUsed", 0))
+            available_margin = max(0.0, account_value - total_margin_used)
+            
+            # Required margin = notional / leverage * 1.2 (safety buffer)
+            required_margin = (notional / leverage) * 1.2
+            
+            if available_margin < required_margin:
+                return False, f"margin_insufficient avail=${available_margin:.2f} need=${required_margin:.2f}"
+    except Exception as e:
+        print(f"[PRE-CHECK][WARN] Could not verify margin: {e}")
+        # Continue anyway - let exchange reject if needed
+    
+    # 4. All checks passed
+    return True, "ok"
+
+
 def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> None:
     """Execute PLACE_ORDER action"""
     symbol = action.get("symbol", "?")
