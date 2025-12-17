@@ -193,9 +193,9 @@ OUTPUT FORMAT (STRICT JSON ONLY - NO MARKDOWN)
       "type": "PLACE_ORDER" | "ADD_TO_POSITION" | "CLOSE_POSITION" | "CLOSE_PARTIAL" | "SET_STOP_LOSS" | "SET_TAKE_PROFIT" | "MOVE_STOP_TO_BREAKEVEN" | "CANCEL_ALL_ORDERS" | "NO_TRADE",
       "symbol": "BTC" | "ETH" | "...",
       "side": "BUY" | "SELL" | "LONG" | "SHORT" | null,
-      "size": 0.01,
+      "size": <calculate based on risk/equity>,
       "price": null,
-      "stop_price": null,
+      "stop_price": <entry +/- (2-5% depending on volatility)>,
       "tp_price": null,
       "leverage": 25,
       "reason": "short, specific justification tied to provided data"
@@ -213,7 +213,10 @@ IMPORTANT
 - Keep actions minimal: 0 to 3 actions per call.
 - If you output NO_TRADE, still provide meaningful next_call_triggers (so the engine can call you at the right moments).
 - Pure JSON only, no markdown blocks, no ```json```.
-- LEVERAGE: You decide leverage per trade (1-50x). Include "leverage" field in PLACE_ORDER/ADD_TO_POSITION actions."""
+- LEVERAGE: You decide leverage per trade (1-50x). Include "leverage" field in PLACE_ORDER/ADD_TO_POSITION actions.
+- SIZE: Calculate based on your risk tolerance and account equity. Suggest $10-50 notional for small account.
+- STOP_PRICE: Must give trade room to breathe. For volatile assets (ETH, SOL), use 2-5% from entry. For BTC, 1-3%. Consider recent swing levels and structure.
+"""
 
     
     def _build_trading_prompt(self, state: Dict[str, Any]) -> str:
