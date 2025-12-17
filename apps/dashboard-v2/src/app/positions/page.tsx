@@ -34,18 +34,18 @@ export default function PositionsPage() {
                     const data = await response.json();
                     if (data.ok && data.data) {
                         setPositions(data.data.map((p: Record<string, unknown>) => ({
-                            symbol: p.symbol || p.coin,
-                            side: (p.szi as number) > 0 ? 'LONG' : 'SHORT',
-                            size: Math.abs(p.szi as number || 0),
-                            entryPrice: p.entryPx as number || 0,
-                            markPrice: p.markPx as number || 0,
-                            unrealizedPnl: p.unrealizedPnl as number || 0,
-                            roe: p.returnOnEquity as number || ((p.unrealizedPnl as number || 0) / (p.marginUsed as number || 1)) * 100,
-                            leverage: p.leverage as number || 1,
-                            stopLoss: p.stopLoss as number,
-                            takeProfit: p.takeProfit as number,
-                            liquidationPrice: p.liquidationPx as number,
-                            marginUsed: p.marginUsed as number || 0,
+                            symbol: (p.symbol || p.coin || '') as string,
+                            side: ((p.side as string)?.toUpperCase() === 'LONG' || (p.szi as number) > 0) ? 'LONG' : 'SHORT',
+                            size: Math.abs((p.size as number) || (p.szi as number) || 0),
+                            entryPrice: (p.entry_price as number) || (p.entryPx as number) || 0,
+                            markPrice: (p.mark_price as number) || (p.markPx as number) || 0,
+                            unrealizedPnl: (p.unrealized_pnl as number) || (p.unrealizedPnl as number) || 0,
+                            roe: (p.pnl_pct as number) || (p.returnOnEquity as number) || 0,
+                            leverage: (p.leverage as number) || 1,
+                            stopLoss: (p.stop_loss as number) || (p.stopLoss as number) || undefined,
+                            takeProfit: (p.take_profit as number) || (p.takeProfit as number) || undefined,
+                            liquidationPrice: (p.liquidation_price as number) || (p.liquidationPx as number) || undefined,
+                            marginUsed: (p.margin_used as number) || (p.marginUsed as number) || 0,
                         })));
                     }
                 }

@@ -449,13 +449,16 @@ def main():
                             dashboard_positions = []
                             for sym, pos in positions_by_symbol.items():
                                 pos_detail = state.get("position_details", {}).get(sym, {})
+                                mark_px = state.get("prices", {}).get(sym, pos.get("entry_price", 0))
                                 dashboard_positions.append({
                                     "symbol": sym,
                                     "side": pos.get("side", "UNKNOWN"),
                                     "size": abs(float(pos.get("size", 0))),
                                     "entry_price": float(pos.get("entry_price", 0)),
+                                    "mark_price": float(mark_px),
                                     "unrealized_pnl": float(pos.get("unrealized_pnl", 0)),
                                     "pnl_pct": pos_detail.get("pnl_pct", 0),
+                                    "leverage": int(pos.get("leverage", 1)),
                                     "stop_loss": pos_detail.get("current_sl"),
                                     "take_profit": pos_detail.get("current_tp")
                                 })
@@ -529,7 +532,17 @@ def main():
                             actions = decision.get("actions", [])
                             if actions:
                                 execute(actions, live_trading=LIVE_TRADING, hl_client=hl)
-
+                            
+                            # Log actions to dashboard
+                            if dashboard_api:
+                                for action in actions:
+                                    add_ai_action({
+                                        "type": action.get("type", "UNKNOWN"),
+                                        "symbol": action.get("symbol", "ALL"),
+                                        "side": action.get("side", ""),
+                                        "reason": action.get("reason", decision.get("summary", "")),
+                                        "confidence": decision.get("confidence", 0)
+                                    })
                             
                         except Exception as e:
                             print(f"[LLM][ERROR] {e}")
