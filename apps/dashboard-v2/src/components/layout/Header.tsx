@@ -6,17 +6,20 @@ interface HeaderProps {
     wallet?: string;
     network?: string;
     isLive?: boolean;
-    lastUpdate?: number;
+    lastUpdate?: Date | number;
+    onRefresh?: () => void;
 }
 
-export function Header({
+export default function Header({
     wallet = '0x...04bA24',
     network = 'mainnet',
     isLive = true,
-    lastUpdate
+    lastUpdate,
+    onRefresh
 }: HeaderProps) {
-    const formatTimeAgo = (ms?: number) => {
-        if (!ms) return '-';
+    const formatTimeAgo = (update?: Date | number) => {
+        if (!update) return '0s ago';
+        const ms = update instanceof Date ? update.getTime() : update;
         const seconds = Math.max(0, Math.floor((Date.now() - ms) / 1000));
         if (seconds < 60) return `${seconds}s ago`;
         if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
@@ -49,8 +52,11 @@ export function Header({
                     <span className="text-xs">{formatTimeAgo(lastUpdate)}</span>
                 </div>
 
-                {/* Refresh Indicator */}
-                <button className="p-2 rounded-lg hover:bg-[var(--bg-card)] transition-colors">
+                {/* Refresh Button */}
+                <button
+                    onClick={onRefresh}
+                    className="p-2 rounded-lg hover:bg-[var(--bg-card)] transition-colors"
+                >
                     <RefreshCw className="w-4 h-4 text-[var(--text-muted)]" />
                 </button>
 
@@ -67,3 +73,4 @@ export function Header({
         </header>
     );
 }
+

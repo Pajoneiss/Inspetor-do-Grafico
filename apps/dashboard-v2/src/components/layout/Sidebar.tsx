@@ -19,7 +19,11 @@ const navItems = [
     { id: 'ai', label: 'AI', icon: Bot, href: '/ai' },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+    activePage?: string;
+}
+
+export default function Sidebar({ activePage }: SidebarProps = {}) {
     const pathname = usePathname();
 
     return (

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sidebar } from '@/components/layout/Sidebar';
-import { Header } from '@/components/layout/Header';
+import Sidebar from '@/components/layout/Sidebar';
+import Header from '@/components/layout/Header';
 import { AccountValueCard } from '@/components/cards/AccountValueCard';
 import { RiskMonitorCard } from '@/components/cards/RiskMonitorCard';
 import { PositionsTable } from '@/components/cards/PositionsTable';
