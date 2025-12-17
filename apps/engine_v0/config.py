@@ -13,7 +13,9 @@ AI_ENABLED = os.getenv("AI_ENABLED", "true").lower() == "true"
 # AI Configuration
 AI_MODEL = os.getenv("AI_MODEL") or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-AI_CALL_INTERVAL_SECONDS = int(os.getenv("AI_CALL_INTERVAL_SECONDS", "30"))
+AI_CALL_INTERVAL_SECONDS = int(os.getenv("AI_CALL_INTERVAL_SECONDS", "30"))  # Legacy fallback
+LLM_MIN_SECONDS = int(os.getenv("LLM_MIN_SECONDS", "5"))  # Minimum between AI calls
+LLM_STATE_CHANGE_THRESHOLD = float(os.getenv("LLM_STATE_CHANGE_THRESHOLD", "0.5"))  # % change to force call
 MAX_ACTIONS_PER_TICK = int(os.getenv("MAX_ACTIONS_PER_TICK", "25"))
 ACTION_DEDUP_SECONDS = int(os.getenv("ACTION_DEDUP_SECONDS", "30"))
 

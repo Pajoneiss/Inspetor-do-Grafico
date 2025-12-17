@@ -11,6 +11,8 @@ from config import (
     LIVE_TRADING,
     AI_ENABLED,
     AI_CALL_INTERVAL_SECONDS,
+    LLM_MIN_SECONDS,
+    LLM_STATE_CHANGE_THRESHOLD,
     FORCE_TEST_ORDER,
     TEST_ORDER_SIDE,
     TEST_ORDER_SIZE,
@@ -102,8 +104,9 @@ def main():
     iteration = 0
     test_order_executed = False  # Flag to execute test order only once
     last_ai_call_time = 0  # Timestamp of last AI call
+    last_state_hash = None  # For state-based throttle
+    last_equity = 0.0  # Track equity changes
     rotate_offset = 0  # For ROTATE mode
-
 
     
     try:
@@ -514,21 +517,36 @@ def main():
                 if llm is None:
                     print("[LLM] skipped (not available)")
                 else:
-                    # Check cooldown
+                    # State-based throttle: call AI if state changed OR cooldown passed
                     time_since_last_call = current_time - last_ai_call_time
                     
-                    if time_since_last_call >= AI_CALL_INTERVAL_SECONDS:
+                    # Calculate state change (equity, positions)
+                    current_equity = state.get("equity", 0.0)
+                    equity_change_pct = abs((current_equity - last_equity) / last_equity * 100) if last_equity > 0 else 100
+                    positions_changed = len(state.get("positions", {})) != len(state.get("_last_positions", {}))
+                    
+                    # Build simple state hash (positions + equity rounded)
+                    current_hash = f"{len(state.get('positions', {}))}_{int(current_equity)}"
+                    state_changed = current_hash != last_state_hash
+                    material_change = equity_change_pct >= LLM_STATE_CHANGE_THRESHOLD or state_changed
+                    
+                    min_time_passed = time_since_last_call >= LLM_MIN_SECONDS
+                    full_cooldown_passed = time_since_last_call >= AI_CALL_INTERVAL_SECONDS
+                    
+                    # Call AI if: (min time passed AND material change) OR (full cooldown passed)
+                    should_call_ai = (min_time_passed and material_change) or full_cooldown_passed
+                    
+                    if should_call_ai:
                         try:
-                            # NOTE: BE telemetry is passed to LLM via state["be_telemetry"]
-                            # LLM decides 100% of actions - NO auto-execution
-                            
                             # Get AI decision
                             decision = llm.decide(state)
                             
-                            # Update last call time
+                            # Update tracking
                             last_ai_call_time = current_time
+                            last_state_hash = current_hash
+                            last_equity = current_equity
                             
-                            # Execute actions from LLM (only source of actions now)
+                            # Execute actions from LLM
                             actions = decision.get("actions", [])
                             if actions:
                                 execute(actions, live_trading=LIVE_TRADING, hl_client=hl)
@@ -549,8 +567,8 @@ def main():
                             import traceback
                             traceback.print_exc()
                     else:
-                        remaining = AI_CALL_INTERVAL_SECONDS - time_since_last_call
-                        print(f"[LLM] skipped (cooldown {remaining:.0f}s)")
+                        remaining = LLM_MIN_SECONDS - time_since_last_call if not min_time_passed else AI_CALL_INTERVAL_SECONDS - time_since_last_call
+                        print(f"[LLM] skipped (cooldown {max(0, remaining):.0f}s, state_changed={state_changed})")
             
             # Sleep until next iteration
             time.sleep(LOOP_INTERVAL_SECONDS)
