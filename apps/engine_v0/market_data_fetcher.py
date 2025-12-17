@@ -130,3 +130,33 @@ def get_market_data() -> Dict[str, Any]:
     if _fetcher is None:
         _fetcher = MarketDataFetcher()
     return _fetcher.get_macro_data()
+
+
+def generate_daily_summary() -> str:
+    """Generate human-readable daily market summary"""
+    data = get_market_data()
+    
+    # Fear & Greed emoji
+    fg = data.get("fear_greed", 50)
+    if fg < 25:
+        fg_emoji = "😱 Extreme Fear"
+    elif fg < 45:
+        fg_emoji = "😨 Fear"
+    elif fg < 55:
+        fg_emoji = "😐 Neutral"
+    elif fg < 75:
+        fg_emoji = "😄 Greed"
+    else:
+        fg_emoji = "🤑 Extreme Greed"
+    
+    # BTC 24h emoji
+    btc_24h = data.get("btc_24h", 0)
+    btc_emoji = "📈" if btc_24h > 0 else "📉" if btc_24h < 0 else "➖"
+    
+    # Build summary
+    summary = f"{fg_emoji} ({fg}/100)\n"
+    summary += f"{btc_emoji} BTC 24h: {btc_24h:+.2f}%\n"
+    summary += f"💰 Market Cap: {data.get('total_mcap', 'N/A')}\n"
+    summary += f"📊 BTC Dominance: {data.get('btc_dominance', 0):.1f}%"
+    
+    return summary
