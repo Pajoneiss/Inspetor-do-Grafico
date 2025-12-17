@@ -286,6 +286,32 @@ class TelegramBot:
         if scanned and total:
             text += f"\n🔍 *Scan:* {scanned}/{total} symbols\n"
         
+        # MARKET SUMMARY
+        try:
+            from market_data_fetcher import get_market_data, generate_daily_summary
+            macro = get_market_data()
+            market_summary = generate_daily_summary()
+            
+            text += "\n📰 *MERCADO HOJE*\n"
+            for line in market_summary.split('\n'):
+                text += f"{escape_md(line)}\n"
+            
+            # Add indices
+            sp500 = macro.get("sp500", 0)
+            nasdaq = macro.get("nasdaq", 0)
+            usd_brl = macro.get("usd_brl", 0)
+            
+            if sp500 > 0 or nasdaq > 0 or usd_brl > 0:
+                text += "\n📊 *Índices:*\n"
+                if sp500 > 0:
+                    text += f"├ S&P500: `{sp500:.0f}`\n"
+                if nasdaq > 0:
+                    text += f"├ NASDAQ: `{nasdaq:.0f}`\n"
+                if usd_brl > 0:
+                    text += f"└ USD/BRL: `R$ {usd_brl:.2f}`\n"
+        except Exception as e:
+            print(f"[TELEGRAM] Market summary error: {e}")
+        
         # Top 5 Score
         if scan:
             text += "\n📡 *Top 5 Score:*\n"
