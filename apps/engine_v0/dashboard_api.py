@@ -103,24 +103,41 @@ def serve_next_assets(subpath):
 @app.route('/ai')
 def serve_ai_page():
     """Serve AI page"""
-    if os.path.exists(os.path.join(DASHBOARD_NEXT_PATH, 'ai', 'index.html')):
+    ai_path = os.path.join(DASHBOARD_NEXT_PATH, 'ai', 'index.html')
+    if os.path.exists(ai_path):
         return send_from_directory(os.path.join(DASHBOARD_NEXT_PATH, 'ai'), 'index.html')
     # Fallback to main index for SPA routing
     return send_from_directory(DASHBOARD_NEXT_PATH, 'index.html')
 
 
-# SPA routes - serve index.html for client-side routing
 @app.route('/analytics/')
 @app.route('/analytics')
+def serve_analytics_page():
+    """Serve Analytics page"""
+    analytics_path = os.path.join(DASHBOARD_NEXT_PATH, 'analytics', 'index.html')
+    if os.path.exists(analytics_path):
+        return send_from_directory(os.path.join(DASHBOARD_NEXT_PATH, 'analytics'), 'index.html')
+    return send_from_directory(DASHBOARD_NEXT_PATH, 'index.html')
+
+
 @app.route('/positions/')
 @app.route('/positions')
+def serve_positions_page():
+    """Serve Positions page"""
+    positions_path = os.path.join(DASHBOARD_NEXT_PATH, 'positions', 'index.html')
+    if os.path.exists(positions_path):
+        return send_from_directory(os.path.join(DASHBOARD_NEXT_PATH, 'positions'), 'index.html')
+    return send_from_directory(DASHBOARD_NEXT_PATH, 'index.html')
+
+
 @app.route('/logs/')
 @app.route('/logs')
-def serve_spa_routes():
-    """Serve index.html for SPA routes that don't have static pages"""
-    if os.path.exists(os.path.join(DASHBOARD_NEXT_PATH, 'index.html')):
-        return send_from_directory(DASHBOARD_NEXT_PATH, 'index.html')
-    return send_from_directory(DASHBOARD_OLD_PATH, 'index.html')
+def serve_logs_page():
+    """Serve Logs page"""
+    logs_path = os.path.join(DASHBOARD_NEXT_PATH, 'logs', 'index.html')
+    if os.path.exists(logs_path):
+        return send_from_directory(os.path.join(DASHBOARD_NEXT_PATH, 'logs'), 'index.html')
+    return send_from_directory(DASHBOARD_NEXT_PATH, 'index.html')
 
 
 @app.route('/<path:filename>')
