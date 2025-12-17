@@ -1,14 +1,20 @@
 @import "tailwindcss";
 
-/* Premium Dark Theme - Inspetor do Gráfico V2 */
+/* =========================================
+   Dashboard V2 Premium - Dark Theme
+   ========================================= */
+
 :root {
   /* Backgrounds */
-  --background: #0B0F14;
-  --background-grad: #0E1621;
-  --card-bg: #0F1723;
-  --card-hover: #141D2B;
-  --card-border: #1E2A3A;
-  --card-border-light: #2A3A4E;
+  --bg-primary: #0B0F14;
+  --bg-secondary: #0E1621;
+  --bg-card: #0F1723;
+  --bg-card-hover: #141D2B;
+  --bg-sidebar: #0A0E13;
+
+  /* Borders */
+  --border: #1E2A3A;
+  --border-light: #2A3A4E;
 
   /* Text */
   --text-primary: #E6EDF5;
@@ -22,20 +28,26 @@
   --accent-cyan: #4DD7FF;
   --accent-cyan-dim: #3AB8DD;
   --accent-cyan-bg: rgba(77, 215, 255, 0.1);
+  --accent-red: #FF6B6B;
+  --accent-red-bg: rgba(255, 107, 107, 0.1);
+  --accent-yellow: #FFD93D;
+  --accent-yellow-bg: rgba(255, 217, 61, 0.1);
 
   /* Status */
   --profit: #7CFF6B;
   --loss: #FF6B6B;
 
-  /* Legacy */
-  --foreground: var(--text-primary);
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.25);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card-bg: var(--card-bg);
-  --color-card-border: var(--card-border);
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-card: var(--bg-card);
+  --color-border: var(--border);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
@@ -43,50 +55,238 @@
   --color-accent-cyan: var(--accent-cyan);
   --color-profit: var(--profit);
   --color-loss: var(--loss);
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body {
-  background: linear-gradient(135deg, var(--background), var(--background-grad));
-  background-attachment: fixed;
-  color: var(--foreground);
   font-family: var(--font-sans);
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  background-attachment: fixed;
+  color: var(--text-primary);
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
 }
 
-/* Premium Glass Card Effect */
-.glass-card {
-  background: rgba(15, 23, 35, 0.8);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--card-border);
+/* =========================================
+   Card Styles
+   ========================================= */
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 24px;
+  transition: all 0.2s ease;
 }
 
-.glass-card:hover {
-  border-color: rgba(77, 215, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(77, 215, 255, 0.15);
-  transform: translateY(-2px);
+.card:hover {
+  border-color: var(--border-light);
+  box-shadow: var(--shadow-md);
 }
 
-/* Premium Button */
-.btn-premium {
-  background: var(--accent-cyan);
-  color: var(--background);
-  padding: 0.5rem 1.5rem;
-  border-radius: 0.5rem;
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-size: 12px;
   font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.card-value-sm {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* =========================================
+   Sidebar Styles
+   ========================================= */
+
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: 240px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+}
+
+.sidebar-logo {
+  padding: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
   transition: all 0.2s;
+  cursor: pointer;
 }
 
-.btn-premium:hover {
-  background: var(--accent-cyan-dim);
+.sidebar-item:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
 }
 
-/* Gradient Text */
+.sidebar-item.active {
+  background: var(--accent-cyan-bg);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(77, 215, 255, 0.2);
+}
+
+/* =========================================
+   Header Styles
+   ========================================= */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(11, 15, 20, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* =========================================
+   Badge Styles
+   ========================================= */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.badge-live {
+  background: var(--accent-green-bg);
+  color: var(--accent-green);
+  border: 1px solid rgba(124, 255, 107, 0.3);
+}
+
+.badge-paper {
+  background: var(--accent-yellow-bg);
+  color: var(--accent-yellow);
+  border: 1px solid rgba(255, 217, 61, 0.3);
+}
+
+.badge-running {
+  background: var(--accent-green-bg);
+  color: var(--accent-green);
+}
+
+.badge-error {
+  background: var(--accent-red-bg);
+  color: var(--accent-red);
+}
+
+.badge-cyan {
+  background: var(--accent-cyan-bg);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(77, 215, 255, 0.3);
+}
+
+/* =========================================
+   Table Styles
+   ========================================= */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  padding: 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table td {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+}
+
+.table tbody tr:hover {
+  background: var(--bg-card-hover);
+}
+
+/* =========================================
+   Utility Classes
+   ========================================= */
+
+.profit {
+  color: var(--profit);
+}
+
+.loss {
+  color: var(--loss);
+}
+
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
 .gradient-text {
   background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
   -webkit-background-clip: text;
@@ -94,19 +294,70 @@ body {
   background-clip: text;
 }
 
-/* Pulse Animation */
-@keyframes pulse-glow {
+/* =========================================
+   Loading & Skeleton
+   ========================================= */
 
-  0%,
-  100% {
-    box-shadow: 0 0 5px rgba(77, 215, 255, 0.2);
+.skeleton {
+  background: linear-gradient(90deg,
+      var(--bg-card) 0%,
+      var(--bg-card-hover) 50%,
+      var(--bg-card) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+@keyframes skeleton-pulse {
+  0% {
+    background-position: 200% 0;
   }
 
-  50% {
-    box-shadow: 0 0 20px rgba(77, 215, 255, 0.4);
+  100% {
+    background-position: -200% 0;
   }
 }
 
-.animate-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent-cyan);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================
+   Status Dot
+   ========================================= */
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.status-dot.offline {
+  background: var(--accent-red);
+  animation: none;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
