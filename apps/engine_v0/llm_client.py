@@ -28,22 +28,6 @@ class LLMClient:
     def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get trading decision from AI
-        
-        Args:
-            state: Current market state with:
-                - time: Current timestamp
-                - equity: Account equity
-                - positions_count: Number of open positions
-                - price: Current price of symbol
-                - symbol: Trading symbol
-                - live_trading: Whether live trading is enabled
-        
-        Returns:
-            dict: {
-                "summary": "string",
-                "confidence": 0.0-1.0,
-                "actions": [{"type":"PLACE_ORDER","symbol":"BTC","side":"BUY","size":0.001,"orderType":"MARKET"}]
-            }
         """
         print("[LLM] called")
         
@@ -73,10 +57,9 @@ class LLMClient:
                     }
                 ],
                 temperature=0.7,
-                max_tokens=500
+                max_tokens=600  # Increased for more actions
             )
 
-            
             # Extract response
             content = response.choices[0].message.content.strip()
             
@@ -155,34 +138,21 @@ DECISION STYLE (PRO TRADER)
 - Your default is NOT "positions managed". Your default is: "Is there a better action right now than doing nothing?" If yes, do it. If no, hold with a clear reason.
 
 WHEN POSITIONS EXIST
-- Having open positions does NOT automatically prevent new trades. If you see a new edge and execution is feasible with current account state, you may open another position or hedge.
+- **FULL POWER:** Having open positions does NOT prevent new trades. If you see edges on multiple symbols, open them. Manage your buying power like a professional.
 - If you choose HOLD, it must be because: (a) no actionable edge with the given data, or (b) best action is to wait for a specific trigger.
-- If position is open, consider proactive management: tighten/loosen stop based on structure, move to breakeven when justified, partial take at levels, cancel stale orders, adjust TP to realistic levels, hedge if regime flips.
+- If position is open, consider proactive management: tighten/loosen stop based on structure, move to breakeven when justified, partial take at levels, adjust TP to realistic levels.
 
 ANTI-CHURN INTELLIGENCE
-- BEFORE opening a new position, check recent trade history. If you JUST closed this same symbol/side profitably in the last 5-10 minutes, ask yourself:
-  - Has the setup MEANINGFULLY improved? (e.g., new breakout, regime shift, volatility spike)
-  - Or am I just re-entering because score is still high?
+- Avoid re-entering the same coin immediately unless the setup has MEANINGFULLY improved.
 - Avoid "score chasing" - a high scan score alone is NOT enough if nothing changed since last exit.
-- If uncertain whether to re-enter, prefer HOLD and wait for a clear catalyst (candle close, level break, etc.).
-- **EXCEPTION:** If you took profit because target was hit AND price continues in your favor through a new level, re-entry is valid.
 
 ORDER/EXECUTION HYGIENE
-- Prefer actions that are idempotent and stable across 10s ticks:
-  - Avoid constantly moving orders every tick unless the price meaningfully moved or a candle closed / regime changed.
-  - If modifying SL/TP, only do so with a specific rationale (structure break, new swing low/high, VWAP reclaim/loss, etc.).
+- Prefer actions that are idempotent and stable across 10s ticks.
 - If you recommend placing or editing orders, be explicit: price/level, side, type (market/limit), and why that level.
 
-USE OF SCAN SCORES
-- Scan scores are signals, not truth. If you don't know what "BTC:90" means (momentum? trend? confidence?), treat it as a hint only.
-- If scan definition is missing, request it once via "next_call_triggers" and do not overfit decisions to the score.
-
 CONSISTENT CONFIDENCE
-- confidence ∈ [0,1]. Base it on:
-  - Data completeness (more complete => higher)
-  - Setup clarity (clear invalidation & target => higher)
-  - Regime alignment (HTF aligns with entry TF => higher)
-- If confidence < 0.60, prefer HOLD or minimal management unless there is an urgent safety action.
+- confidence ∈ [0,1]. Base it on data quality and setup clarity.
+- If confidence < 0.60, prefer HOLD unless there is an urgent safety action.
 
 OUTPUT FORMAT (STRICT JSON ONLY - NO MARKDOWN)
 {
@@ -191,137 +161,49 @@ OUTPUT FORMAT (STRICT JSON ONLY - NO MARKDOWN)
   "actions": [
     {
       "type": "PLACE_ORDER" | "ADD_TO_POSITION" | "CLOSE_POSITION" | "CLOSE_PARTIAL" | "SET_STOP_LOSS" | "SET_TAKE_PROFIT" | "MOVE_STOP_TO_BREAKEVEN" | "CANCEL_ALL_ORDERS" | "NO_TRADE",
-      "symbol": <from scan signals or positions>,
+      "symbol": <symbol from scan>,
       "side": "BUY" | "SELL" | "LONG" | "SHORT" | null,
       "size": <calculate based on risk/equity, suggest $10-50 notional>,
       "price": <null for MARKET, specific price for LIMIT>,
       "stop_price": <entry +/- (2-5% for volatile, 1-3% for BTC)>,
       "tp_price": <null or specific target based on R:R>,
-      "leverage": <1-50x based on conviction and volatility, aware of exchange limits>,
-      "reason": "short, specific justification tied to provided data"
+      "leverage": <1-50x based on conviction and volatility>,
+      "reason": "short, specific justification"
     }
   ],
-  "next_call_triggers": [
-    "bullet triggers that would change decision (e.g., candle close above/below X, EMA cross, break of swing low/high, funding spike, order filled, price hits level)"
-  ],
-  "data_needed": [
-    "ONLY if missing info blocks a higher-quality decision: e.g., 'meaning of scan score', 'latest 1h candle close', 'current open orders per symbol', 'VWAP timeframe', 'recent swing levels'"
-  ]
+  "next_call_triggers": ["triggers that would change decision"]
 }
 
 IMPORTANT
-- Keep actions minimal: 0 to 3 actions per call.
-- If you output NO_TRADE, still provide meaningful next_call_triggers (so the engine can call you at the right moments).
+- **FULL AUTONOMY:** You are not limited to one trade. You can open multiple positions if the account has buying power.
+- **ACTION LIMIT:** You can output up to 5 actions per tick if needed for complex management.
 - Pure JSON only, no markdown blocks, no ```json```.
-- LEVERAGE: You decide based on conviction and volatility (1-50x). System will auto-cap to exchange limits if needed.
-- SIZE: Calculate based on your risk tolerance and account equity. Suggest $10-50 notional for small account.
-- STOP_PRICE: Must give trade room to breathe. For volatile assets (ETH, SOL), use 2-5% from entry. For BTC, 1-3%. Consider recent swing levels and structure.
 """
-
-    
-    def _build_trading_prompt(self, state: Dict[str, Any]) -> str:
-        """Build comprehensive trading prompt from state"""
-        prompt_parts = []
-        
-        # Core state
-        prompt_parts.append(f"## Current State")
-        prompt_parts.append(f"Equity: ${state.get('equity', 0):.2f}")
-        prompt_parts.append(f"Buying Power: ${state.get('buying_power', 0):.2f}")
-        
-        # Positions
-        positions = state.get("positions", {})
-        if positions:
-            prompt_parts.append(f"\n## Open Positions ({len(positions)})")
-            for sym, pos in positions.items():
-                pnl = pos.get("unrealized_pnl", 0)
-                prompt_parts.append(
-                    f"- {sym}: {pos.get('side')} {pos.get('size')} @ ${pos.get('entry_price', 0):.2f} "
-                    f"(PnL: ${pnl:.2f})"
-                )
-        
-        # EXCHANGE CONSTRAINTS (AI needs to know!)
-        try:
-            hl_client = state.get("_hl_client")
-            scan = state.get("scan", [])
-            if hl_client and scan:
-                prompt_parts.append(f"\n## Exchange Leverage Limits")
-                for s in scan[:8]:  # Top 8 symbols
-                    sym = s['symbol']
-                    try:
-                        constraints = hl_client.get_symbol_constraints(sym)
-                        max_lev = constraints.get("maxLeverage", 50)
-                        prompt_parts.append(f"- {sym}: Max {max_lev}x (will auto-cap if you exceed)")
-                    except:
-                        pass
-        except Exception as e:
-            print(f"[LLM] Leverage limits error: {e}")
-        
-        # Snapshot
-        snapshot = state.get("snapshot", {})
-        scan = state.get("scan", [])
-        
-        if scan:
-            prompt_parts.append(f"\n## Top Scan Signals")
-            for s in scan[:5]:
-                prompt_parts.append(f"- {s['symbol']}: score={s['score']} trend={s.get('trend', '?')}")
-        
-        # Market data
-        if snapshot:
-            prompt_parts.append(f"\n## Market Snapshot")
-            for sym, data in list(snapshot.items())[:5]:
-                price = data.get("price", 0)
-                prompt_parts.append(f"- {sym}: ${price:.2f}")
-        
-        return "\n".join(prompt_parts)
 
     def _build_prompt(self, state: Dict[str, Any]) -> str:
         """Build prompt for AI"""
         # Format positions
         positions_str = ""
         if state.get("positions"):
-            if isinstance(state["positions"], dict):
-                # positions_by_symbol format
-                for symbol, pos in state["positions"].items():
-                    positions_str += f"  - {symbol}: {pos['side']} {pos['size']} @ ${pos['entry_price']:.2f} (PnL: ${pos['unrealized_pnl']:.2f})\n"
-            else:
-                # list format
-                for p in state["positions"]:
-                    positions_str += f"  - {p['symbol']}: {p['side']} {p['size']} @ ${p['entry_price']:.2f} (PnL: ${p['unrealized_pnl']:.2f})\n"
+            for symbol, pos in state["positions"].items():
+                positions_str += f"  - {symbol}: {pos['side']} {pos['size']} @ ${pos['entry_price']:.2f} (PnL: ${pos['unrealized_pnl']:.2f})\n"
         
         if not positions_str:
             positions_str = "  (none)\n"
         
-        # Format prices
-        prices_str = ""
-        if state.get("prices"):
-            for symbol, price in list(state["prices"].items())[:10]:  # Show top 10
-                prices_str += f"  - {symbol}: ${price:.2f}\n"
-        elif state.get("price") and state.get("symbol"):
-            prices_str = f"  - {state['symbol']}: ${state['price']:.2f}\n"
-        
-        # Format snapshot symbols
-        snapshot_symbols = state.get("snapshot_symbols", state.get("symbols", []))
-        if isinstance(snapshot_symbols, list) and len(snapshot_symbols) > 0:
-            symbols_str = ", ".join(snapshot_symbols[:15])
-            if len(snapshot_symbols) > 15:
-                symbols_str += f" (+{len(snapshot_symbols) - 15} more)"
-        else:
-            symbols_str = state.get("symbol", "BTC")
-        
-        # v11.0: Format symbol briefs for multi-symbol scan with reasons
+        # v11.0: Format symbol briefs for multi-symbol scan
         symbol_briefs = state.get("symbol_briefs", {})
         briefs_lines = []
-        # Sort by score descending
         sorted_briefs = sorted(symbol_briefs.items(), key=lambda x: x[1].get("score", 0), reverse=True)
-        for symbol, brief in sorted_briefs[:11]:  # Show all 11
+        for symbol, brief in sorted_briefs[:11]:
             reason = brief.get('reason', '') 
             reason_str = f" [{reason}]" if reason else ""
             briefs_lines.append(
-                f"  {symbol}: ${brief.get('price', 0)} | {brief.get('trend', '?')} | RSI={brief.get('rsi', 50):.0f} | score={brief.get('score', 0):.0f}{reason_str}"
+                f"  {symbol}: ${brief.get('price', 0)} | {brief.get('trend', '?')} | score={brief.get('score', 0):.1f}{reason_str}"
             )
         briefs_str = "\n".join(briefs_lines) if briefs_lines else "(sem dados)"
 
-        # Position details for context
+        # Position details
         pos_details = state.get("position_details", {})
         details_lines = []
         for sym, data in pos_details.items():
@@ -334,63 +216,32 @@ IMPORTANT
 
 CONTA:
 - Equity: ${state.get('equity', 0):.2f}
-- Buying Power: ${state.get('buying_power', state.get('equity', 0) * 40):.2f}
-- Leverage: {state.get('leverage', 40)}x
+- Buying Power: ${state.get('buying_power', 0):.2f}
 
 POSIÇÕES ({state.get('positions_count', 0)}):
 {positions_str}
 DETALHES:
 {details_str}
 
-SCAN DE MERCADO:
+SCAN DE MERCADO (TOP SIGNALS):
 {briefs_str}
 
-O que você decide fazer?"""
+O que você decide fazer? Pense como um gestor de fundo de hedge."""
 
-    
     def _parse_json_response(self, content: str) -> Dict[str, Any]:
         """Parse JSON response from AI"""
         try:
             # Try direct parse
             return json.loads(content)
         except json.JSONDecodeError:
-            # Try to extract JSON from markdown code blocks
-            if "```json" in content:
-                start = content.find("```json") + 7
-                end = content.find("```", start)
-                json_str = content[start:end].strip()
-                try:
-                    return json.loads(json_str)
-                except json.JSONDecodeError:
-                    pass
-            
-            # Try to extract JSON from any code block
-            if "```" in content:
-                start = content.find("```") + 3
-                end = content.find("```", start)
-                json_str = content[start:end].strip()
-                # Remove language identifier if present
-                if json_str.startswith("json"):
-                    json_str = json_str[4:].strip()
-                try:
-                    return json.loads(json_str)
-                except json.JSONDecodeError:
-                    pass
-            
-            # Try to find JSON object in content
+            # Try to extract JSON
             start = content.find("{")
             end = content.rfind("}") + 1
             if start >= 0 and end > start:
-                json_str = content[start:end]
                 try:
-                    return json.loads(json_str)
-                except json.JSONDecodeError:
+                    return json.loads(content[start:end])
+                except:
                     pass
             
-            # Failed to parse
-            print(f"[LLM][ERROR] invalid_json: {content[:200]}")
-            return {
-                "summary": "invalid_json",
-                "confidence": 0.0,
-                "actions": []
-            }
+            print(f"[LLM][ERROR] invalid_json: {content[:100]}")
+            return {"summary": "invalid_json", "confidence": 0.0, "actions": []}

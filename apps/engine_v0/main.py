@@ -415,16 +415,17 @@ def main():
                                 "trend": trend,
                                 "momentum": momentum,
                                 "rsi": round(rsi, 1),
+                                "score": round(score, 1),
                                 "reason": " + ".join(reasons[:2]) if reasons else ""
                             }
                         
                         state["symbol_briefs"] = symbol_briefs
                         
                         # v11.0: PROOF LOG with varied scores
-                        top_symbols = sorted(symbol_briefs.items(), key=lambda x: x[1]["score"], reverse=True)[:5]
-                        bottom_symbols = sorted(symbol_briefs.items(), key=lambda x: x[1]["score"])[:3]
-                        top_str = " ".join([f"{s}:{int(b['score'])}" for s, b in top_symbols])
-                        bottom_str = " ".join([f"{s}:{int(b['score'])}" for s, b in bottom_symbols])
+                        top_symbols = sorted(symbol_briefs.items(), key=lambda x: x[1].get("score", 50), reverse=True)[:5]
+                        bottom_symbols = sorted(symbol_briefs.items(), key=lambda x: x[1].get("score", 50))[:3]
+                        top_str = " ".join([f"{s}:{int(b.get('score', 50))}" for s, b in top_symbols])
+                        bottom_str = " ".join([f"{s}:{int(b.get('score', 50))}" for s, b in bottom_symbols])
                         
                         # Check for flat scores warning
                         all_scores = [b["score"] for b in symbol_briefs.values()]
