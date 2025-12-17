@@ -74,10 +74,36 @@ def add_ai_action(action: dict):
 
 
 # API Routes
+
+# Path to Next.js static build
+DASHBOARD_NEXT_PATH = os.path.join(os.path.dirname(__file__), "dashboard-next")
+DASHBOARD_OLD_PATH = os.path.join(os.path.dirname(__file__), "dashboard")
+
+
 @app.route('/')
 def index():
-    """Serve dashboard HTML"""
-    return send_from_directory(app.static_folder, 'index.html')
+    """Serve dashboard - Next.js build if available, otherwise fallback to old dashboard"""
+    # Try Next.js build first (professional)
+    if os.path.exists(os.path.join(DASHBOARD_NEXT_PATH, 'index.html')):
+        return send_from_directory(DASHBOARD_NEXT_PATH, 'index.html')
+    # Fallback to old dashboard
+    return send_from_directory(DASHBOARD_OLD_PATH, 'index.html')
+
+
+@app.route('/<path:filename>')
+def serve_next_static(filename):
+    """Serve static files from Next.js build or fallback dashboard"""
+    # Try Next.js build first
+    if os.path.exists(DASHBOARD_NEXT_PATH):
+        next_file = os.path.join(DASHBOARD_NEXT_PATH, filename)
+        if os.path.exists(next_file):
+            return send_from_directory(DASHBOARD_NEXT_PATH, filename)
+    # Fallback to old dashboard
+    old_file = os.path.join(DASHBOARD_OLD_PATH, filename)
+    if os.path.exists(old_file):
+        return send_from_directory(DASHBOARD_OLD_PATH, filename)
+    # 404
+    return "Not found", 404
 
 
 @app.route('/api/status')
