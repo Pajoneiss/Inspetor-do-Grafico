@@ -34,10 +34,10 @@ ORDER_SLIPPAGE = float(os.getenv("ORDER_SLIPPAGE", "0.01"))  # 1% default slippa
 ALLOW_SYMBOL_NOT_IN_SNAPSHOT = os.getenv("ALLOW_SYMBOL_NOT_IN_SNAPSHOT", "true").lower() in ("1", "true", "yes", "y", "on")
 
 # Anti-Loop Operational (Intent-based Deduplication)
-PLACE_ORDER_DEDUP_SECONDS = int(os.getenv("PLACE_ORDER_DEDUP_SECONDS", "300"))  # 5 min
-TRIGGER_DEDUP_SECONDS = int(os.getenv("TRIGGER_DEDUP_SECONDS", "600"))  # 10 min for SL/TP
+PLACE_ORDER_DEDUP_SECONDS = int(os.getenv("PLACE_ORDER_DEDUP_SECONDS", "60"))  # 1 min (was 5min)
+TRIGGER_DEDUP_SECONDS = int(os.getenv("TRIGGER_DEDUP_SECONDS", "120"))  # 2 min (was 10min)
 MAX_OPEN_ORDERS_PER_SYMBOL = int(os.getenv("MAX_OPEN_ORDERS_PER_SYMBOL", "6"))  # Circuit breaker
-MAX_POSITION_ADDS_PER_HOUR = int(os.getenv("MAX_POSITION_ADDS_PER_HOUR", "6"))  # Circuit breaker
+MAX_POSITION_ADDS_PER_HOUR = int(os.getenv("MAX_POSITION_ADDS_PER_HOUR", "12"))  # Raised for scaling (was 6)
 STATE_INCLUDE_OPEN_ORDERS = os.getenv("STATE_INCLUDE_OPEN_ORDERS", "true").lower() == "true"
 STATE_INCLUDE_RECENT_ACTIONS = os.getenv("STATE_INCLUDE_RECENT_ACTIONS", "true").lower() == "true"
 

@@ -245,27 +245,38 @@ class TelegramBot:
         
         text = "📊 *RESUMO COMPLETO*\n\n"
         
-        # Account
-        text += "💰 *Conta:*\n"
-        text += f"  Equity: ${state.get('equity', 0):.2f}\n"
-        text += f"  Buying Power: ${state.get('buying_power', 0):.0f}\n"
-        text += f"  IA: {'✅ ON' if _bot_state['ai_enabled'] else '❌ OFF'}\n\n"
+        # Account with buying power bar
+        equity = state.get('equity', 0)
+        buying_power = state.get('buying_power', 0)
+        text += "💰 *CONTA*\n"
+        text += f"├ Equity: `${equity:.2f}`\n"
+        text += f"├ Buying Power: `${buying_power:.0f}`\n"
+        text += f"└ IA: {'✅ LIGADO' if _bot_state['ai_enabled'] else '❌ DESLIGADO'}\n\n"
         
-        # Positions
+        # Positions with prices and PnL%
         positions = state.get("positions", {})
         if positions:
-            text += "📈 *Posições:*\n"
+            text += "📊 *POSIÇÕES*\n"
             for sym, pos in positions.items():
                 pnl = pos.get("unrealized_pnl", 0)
-                pnl_emoji = "🟢" if pnl > 0 else "🔴" if pnl < 0 else "⚪"
+                entry = pos.get("entry_price", 0)
+                size = pos.get("size", 0)
+                side = pos.get('side', '?')
+                side_emoji = "🟢" if side == "LONG" else "🔴" if side == "SHORT" else "⚪"
+                
+                # Calculate PnL %
+                pnl_pct = (pnl / (abs(size) * entry * 100)) if entry and size else 0
+                pnl_emoji = "📈" if pnl > 0 else "📉" if pnl < 0 else "➖"
+                
                 safe_sym = escape_md(sym)
-                text += f"  {safe_sym}: {pos.get('side')} ${pos.get('size', 0):.4f} | PnL: {pnl_emoji} ${pnl:.2f}\n"
+                text += f"├ {safe_sym}: {side_emoji} {side} | {pnl_emoji} `${pnl:.2f}` ({pnl_pct:+.2f}%)\n"
         else:
-            text += "📈 *Posições:* Nenhuma\n"
+            text += "📊 *POSIÇÕES*\n└ Nenhuma posição aberta\n"
         
-        # Trigger status
-        triggers = state.get('trigger_status', 'N/A')
-        text += f"\n🎯 *Triggers:*\n{escape_md(triggers)}\n"
+        # Triggers with better formatting
+        triggers = state.get('trigger_status', '')
+        if triggers and triggers != 'N/A':
+            text += f"\n🎯 *TRIGGERS*\n{escape_md(triggers)}\n"
         
         # Scan info with visibility
         scan_info = _bot_state.get("scan_info", {})
