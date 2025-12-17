@@ -34,14 +34,62 @@
   --accent-yellow-bg: rgba(255, 217, 61, 0.1);
 
   /* Status */
-  --profit: #7CFF6B;
-  --loss: #FF6B6B;
+  --profit: #00ff88;
+  --loss: #ff3b69;
+
+  /* High-Density Dashboard Tokens */
+  --bg-dark: #07090e;
+  --card-dark: #11141d;
+  --border-dark: #1e222d;
+  --accent-cyan-new: #00e5ff;
 
   /* Shadows */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.25);
 }
+
+/* High-Density Dashboard Utilities */
+.bg-dark-card {
+  background-color: var(--card-dark) !important;
+}
+
+.bg-dark-bg {
+  background-color: var(--bg-dark) !important;
+}
+
+.border-dark-border {
+  border-color: var(--border-dark) !important;
+}
+
+.border-dark-borderLight {
+  border-color: #2a2e39 !important;
+}
+
+.text-profit {
+  color: var(--profit) !important;
+}
+
+.text-loss {
+  color: var(--loss) !important;
+}
+
+.text-accent-cyan {
+  color: var(--accent-cyan-new) !important;
+}
+
+.bg-accent-cyan {
+  background-color: var(--accent-cyan-new) !important;
+}
+
+.bg-profit {
+  background-color: var(--profit) !important;
+}
+
+.bg-loss {
+  background-color: var(--loss) !important;
+}
+
 
 @theme inline {
   --color-bg-primary: var(--bg-primary);
