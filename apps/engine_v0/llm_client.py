@@ -187,17 +187,17 @@ CONSISTENT CONFIDENCE
 OUTPUT FORMAT (STRICT JSON ONLY - NO MARKDOWN)
 {
   "summary": "one or two sentences, practical, no fluff",
-  "confidence": 0.0,
+  "confidence": <0.0-1.0 based on data quality, setup clarity, regime alignment>,
   "actions": [
     {
       "type": "PLACE_ORDER" | "ADD_TO_POSITION" | "CLOSE_POSITION" | "CLOSE_PARTIAL" | "SET_STOP_LOSS" | "SET_TAKE_PROFIT" | "MOVE_STOP_TO_BREAKEVEN" | "CANCEL_ALL_ORDERS" | "NO_TRADE",
-      "symbol": "BTC" | "ETH" | "...",
+      "symbol": <from scan signals or positions>,
       "side": "BUY" | "SELL" | "LONG" | "SHORT" | null,
-      "size": <calculate based on risk/equity>,
-      "price": null,
-      "stop_price": <entry +/- (2-5% depending on volatility)>,
-      "tp_price": null,
-      "leverage": 25,
+      "size": <calculate based on risk/equity, suggest $10-50 notional>,
+      "price": <null for MARKET, specific price for LIMIT>,
+      "stop_price": <entry +/- (2-5% for volatile, 1-3% for BTC)>,
+      "tp_price": <null or specific target based on R:R>,
+      "leverage": <1-50x based on conviction and volatility, aware of exchange limits>,
       "reason": "short, specific justification tied to provided data"
     }
   ],
@@ -213,7 +213,7 @@ IMPORTANT
 - Keep actions minimal: 0 to 3 actions per call.
 - If you output NO_TRADE, still provide meaningful next_call_triggers (so the engine can call you at the right moments).
 - Pure JSON only, no markdown blocks, no ```json```.
-- LEVERAGE: You decide leverage per trade (1-50x). Include "leverage" field in PLACE_ORDER/ADD_TO_POSITION actions.
+- LEVERAGE: You decide based on conviction and volatility (1-50x). System will auto-cap to exchange limits if needed.
 - SIZE: Calculate based on your risk tolerance and account equity. Suggest $10-50 notional for small account.
 - STOP_PRICE: Must give trade room to breathe. For volatile assets (ETH, SOL), use 2-5% from entry. For BTC, 1-3%. Consider recent swing levels and structure.
 """
