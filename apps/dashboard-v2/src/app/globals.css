@@ -235,15 +235,30 @@ body {
   --color-bg-primary: var(--bg-primary);
   --color-bg-secondary: var(--bg-secondary);
   --color-bg-card: var(--bg-card);
+  --color-bg-sidebar: var(--bg-sidebar);
+
   --color-border: var(--border);
+  --color-border-light: var(--border-light);
+
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
+
   --color-accent-green: var(--accent-green);
   --color-accent-cyan: var(--accent-cyan);
+  --color-accent-red: var(--accent-red);
+  --color-accent-yellow: var(--accent-yellow);
+
   --color-profit: var(--profit);
   --color-loss: var(--loss);
+
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* SpaceX Polish */
+  --shadow-glow-green: var(--shadow-glow-green);
+  --shadow-glow-red: var(--shadow-glow-red);
+  --shadow-glow-cyan: var(--shadow-glow-cyan);
 }
 
 * {

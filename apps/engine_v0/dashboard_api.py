@@ -301,16 +301,19 @@ def api_health():
     })
 
 
+@app.route('/api/pnl/history')
+@app.route('/api/history')
 @app.route('/api/pnl')
 def api_pnl():
-    """Get PnL statistics for analytics"""
+    """Get PnL statistics and history for chart"""
     try:
-        from pnl_tracker import get_pnl_windows
+        from pnl_tracker import get_pnl_windows, get_pnl_history
         pnl_data = get_pnl_windows()
+        history = get_pnl_history()
         
         return jsonify({
             "ok": True,
-            "data": {
+            "data": history if request.path == '/api/pnl/history' else {
                 "pnl_24h": pnl_data.get("24h", {}).get("pnl", 0),
                 "pnl_7d": pnl_data.get("7d", {}).get("pnl", 0),
                 "pnl_30d": pnl_data.get("30d", {}).get("pnl", 0),
@@ -321,16 +324,11 @@ def api_pnl():
             "server_time_ms": int(time.time() * 1000)
         })
     except Exception as e:
-        # Return mock data if pnl_tracker fails
         return jsonify({
             "ok": True,
-            "data": {
-                "pnl_24h": 0,
-                "pnl_7d": 0,
-                "pnl_30d": 0,
-                "trades_24h": 0,
-                "trades_7d": 0,
-                "trades_30d": 0,
+            "data": [] if request.path == '/api/pnl/history' else {
+                "pnl_24h": 0, "pnl_7d": 0, "pnl_30d": 0,
+                "trades_24h": 0, "trades_7d": 0, "trades_30d": 0,
             },
             "server_time_ms": int(time.time() * 1000)
         })
@@ -378,10 +376,24 @@ def add_ai_thought(thought: dict):
     _ai_thoughts = _ai_thoughts[:100]
 
 
+@app.route('/api/ai/current-thinking')
 @app.route('/api/ai/thoughts')
 def api_ai_thoughts():
-    """Get AI thoughts feed"""
+    """Get AI thoughts feed or current thinking"""
     limit = request.args.get('limit', 50, type=int)
+    
+    # If explicitly asking for current thinking, return the first item or the latest in state
+    if request.path == '/api/ai/current-thinking':
+        with _state_lock:
+            state_thinking = _dashboard_state.get('aiThinking')
+            if state_thinking:
+                return jsonify({"ok": True, "data": state_thinking})
+        
+        return jsonify({
+            "ok": True, 
+            "data": _ai_thoughts[0] if _ai_thoughts else None
+        })
+
     return jsonify({
         "ok": True,
         "data": _ai_thoughts[:limit],
