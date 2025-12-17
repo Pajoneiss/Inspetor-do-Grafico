@@ -417,13 +417,12 @@ def _sanitize_actions(actions: List[Dict[str, Any]], hl_client=None) -> List[Dic
                 removed_count += 1
                 continue
         
-        # === B4: CLOSE_PARTIAL requires pct ===
+        # === B4: CLOSE_PARTIAL defaults pct if missing ===
         if action_type == "CLOSE_PARTIAL":
             pct = action.get("pct")
             if pct is None:
-                print(f"[SANITIZE] CLOSE_PARTIAL {symbol} skipped - pct is MANDATORY (1-99)")
-                removed_count += 1
-                continue
+                action["pct"] = 50  # Default 50% if AI doesn't specify
+                print(f"[SANITIZE] CLOSE_PARTIAL {symbol} pct defaulted to 50%")
         
         # === B3: Convert PLACE_ORDER → ADD_TO_POSITION if position exists ===
         if action_type == "PLACE_ORDER" and symbol in existing_positions:
@@ -747,15 +746,21 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
             if available_margin < required_margin:
                  print(f"[LIVE][REJECT] Still insufficient margin after adjust. Avail=${available_margin:.2f} Need=${required_margin:.2f}")
                  return
-
+        
         # Execute market order
         is_buy = (side == "BUY")
+        
+        # DEBUG: Log side before API call (for flip bug diagnosis)
+        print(f"[LIVE][PRE-ORDER] {symbol} side={side} is_buy={is_buy} size={normalized['size']}")
         
         resp = hl_client.place_market_order(
             symbol=symbol,
             is_buy=is_buy,
             size=normalized["size"]
         )
+        
+        # DEBUG: Log response to detect side flips
+        print(f"[LIVE][POST-ORDER] {symbol} response_status={resp.get('status', '?')}")
         
         # Log response
         print(f"[LIVE] resp={_format_resp(resp)}")
