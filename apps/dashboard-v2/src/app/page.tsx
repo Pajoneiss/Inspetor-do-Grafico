@@ -7,6 +7,7 @@ import { AccountValueCard } from '@/components/cards/AccountValueCard';
 import { RiskMonitorCard } from '@/components/cards/RiskMonitorCard';
 import { PositionsTable } from '@/components/cards/PositionsTable';
 import { ScanSignalsCard } from '@/components/cards/ScanSignalsCard';
+import { MarketSentimentCard } from '@/components/cards/MarketSentimentCard';
 import { EquityCurve } from '@/components/charts/EquityCurve';
 
 // API Base URL
@@ -215,12 +216,15 @@ export default function DashboardPage() {
                 loading={loading}
               />
             </div>
-            <ScanSignalsCard
-              topSignals={data.scan.top}
-              bottomSignals={data.scan.bottom}
-              totalScanned={11}
-              loading={loading}
-            />
+            <div className="space-y-6">
+              <MarketSentimentCard loading={loading} />
+              <ScanSignalsCard
+                topSignals={data.scan.top}
+                bottomSignals={data.scan.bottom}
+                totalScanned={11}
+                loading={loading}
+              />
+            </div>
           </div>
 
           {/* Positions Table */}
