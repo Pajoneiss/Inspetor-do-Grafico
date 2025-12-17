@@ -7,6 +7,9 @@ import MetricStrip from '@/components/layout/MetricStrip';
 import EquityChart from '@/components/charts/EquityChart';
 import ContextCard from '@/components/cards/ContextCard';
 import PositionsTable from '@/components/positions/PositionsTable';
+import CMCMarketOverview from '@/components/cards/CMCMarketOverview';
+import TrendingCoins from '@/components/cards/TrendingCoins';
+import GainersLosers from '@/components/cards/GainersLosers';
 
 // API Base URL
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
@@ -132,6 +135,16 @@ export default function DashboardPage() {
           {/* KPI Strip */}
           <MetricStrip account={data.account} loading={loading} />
 
+          {/* Top Row: CMC Market Overview + Trending */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-1">
+              <CMCMarketOverview />
+            </div>
+            <div className="lg:col-span-2">
+              <TrendingCoins />
+            </div>
+          </div>
+
           {/* Middle Row: Chart & Context */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div className="lg:col-span-8">
@@ -145,6 +158,11 @@ export default function DashboardPage() {
                 loading={loading}
               />
             </div>
+          </div>
+
+          {/* Gainers/Losers Row */}
+          <div className="w-full">
+            <GainersLosers />
           </div>
 
           {/* Bottom Row: Positions */}
