@@ -389,6 +389,19 @@ def add_ai_thought(thought: dict):
     _ai_thoughts = _ai_thoughts[:100]
 
 
+# Enhanced trade logs storage
+_trade_logs = []
+
+
+def add_trade_log(log: dict):
+    """Add detailed trade log to history (keep last 50)"""
+    global _trade_logs
+    log['id'] = str(len(_trade_logs) + 1)
+    log['timestamp'] = log.get('timestamp', datetime.now(timezone.utc).isoformat())
+    _trade_logs.insert(0, log)
+    _trade_logs = _trade_logs[:50]
+
+
 @app.route('/api/ai/current-thinking')
 @app.route('/api/ai/thoughts')
 def api_ai_thoughts():
@@ -410,6 +423,17 @@ def api_ai_thoughts():
     return jsonify({
         "ok": True,
         "data": _ai_thoughts[:limit],
+        "server_time_ms": int(time.time() * 1000)
+    })
+
+
+@app.route('/api/ai/trade-logs')
+def api_trade_logs():
+    """Get detailed AI trade logs with strategy, TP/SL, breakeven plans"""
+    limit = request.args.get('limit', 20, type=int)
+    return jsonify({
+        "ok": True,
+        "data": _trade_logs[:limit],
         "server_time_ms": int(time.time() * 1000)
     })
 
@@ -540,6 +564,57 @@ def run_dashboard_server(port: int = 8080, host: str = "0.0.0.0"):
     thread.start()
     return thread
 
+
+# Add mock trade log for testing
+add_trade_log({
+    'symbol': 'BTC',
+    'action': 'ENTRY',
+    'side': 'LONG',
+    'entry_price': 104250.00,
+    'size': 0.001,
+    'leverage': 10,
+    'strategy': {
+        'name': 'Breakout + Volume Confirmation',
+        'timeframe': '1H',
+        'setup_quality': 8.5,
+        'confluence_factors': [
+            '1H EMA9 > EMA21 (bullish)',
+            'Price broke 104k resistance with volume',
+            '4H trend aligned',
+            'RSI 14 at 62 (healthy)'
+        ]
+    },
+    'entry_rationale': 'Strong 1H breakout above 104k resistance with 2x average volume. Entry on retest of broken resistance.',
+    'risk_management': {
+        'stop_loss': 103500.00,
+        'stop_loss_reason': 'Below swing low',
+        'risk_usd': 0.75,
+        'risk_pct': 0.72,
+        'take_profit_1': 105000.00,
+        'tp1_reason': 'Swing high resistance',
+        'tp1_size_pct': 50,
+        'take_profit_2': 106500.00,
+        'tp2_reason': 'Measured move',
+        'tp2_size_pct': 50,
+        'breakeven_plan': {
+            'enabled': True,
+            'trigger': 'After TP1',
+            'move_to': 104300.00
+        },
+        'trailing_stop': {
+            'enabled': True,
+            'activation': 'After TP1',
+            'distance': '1H ATR ()'
+        }
+    },
+    'market_context': {
+        'fear_greed': 17,
+        'trend_1h': 'BULLISH',
+        'trend_4h': 'BULLISH'
+    },
+    'confidence': 0.85,
+    'ai_notes': 'High probability setup. Clean market structure.'
+})
 
 # Load saved state on import
 try:

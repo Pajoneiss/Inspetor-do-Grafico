@@ -179,6 +179,7 @@ function DashboardContent() {
   const [chatMessages, setChatMessages] = useState<{ role: string, content: string }[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [tradeLog, setTradeLog] = useState<any>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
