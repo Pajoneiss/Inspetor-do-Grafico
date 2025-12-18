@@ -42,6 +42,25 @@ def escape_md(text: str) -> str:
     return str(text).replace("_", "\\_").replace("*", "\\*").replace("`", "\\`").replace("[", "\\[")
 
 
+def get_test_trade_request() -> Optional[Dict[str, Any]]:
+    """Get pending test trade request from Telegram"""
+    return _bot_state.get("test_trade_request")
+
+
+def clear_test_trade_request():
+    """Clear test trade request after processing"""
+    if "test_trade_request" in _bot_state:
+        del _bot_state["test_trade_request"]
+
+
+def send_test_trade_result(chat_id: int, result_text: str):
+    """Send test trade result back to Telegram user"""
+    _bot_state["test_trade_result"] = {
+        "chat_id": chat_id,
+        "text": result_text
+    }
+
+
 class TelegramBot:
     """Simple Telegram bot with 3 main buttons"""
     
@@ -87,12 +106,18 @@ class TelegramBot:
         
         app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
         
+        # Store app reference for sending messages
+        self.app = app
+        
         # Register handlers
         app.add_handler(CommandHandler("start", self._cmd_start))
         app.add_handler(CommandHandler("status", self._cmd_status))
         app.add_handler(CommandHandler("chat", self.chat_handler))
         app.add_handler(CommandHandler("ajuda", self.ajuda_handler))
         app.add_handler(CommandHandler("help", self.ajuda_handler))
+        app.add_handler(CommandHandler("test_trade", self._cmd_test_trade))
+        app.add_handler(CommandHandler("test", self._cmd_test_trade))
+        app.add_handler(CommandHandler("force_trade", self._cmd_test_trade))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message))
         
         self.running = True
@@ -119,6 +144,20 @@ class TelegramBot:
                 retry_delay = 30
                 while self.running:
                     await asyncio.sleep(1)
+                    
+                    # Check for pending test trade results to send
+                    if "test_trade_result" in _bot_state:
+                        result = _bot_state["test_trade_result"]
+                        try:
+                            await app.bot.send_message(
+                                chat_id=result["chat_id"],
+                                text=result["text"],
+                                parse_mode="Markdown"
+                            )
+                            del _bot_state["test_trade_result"]
+                        except Exception as e:
+                            print(f"[TG][ERROR] Failed to send test trade result: {e}")
+                            del _bot_state["test_trade_result"]  # Clear anyway to avoid spam
                     
             except telegram.error.Conflict as e:
                 print(f"[TG][WARN] Conflict error (another instance running?), retrying in {retry_delay}s")
@@ -204,6 +243,81 @@ class TelegramBot:
             reply_markup=reply_markup,
             parse_mode="Markdown"
         )
+    
+    async def _cmd_test_trade(self, update, context):
+        """
+        Handle /test_trade command - Force AI to analyze and execute test trades
+        
+        Usage:
+        • /test_trade - Analyze all monitored symbols
+        • /test_trade BTC ETH SOL - Analyze specific symbols
+        • /test_trade 3 - Analyze top 3 symbols by score
+        """
+        if not is_admin(update.effective_user.id):
+            await update.message.reply_text("❌ Apenas admins podem executar test trades")
+            return
+        
+        # Parse command arguments
+        args = context.args if context.args else []
+        
+        # Build symbols list from state (populated by main.py from config.SYMBOL)
+        state = _bot_state.get("last_summary", {})
+        all_symbols = state.get("symbols", [])
+        
+        # Safety check: ensure we have symbols configured
+        if not all_symbols and not args:
+            await update.message.reply_text(
+                "❌ Nenhum símbolo configurado no bot.\n"
+                "Configure SYMBOL no ambiente ou especifique símbolos: /test_trade BTC ETH",
+                parse_mode=None
+            )
+            return
+        
+        if not args:
+            # No args - use all symbols
+            symbols = all_symbols
+            mode_desc = f"todos os {len(symbols)} símbolos"
+        elif len(args) == 1 and args[0].isdigit():
+            # Top N symbols by score
+            n = int(args[0])
+            scan = _bot_state.get("last_scan", [])
+            if scan:
+                symbols = [s["symbol"] for s in scan[:n]]
+            else:
+                symbols = all_symbols[:n] if all_symbols else []
+            mode_desc = f"top {n} símbolos"
+        else:
+            # Specific symbols
+            symbols = [s.upper() for s in args]
+            mode_desc = f"símbolos específicos: {', '.join(symbols)}"
+        
+        # Final safety check
+        if not symbols:
+            await update.message.reply_text(
+                "❌ Nenhum símbolo para analisar.\n"
+                "Especifique símbolos: /test_trade BTC ETH SOL",
+                parse_mode=None
+            )
+            return
+        
+        await update.message.reply_text(
+            f"🧪 *TEST TRADE INICIADO*\\n\\n"
+            f"Modo: {mode_desc}\\n"
+            f"Símbolos: {len(symbols)}\\n\\n"
+            "⏳ Analisando mercado e executando decisões da IA...\\n\\n"
+            "⚠️ Este comando bypassa cooldowns normais",
+            parse_mode="Markdown"
+        )
+        
+        # Queue test trade request for main loop
+        _bot_state["test_trade_request"] = {
+            "symbols": symbols,
+            "chat_id": update.effective_chat.id,
+            "user_id": update.effective_user.id,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        print(f"[TG][TEST_TRADE] Queued test trade for {len(symbols)} symbols by user {update.effective_user.id}")
     
     async def _handle_callback(self, update, context):
         """Handle button callbacks"""

@@ -28,7 +28,15 @@ from data_sources import get_all_external_data
 
 # v11.0: Telegram bot integration
 try:
-    from telegram_bot import start_telegram_bot, update_telegram_state, is_ai_enabled, should_panic_close
+    from telegram_bot import (
+        start_telegram_bot, 
+        update_telegram_state, 
+        is_ai_enabled, 
+        should_panic_close,
+        get_test_trade_request,
+        clear_test_trade_request,
+        send_test_trade_result
+    )
     TELEGRAM_AVAILABLE = True
 except ImportError:
     TELEGRAM_AVAILABLE = False
@@ -647,6 +655,71 @@ def main():
                     else:
                         remaining = LLM_MIN_SECONDS - time_since_last_call if not min_time_passed else AI_CALL_INTERVAL_SECONDS - time_since_last_call
                         print(f"[LLM] skipped (cooldown {max(0, remaining):.0f}s, state_changed={state_changed})")
+            
+            # BLOCO 4: Test Trade Request Processing (from Telegram)
+            if TELEGRAM_AVAILABLE and llm:
+                test_request = get_test_trade_request()
+                if test_request:
+                    print(f"[TEST_TRADE] Processing request for {len(test_request['symbols'])} symbols")
+                    
+                    results = []
+                    trades_executed = 0
+                    holds = 0
+                    
+                    for symbol in test_request['symbols']:
+                        try:
+                            # Build state for this symbol
+                            symbol_state = state.copy()
+                            symbol_state['snapshot_symbols'] = [symbol]
+                            
+                            # Get AI decision for this symbol
+                            print(f"[TEST_TRADE] Calling AI for {symbol}...")
+                            decision = llm.decide(symbol_state)
+                            
+                            # Process decision
+                            actions = decision.get("actions", [])
+                            summary = decision.get("summary", "No summary")
+                            confidence = decision.get("confidence", 0)
+                            
+                            if actions and any(a.get("type") != "NO_TRADE" for a in actions):
+                                # Execute trade
+                                execute(actions, live_trading=LIVE_TRADING, hl_client=hl)
+                                trades_executed += 1
+                                
+                                # Get action details
+                                trade_action = next((a for a in actions if a.get("type") != "NO_TRADE"), actions[0])
+                                action_type = trade_action.get("type", "UNKNOWN")
+                                side = trade_action.get("side", "")
+                                
+                                results.append(f"✅ {symbol}: {action_type} {side} (Conf: {confidence:.2f})")
+                                results.append(f"   Razão: {summary[:60]}")
+                            else:
+                                # Hold
+                                holds += 1
+                                results.append(f"⏸️ {symbol}: HOLD (Conf: {confidence:.2f})")
+                                results.append(f"   Razão: {summary[:60]}")
+                            
+                        except Exception as e:
+                            results.append(f"❌ {symbol}: Erro - {str(e)[:50]}")
+                            print(f"[TEST_TRADE][ERROR] {symbol}: {e}")
+                    
+                    # Build result message
+                    result_text = (
+                        f"🧪 *TEST TRADE CONCLUÍDO*\\n\\n"
+                        f"Símbolos analisados: {len(test_request['symbols'])}\\n"
+                        f"Trades executados: {trades_executed}\\n"
+                        f"Holds: {holds}\\n\\n"
+                        f"*Resultados:*\\n"
+                        + "\\n".join(results)
+                    )
+                    
+                    # Send result back to Telegram
+                    send_test_trade_result(test_request['chat_id'], result_text)
+                    
+                    # Clear request
+                    clear_test_trade_request()
+                    
+                    print(f"[TEST_TRADE] Completed: {trades_executed} trades, {holds} holds")
             
             # Update Dashboard state (sync with dashboard API)
             if DASHBOARD_AVAILABLE:
