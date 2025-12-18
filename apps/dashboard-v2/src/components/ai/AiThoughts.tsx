@@ -134,7 +134,7 @@ export function AiThoughts() {
                     <select
                         value={filter}
                         onChange={(e) => setFilter(e.target.value as any)}
-                        className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)]"
+                        className="bg-[var(--bg-primary)] border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)]"
                     >
                         <option value="all">All</option>
                         <option value="decisions">Decisions Only</option>
@@ -143,7 +143,7 @@ export function AiThoughts() {
                     <select
                         value={minConfidence}
                         onChange={(e) => setMinConfidence(Number(e.target.value))}
-                        className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)]"
+                        className="bg-[var(--bg-primary)] border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-secondary)]"
                     >
                         <option value={0}>Conf: Any</option>
                         <option value={0.5}>Conf: ≥50%</option>
@@ -161,7 +161,7 @@ export function AiThoughts() {
                     </div>
                 ) : (
                     filteredThoughts.map((thought) => (
-                        <div key={thought.id} className="p-4 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)]">
+                        <div key={thought.id} className="p-4 bg-[var(--bg-primary)] border border-[var(--border)]">
                             {/* Header */}
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">

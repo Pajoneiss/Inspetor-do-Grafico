@@ -36,7 +36,7 @@ export default function CMCMarketOverview() {
 
     if (loading) {
         return (
-            <div className="glass-card glass-card-hover rounded-2xl p-6 animate-pulse">
+            <div className="glass-card glass-card-hover p-8 animate-pulse">
                 <div className="h-6 bg-white/10 rounded w-1/3 mb-4"></div>
                 <div className="space-y-3">
                     <div className="h-12 bg-white/10 rounded"></div>
@@ -60,7 +60,7 @@ export default function CMCMarketOverview() {
     const isPositive = data.market_cap_change_24h >= 0;
 
     return (
-        <div className="glass-card glass-card-hover rounded-2xl p-6 animate-slide-up">
+        <div className="glass-card glass-card-hover p-8 animate-slide-up">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider">

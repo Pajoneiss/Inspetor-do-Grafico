@@ -37,11 +37,11 @@ export default function TrendingCoins() {
 
     if (loading) {
         return (
-            <div className="glass-card glass-card-hover rounded-2xl p-6 animate-pulse">
+            <div className="glass-card glass-card-hover p-10 animate-pulse">
                 <div className="h-6 bg-white/10 rounded w-1/3 mb-4"></div>
                 <div className="space-y-2">
                     {[...Array(5)].map((_, i) => (
-                        <div key={i} className="h-12 bg-white/10 rounded"></div>
+                        <div key={i} className="h-12 bg-white/10"></div>
                     ))}
                 </div>
             </div>
@@ -61,7 +61,7 @@ export default function TrendingCoins() {
     };
 
     return (
-        <div className="glass-card glass-card-hover rounded-2xl p-6 animate-slide-up">
+        <div className="glass-card glass-card-hover p-10 animate-slide-up">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider">
@@ -84,11 +84,11 @@ export default function TrendingCoins() {
                         return (
                             <div
                                 key={coin.symbol}
-                                className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-200 group"
+                                className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 transition-all duration-200 group"
                             >
                                 {/* Left: Rank + Name */}
                                 <div className="flex items-center gap-3 flex-1">
-                                    <div className="w-6 h-6 rounded-full bg-gradient-info flex items-center justify-center text-xs font-bold text-white">
+                                    <div className="w-6 h-6 bg-gradient-info flex items-center justify-center text-xs font-bold text-white">
                                         {index + 1}
                                     </div>
                                     <div className="flex-1 min-w-0">

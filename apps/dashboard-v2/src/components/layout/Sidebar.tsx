@@ -31,7 +31,7 @@ export default function Sidebar({ activePage }: SidebarProps = {}) {
             {/* Logo */}
             <div className="sidebar-logo">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent-cyan)] to-[var(--accent-green)] flex items-center justify-center">
+                    <div className="w-10 h-10 bg-gradient-to-br from-[var(--accent-cyan)] to-[var(--accent-green)] flex items-center justify-center">
                         <Activity className="w-5 h-5 text-[var(--bg-primary)]" />
                     </div>
                     <div>
@@ -54,7 +54,7 @@ export default function Sidebar({ activePage }: SidebarProps = {}) {
                         <Link
                             key={item.id}
                             href={item.href}
-                            className={`sidebar-item group ${isActive ? 'active shadow-[0_0_20px_rgba(0,229,255,0.15)] bg-white/5' : ''}`}
+                            className={`sidebar-item group ${isActive ? 'active shadow-[0_0_20px_rgba(0,229,255,0.15)] bg-white/5' : ''} !rounded-none`}
                         >
                             <Icon className={`w-5 h-5 transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-[var(--accent-cyan)]' : ''}`} />
                             <span className={isActive ? 'font-bold' : ''}>{item.label}</span>
@@ -68,7 +68,7 @@ export default function Sidebar({ activePage }: SidebarProps = {}) {
 
             {/* Bot Status */}
             <div className="p-4 mt-auto border-t border-[var(--border)]">
-                <div className="flex items-center gap-3 p-4 rounded-2xl glass glass-hover">
+                <div className="flex items-center gap-3 p-6 glass glass-hover">
                     <div className="relative">
                         <div className="status-dot" />
                         <div className="absolute inset-0 status-dot blur-sm opacity-50" />

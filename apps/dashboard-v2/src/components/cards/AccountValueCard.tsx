@@ -75,7 +75,7 @@ export function AccountValueCard({
 
             {/* Stats Grid */}
             <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 rounded-xl bg-[var(--bg-primary)]">
+                <div className="p-4 bg-[var(--bg-primary)] border border-white/5">
                     <div className="flex items-center gap-2 mb-1">
                         <Wallet className="w-3 h-3 text-[var(--text-muted)]" />
                         <span className="text-xs text-[var(--text-muted)]">Buying Power</span>
@@ -83,7 +83,7 @@ export function AccountValueCard({
                     <div className="text-lg font-semibold">{formatCurrency(buyingPower)}</div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-[var(--bg-primary)]">
+                <div className="p-4 bg-[var(--bg-primary)] border border-white/5">
                     <div className="flex items-center gap-2 mb-1">
                         <DollarSign className="w-3 h-3 text-[var(--text-muted)]" />
                         <span className="text-xs text-[var(--text-muted)]">Realized 24h</span>
@@ -93,7 +93,7 @@ export function AccountValueCard({
                     </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-[var(--bg-primary)]">
+                <div className="p-4 bg-[var(--bg-primary)] border border-white/5">
                     <div className="flex items-center gap-2 mb-1">
                         <Percent className="w-3 h-3 text-[var(--text-muted)]" />
                         <span className="text-xs text-[var(--text-muted)]">Fees 24h</span>
@@ -103,7 +103,7 @@ export function AccountValueCard({
                     </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-[var(--bg-primary)]">
+                <div className="p-4 bg-[var(--bg-primary)] border border-white/5">
                     <div className="flex items-center gap-2 mb-1">
                         <Activity className="w-3 h-3 text-[var(--text-muted)]" />
                         <span className="text-xs text-[var(--text-muted)]">Funding 24h</span>

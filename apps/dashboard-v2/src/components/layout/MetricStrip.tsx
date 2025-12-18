@@ -10,7 +10,7 @@ interface MetricProps {
 }
 
 const KpiCard = ({ label, value, delta, deltaColor, loading }: MetricProps) => (
-    <div className="glass glass-hover rounded-xl p-4 flex flex-col justify-between animate-in min-h-[100px] border border-white/5 bg-white/[0.03]">
+    <div className="glass glass-hover p-8 flex flex-col justify-between animate-in min-h-[120px] border border-white/5 bg-white/[0.03]">
         <div className="text-[11px] text-white/50 uppercase tracking-[0.15em] font-black mb-2">{label}</div>
         <div className="flex items-baseline gap-2">
             {loading ? (
@@ -72,7 +72,7 @@ export default function MetricStrip({ account, loading }: MetricStripProps) {
     ]
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-6 mb-8">
             {metrics.map((m, i) => (
                 <KpiCard key={i} {...m} loading={loading} />
             ))}

@@ -10,10 +10,10 @@ def format_multi_timeframe_candles(state):
     candles_str = ""
     
     # Timeframe display order (macro to micro for context-first analysis)
-    TF_ORDER = ["1W", "1D", "4h", "1h", "15m", "5m", "1m"]
+    TF_ORDER = ["1w", "1d", "4h", "1h", "15m", "5m", "1m"]
     TF_LABELS = {
-        "1W": "MACRO (1 year context)",
-        "1D": "TREND (3 months primary)",
+        "1w": "MACRO (1 year context)",
+        "1d": "TREND (3 months primary)",
         "4h": "SWING+ (1 week intermediate)",
         "1h": "SWING (2 days structure)",
         "15m": "ENTRY (10 hours precision)",
@@ -37,8 +37,8 @@ def format_multi_timeframe_candles(state):
             
             # Show last N closes based on timeframe
             display_count = {
-                "1W": 8,   # Last 8 weeks
-                "1D": 12,  # Last 12 days
+                "1w": 8,   # Last 8 weeks
+                "1d": 12,  # Last 12 days
                 "4h": 10,  # Last 40 hours
                 "1h": 12,  # Last 12 hours
                 "15m": 10, # Last 150 min

@@ -67,7 +67,7 @@ export function ScanSignalsCard({
                     {topSignals.slice(0, 5).map((signal) => (
                         <div
                             key={signal.symbol}
-                            className="flex items-center justify-between p-2 rounded-lg bg-[var(--bg-primary)]"
+                            className="flex items-center justify-between p-3 bg-[var(--bg-primary)]"
                         >
                             <div className="flex items-center gap-3">
                                 <span className="font-medium text-sm">{signal.symbol}</span>
@@ -93,7 +93,7 @@ export function ScanSignalsCard({
                     {bottomSignals.slice(0, 3).map((signal) => (
                         <div
                             key={signal.symbol}
-                            className="flex items-center justify-between p-2 rounded-lg bg-[var(--bg-primary)]"
+                            className="flex items-center justify-between p-3 bg-[var(--bg-primary)]"
                         >
                             <div className="flex items-center gap-3">
                                 <span className="font-medium text-sm text-[var(--text-muted)]">{signal.symbol}</span>

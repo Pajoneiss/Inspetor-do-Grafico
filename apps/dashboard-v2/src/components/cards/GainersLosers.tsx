@@ -40,17 +40,17 @@ export default function GainersLosers() {
 
     if (loading) {
         return (
-            <div className="glass-card glass-card-hover rounded-2xl p-6 animate-pulse">
+            <div className="glass-card glass-card-hover p-10 animate-pulse">
                 <div className="h-6 bg-white/10 rounded w-1/3 mb-4"></div>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         {[...Array(3)].map((_, i) => (
-                            <div key={i} className="h-16 bg-white/10 rounded"></div>
+                            <div key={i} className="h-16 bg-white/10"></div>
                         ))}
                     </div>
                     <div className="space-y-2">
                         {[...Array(3)].map((_, i) => (
-                            <div key={i} className="h-16 bg-white/10 rounded"></div>
+                            <div key={i} className="h-16 bg-white/10"></div>
                         ))}
                     </div>
                 </div>
@@ -69,7 +69,7 @@ export default function GainersLosers() {
     };
 
     return (
-        <div className="glass-card glass-card-hover rounded-2xl p-6 animate-slide-up">
+        <div className="glass-card glass-card-hover p-10 animate-slide-up">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider">
@@ -89,7 +89,7 @@ export default function GainersLosers() {
                     {/* Gainers */}
                     <div>
                         <div className="flex items-center gap-2 mb-4">
-                            <div className="w-2 h-2 rounded-full bg-profit animate-pulse-glow"></div>
+                            <div className="w-2 h-2 bg-profit animate-pulse-glow"></div>
                             <span className="text-xs font-semibold text-profit uppercase tracking-wide">
                                 Top Gainers
                             </span>
@@ -98,7 +98,7 @@ export default function GainersLosers() {
                             {data.gainers.slice(0, 5).map((coin) => (
                                 <div
                                     key={coin.symbol}
-                                    className="p-3 rounded-xl bg-gradient-to-r from-profit/10 to-transparent hover:from-profit/20 transition-all duration-200"
+                                    className="p-4 bg-gradient-to-r from-profit/10 to-transparent hover:from-profit/20 transition-all duration-200"
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex-1 min-w-0">
@@ -121,7 +121,7 @@ export default function GainersLosers() {
                     {/* Losers */}
                     <div>
                         <div className="flex items-center gap-2 mb-4">
-                            <div className="w-2 h-2 rounded-full bg-loss animate-pulse-glow"></div>
+                            <div className="w-2 h-2 bg-loss animate-pulse-glow"></div>
                             <span className="text-xs font-semibold text-loss uppercase tracking-wide">
                                 Top Losers
                             </span>
@@ -130,7 +130,7 @@ export default function GainersLosers() {
                             {data.losers.slice(0, 5).map((coin) => (
                                 <div
                                     key={coin.symbol}
-                                    className="p-3 rounded-xl bg-gradient-to-r from-loss/10 to-transparent hover:from-loss/20 transition-all duration-200"
+                                    className="p-4 bg-gradient-to-r from-loss/10 to-transparent hover:from-loss/20 transition-all duration-200"
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex-1 min-w-0">

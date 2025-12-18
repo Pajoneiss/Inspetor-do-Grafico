@@ -63,9 +63,9 @@ export function RiskMonitorCard({
                         {formatPercent(marginUsage)}
                     </span>
                 </div>
-                <div className="h-1.5 bg-[var(--bg-primary)] rounded-full overflow-hidden">
+                <div className="h-1.5 bg-[var(--bg-primary)] overflow-hidden">
                     <div
-                        className={`h-full rounded-full ${marginUsage < 30 ? 'bg-[var(--profit)]' : marginUsage < 60 ? 'bg-[var(--accent-yellow)]' : 'bg-[var(--loss)]'}`}
+                        className={`h-full ${marginUsage < 30 ? 'bg-[var(--profit)]' : marginUsage < 60 ? 'bg-[var(--accent-yellow)]' : 'bg-[var(--loss)]'}`}
                         style={{ width: `${Math.min(marginUsage, 100)}%` }}
                     />
                 </div>
@@ -102,7 +102,7 @@ export function RiskMonitorCard({
 
                 {/* Error Count */}
                 {errorCount > 0 && (
-                    <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--accent-red-bg)]">
+                    <div className="flex justify-between items-center p-4 bg-[var(--accent-red-bg)]">
                         <div className="flex items-center gap-2">
                             <AlertTriangle className="w-3 h-3 text-[var(--loss)]" />
                             <span className="text-sm text-[var(--loss)]">Errors</span>

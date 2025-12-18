@@ -298,8 +298,8 @@ def main():
                             "15m": 40,  # 10 hours - entry precision
                             "1h": 48,   # 2 days - swing structure
                             "4h": 42,   # 1 week - intermediate trend
-                            "1D": 90,   # 3 months - primary trend
-                            "1W": 52    # 1 year - macro context
+                            "1d": 90,   # 3 months - primary trend
+                            "1w": 52    # 1 year - macro context
                         }
                         
                         # Collect candles for top 5 symbols
@@ -316,9 +316,10 @@ def main():
                                     candles_by_symbol[symbol][tf] = []
                             
                             # Calculate indicators from 15m if available
-                            if indicators_available and candles_15m:
+                            symbol_15m = candles_by_symbol[symbol].get("15m", [])
+                            if indicators_available and symbol_15m:
                                 try:
-                                    indicators_by_symbol[symbol] = calculate_indicators(candles_15m)
+                                    indicators_by_symbol[symbol] = calculate_indicators(symbol_15m)
                                 except Exception as e:
                                     print(f"[VISION][WARN] indicators calc failed for {symbol}: {e}")
                                     indicators_by_symbol[symbol] = {}
@@ -454,7 +455,7 @@ def main():
                         scores_flat = len(set(all_scores)) <= 2
                         
                         if scores_flat:
-                            print(f"[SCAN][WARN] scores_flat detected → check indicator pipeline")
+                            print(f"[SCAN][WARN] scores_flat detected -> check indicator pipeline")
                             print(f"[SCAN][DEBUG] All scores: {all_scores}")
                             if symbols:
                                 first_sym = symbols[0]

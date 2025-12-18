@@ -22,7 +22,7 @@ interface PositionsTableProps {
 export default function PositionsTable({ positions, loading }: PositionsTableProps) {
     if (loading) {
         return (
-            <div className="glass rounded-2xl p-6 animate-pulse">
+            <div className="glass p-10 animate-pulse">
                 <div className="h-4 w-32 bg-white/5 rounded-full mb-6" />
                 <div className="space-y-4">
                     {[1, 2, 3].map(i => <div key={i} className="h-10 bg-white/5 rounded-xl" />)}
@@ -32,8 +32,8 @@ export default function PositionsTable({ positions, loading }: PositionsTablePro
     }
 
     return (
-        <div className="glass rounded-2xl overflow-hidden animate-in">
-            <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between bg-white/5 backdrop-blur-md">
+        <div className="glass overflow-hidden animate-in">
+            <div className="px-10 py-6 border-b border-white/5 flex items-center justify-between bg-white/5 backdrop-blur-md">
                 <div className="flex items-center gap-3">
                     <span className="text-sm font-black text-[var(--color-text-primary)] uppercase tracking-widest">Active Fleet</span>
                     <span className="px-2 py-0.5 bg-[var(--color-accent-cyan)]/10 text-[var(--color-accent-cyan)] rounded-full text-[10px] font-black neon-glow-cyan">{positions.length}</span>
@@ -48,7 +48,7 @@ export default function PositionsTable({ positions, loading }: PositionsTablePro
                 <table className="w-full text-[11px] border-collapse">
                     <thead>
                         <tr className="bg-white/5 text-[var(--color-text-muted)] uppercase tracking-widest text-[9px] font-black border-b border-white/5">
-                            <th className="text-left px-6 py-4">Symbol</th>
+                            <th className="text-left px-10 py-6">Symbol</th>
                             <th className="text-left px-2 py-4">Side</th>
                             <th className="text-right px-2 py-4">Size</th>
                             <th className="text-right px-2 py-4">Entry</th>
@@ -66,7 +66,7 @@ export default function PositionsTable({ positions, loading }: PositionsTablePro
                         ) : (
                             positions.map((p, i) => (
                                 <tr key={i} className="group hover:bg-white/5 transition-all duration-300">
-                                    <td className="px-6 py-4 font-black text-sm text-[var(--color-text-primary)] tracking-tight">{p.symbol}</td>
+                                    <td className="px-10 py-6 font-black text-sm text-[var(--color-text-primary)] tracking-tight">{p.symbol}</td>
                                     <td className="px-2 py-4">
                                         <span className={`px-2 py-1 rounded-md font-black text-[9px] tracking-widest ${p.side.toLowerCase() === 'long' ? 'bg-[var(--color-profit)]/10 text-[var(--color-profit)] border border-[var(--color-profit)]/20 shadow-[0_0_10px_rgba(0,255,136,0.1)]' : 'bg-[var(--color-loss)]/10 text-[var(--color-loss)] border border-[var(--color-loss)]/20 shadow-[0_0_10px_rgba(255,59,105,0.1)]'
                                             }`}>

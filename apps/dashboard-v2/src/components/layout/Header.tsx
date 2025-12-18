@@ -27,11 +27,11 @@ export default function Header({
     };
 
     return (
-        <header className="px-8 py-6 flex justify-between items-center border-b border-white/5 bg-[#040608]/50 backdrop-blur-xl sticky top-0 z-50">
+        <header className="px-10 py-8 flex justify-between items-center border-b border-white/5 bg-[#040608]/50 backdrop-blur-xl sticky top-0 z-50">
             {/* Left: Wallet Info */}
             <div className="flex items-center gap-6">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[var(--color-accent-cyan)] to-[var(--color-accent-green)] flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                    <div className="w-12 h-12 bg-gradient-to-br from-[var(--color-accent-cyan)] to-[var(--color-accent-green)] flex items-center justify-center shadow-lg shadow-cyan-500/20">
                         <Wallet className="w-5 h-5 text-[#040608]" />
                     </div>
                     <div>
@@ -44,7 +44,7 @@ export default function Header({
             {/* Right: Status Badges */}
             <div className="flex items-center gap-4">
                 {/* Last Update */}
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5">
+                <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/5">
                     <Clock className="w-3.5 h-3.5 text-[var(--color-accent-cyan)] animate-pulse" />
                     <span className="text-[10px] font-black text-[var(--color-text-primary)] tracking-widest">{formatTimeAgo(lastUpdate).toUpperCase()}</span>
                 </div>
@@ -52,18 +52,18 @@ export default function Header({
                 {/* Refresh Button */}
                 <button
                     onClick={onRefresh}
-                    className="p-2 rounded-xl glass glass-hover group"
+                    className="p-4 glass glass-hover group"
                 >
                     <RefreshCw className="w-4 h-4 text-[var(--color-text-muted)] group-hover:text-[var(--color-accent-cyan)] transition-colors group-hover:rotate-180 duration-500" />
                 </button>
 
                 {/* Live/Paper Badge */}
-                <span className={`badge ${isLive ? 'badge-live' : 'badge-paper'} px-4 py-1.5 rounded-full font-black tracking-[0.2em] shadow-lg`}>
+                <span className={`badge ${isLive ? 'badge-live' : 'badge-paper'} px-6 py-2 font-black tracking-[0.2em] shadow-lg`}>
                     {isLive ? 'LIVE CORE' : 'PAPER SIM'}
                 </span>
 
                 {/* Mode Badge */}
-                <span className="badge badge-cyan px-4 py-1.5 rounded-full font-black tracking-[0.2em] shadow-lg neon-glow-cyan bg-cyan-500/10 border-cyan-500/20">
+                <span className="badge badge-cyan px-6 py-2 font-black tracking-[0.2em] shadow-lg neon-glow-cyan bg-cyan-500/10 border-cyan-500/20">
                     GLOBAL_IA
                 </span>
             </div>

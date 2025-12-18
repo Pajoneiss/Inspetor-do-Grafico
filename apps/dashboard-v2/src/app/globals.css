@@ -285,18 +285,18 @@ body {
 }
 
 /* =========================================
-   Card Styles
+   Card Styles - SHARP EDGES FOR CLEANER LOOK
    ========================================= */
 
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 28px;
-  /* Increased from 24px */
+  border-radius: 0px;
+  /* Removed rounded corners */
+  padding: 32px;
+  /* Increased from 28px */
   transition: all 0.2s ease;
   line-height: 1.6;
-  /* Better text spacing */
 }
 
 .card:hover {
@@ -308,12 +308,11 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  /* Increased from 16px */
-  padding-bottom: 12px;
-  /* Added padding */
+  margin-bottom: 24px;
+  /* Increased from 20px */
+  padding-bottom: 16px;
+  /* Increased from 12px */
   border-bottom: 1px solid var(--border);
-  /* Visual separator */
 }
 
 .card-title {
@@ -321,8 +320,10 @@ body {
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.8px;
-  /* Increased from 0.5px */
+  letter-spacing: 1px;
+  /* Increased from 0.8px */
+  margin-bottom: 4px;
+  /* Added space below title */
 }
 
 .card-value {

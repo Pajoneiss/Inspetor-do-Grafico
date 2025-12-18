@@ -13,7 +13,7 @@ interface EquityChartProps {
 }
 
 const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-    <div className={`glass glass-hover rounded-2xl p-6 flex flex-col animate-in border border-white/5 bg-white/[0.02] ${className}`}>{children}</div>
+    <div className={`glass glass-hover p-10 flex flex-col animate-in border border-white/5 bg-white/[0.02] ${className}`}>{children}</div>
 )
 
 export default function EquityChart({ data, loading }: EquityChartProps) {
@@ -22,7 +22,7 @@ export default function EquityChart({ data, loading }: EquityChartProps) {
             <Card className="h-full min-h-[350px]">
                 <div className="flex flex-col h-full">
                     {/* Header Skeleton */}
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center justify-between mb-10">
                         <div className="flex flex-col gap-2">
                             <div className="h-3 w-32 bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer rounded" />
                             <div className="h-8 w-40 bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer rounded-lg" />
@@ -50,7 +50,7 @@ export default function EquityChart({ data, loading }: EquityChartProps) {
 
     return (
         <Card className="h-full min-h-[350px]">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-10">
                 <div className="flex flex-col">
                     <span className="text-[10px] text-[var(--color-text-muted)] uppercase font-black tracking-[0.2em] opacity-80 mb-1">Portfolio Performance</span>
                     <div className="flex items-baseline gap-3">
