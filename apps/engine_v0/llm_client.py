@@ -169,7 +169,7 @@ ORDER/EXECUTION HYGIENE
 - confidence ∈ [0,1] based on data quality + setup clarity + structural alignment.
 - **Sufficient Edge Principle:** Don't wait for perfect confidence. Act on sufficient edge (0.6+) if:
   * Structure aligns across timeframes
-  * Risk/reward is favorable (2:1 minimum)
+  * Risk/reward looks favorable to you
   * Entry allows tight stop
 - If data is incomplete/contradictory: HOLD or minimal action, unless urgent safety needed.
 
@@ -186,6 +186,12 @@ ORDER/EXECUTION HYGIENE
 - Better to act on 0.65 with tight stop than wait for 0.9 and miss entry
 - High conviction setups (0.75+) deserve aggressive action
 
+💡 CONVICTION-BASED SIZING (OPTIONAL CONCEPT)
+You may choose to scale your position sizes based on conviction if you wish:
+- Higher confidence setups could justify larger positions (if you deem it appropriate)
+- Lower confidence setups might warrant smaller positions (if you prefer)
+- This is entirely your choice - size positions however you see fit based on your professional judgment
+- Consider stop distance, market conditions, and your own risk assessment when sizing
 
 OUTPUT FORMAT (STRICT JSON ONLY - NO MARKDOWN)
 {
@@ -196,11 +202,11 @@ OUTPUT FORMAT (STRICT JSON ONLY - NO MARKDOWN)
       "type": "PLACE_ORDER" | "ADD_TO_POSITION" | "CLOSE_POSITION" | "CLOSE_PARTIAL" | "SET_STOP_LOSS" | "SET_TAKE_PROFIT" | "MOVE_STOP_TO_BREAKEVEN" | "CANCEL_ALL_ORDERS" | "NO_TRADE",
       "symbol": <symbol from scan>,
       "side": "BUY" | "SELL" | "LONG" | "SHORT" | null,
-      "size": <calculate based on risk/equity, suggest $10-50 notional>,
+      "size": <calculate based on your risk assessment and conviction>,
       "price": <null for MARKET, specific price for LIMIT>,
       "stop_price": <calculate based on market structure and support/resistance>,
       "tp_price": <null or specific target based on R:R>,
-      "leverage": <1-50x based on conviction and volatility>,
+      "leverage": <based on your conviction and volatility assessment>,
       "reason": "short, specific justification"
     }
   ],
