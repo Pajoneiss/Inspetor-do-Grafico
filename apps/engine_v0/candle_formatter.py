@@ -1,5 +1,51 @@
 # Multi-Timeframe Candle Formatting Module
-# v12.0: 7 timeframes for complete micro-to-macro visibility
+# v12.1: 7 timeframes with structural analysis for LLM clarity
+
+def identify_trend(candles):
+    """
+    Simple trend identification: compare recent vs older price action
+    Returns: "UP ↑" / "DOWN ↓" / "SIDEWAYS ↔" / "?"
+    """
+    if not candles or len(candles) < 10:
+        return "?"
+    
+    # Compare first third vs last third averages
+    third = len(candles) // 3
+    first_third = [c['close'] for c in candles[:third] if isinstance(c, dict) and 'close' in c]
+    last_third = [c['close'] for c in candles[-third:] if isinstance(c, dict) and 'close' in c]
+    
+    if not first_third or not last_third:
+        return "?"
+    
+    first_avg = sum(first_third) / len(first_third)
+    last_avg = sum(last_third) / len(last_third)
+    
+    diff_pct = ((last_avg - first_avg) / first_avg) * 100
+    
+    if diff_pct > 1.0:
+        return "UP ↑"
+    elif diff_pct < -1.0:
+        return "DOWN ↓"
+    else:
+        return "SIDEWAYS ↔"
+
+def find_swing_points(candles):
+    """
+    Find recent swing high and swing low
+    Returns: (swing_high, swing_low) or (None, None)
+    """
+    if not candles or len(candles) < 5:
+        return None, None
+    
+    valid = [c for c in candles if isinstance(c, dict) and 'high' in c and 'low' in c]
+    if not valid:
+        return None, None
+    
+    # Simple swing detection: highest high and lowest low in recent period
+    swing_high = max(c['high'] for c in valid[-20:]) if len(valid) >= 20 else max(c['high'] for c in valid)
+    swing_low = min(c['low'] for c in valid[-20:]) if len(valid) >= 20 else min(c['low'] for c in valid)
+    
+    return swing_high, swing_low
 
 def format_multi_timeframe_candles(state):
     """
@@ -63,6 +109,13 @@ def format_multi_timeframe_candles(state):
                 candles_str += f"  {label}\n    (no valid data)\n"
                 continue
             
+            # 🆕 STRUCTURAL ANALYSIS
+            trend = identify_trend(candles)
+            swing_high, swing_low = find_swing_points(candles)
+            
+            # Current price position
+            current_close = valid_candles[-1]['close'] if valid_candles else current_price
+            
             # Format closes as progression
             closes_str = " -> ".join([f"{c['close']:.2f}" if tf in ["15m", "5m", "1m"] else f"{c['close']:.0f}" 
                                      for c in valid_candles[-min(display_count, len(valid_candles)):]])
@@ -70,10 +123,28 @@ def format_multi_timeframe_candles(state):
             # Calculate H/L from ALL candles (not just displayed)
             high = max(c['high'] for c in candles if isinstance(c, dict) and 'high' in c)
             low = min(c['low'] for c in candles if isinstance(c, dict) and 'low' in c)
-            range_str = f"H/L: {high:.2f}/{low:.2f}" if tf in ["15m", "5m", "1m"] else f"H/L: {high:.0f}/{low:.0f}"
+            
+            # 🆕 STRUCTURE INFO LINE
+            structure_parts = [f"Trend: {trend}"]
+            if swing_high and swing_low:
+                sh_str = f"{swing_high:.2f}" if tf in ["15m", "5m", "1m"] else f"{swing_high:.0f}"
+                sl_str = f"{swing_low:.2f}" if tf in ["15m", "5m", "1m"] else f"{swing_low:.0f}"
+                structure_parts.append(f"SwingH: {sh_str}")
+                structure_parts.append(f"SwingL: {sl_str}")
+                
+                # Position in range
+                range_pct = ((current_close - swing_low) / (swing_high - swing_low)) * 100 if swing_high > swing_low else 50
+                if range_pct > 70:
+                    structure_parts.append("📍 Near High")
+                elif range_pct < 30:
+                    structure_parts.append("📍 Near Low")
+                else:
+                    structure_parts.append("📍 Mid-Range")
+            
+            structure_str = " | ".join(structure_parts)
             
             candles_str += f"  {label}\n"
+            candles_str += f"    {structure_str}\n"
             candles_str += f"    {closes_str}\n"
-            candles_str += f"    {range_str}\n"
     
     return candles_str
