@@ -861,7 +861,7 @@ function DashboardContent() {
                 </div>
 
                 {/* Main Area Chart */}
-                <div className="flex-1 w-full relative min-h-[400px]">
+                <div className="w-full relative h-64">
                   {fullAnalytics?.history?.length > 0 ? (
                     (() => {
                       // Filter Logic

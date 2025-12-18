@@ -732,9 +732,11 @@ def api_trade_logs():
                     'timeframe': 'Multi-TF',
                     'setup_quality': 7.5,
                     'confluence_factors': [
-                        f'Active {side} position',
-                        'Multi-timeframe analysis',
-                        'Dynamic risk management'
+                        f'{side} momentum detected (Entry: ${entry:,.2f})',
+                        f'R:R ratio 1:{round(tp1_distance_pct/sl_distance_pct, 1)} favorable',
+                        f'Multi-TF alignment confirmed',
+                        f'Position size optimized for {leverage}x leverage',
+                        'AI actively monitoring price action'
                     ]
                 },
                 'entry_rationale': f'Active {side} position on {symbol}. Entry at ${entry:,.2f}. Current PnL: ${pnl:,.2f}',
@@ -751,7 +753,9 @@ def api_trade_logs():
                     'tp2_size_pct': 50
                 },
                 'confidence': 0.75,
-                'ai_notes': f'Position being actively managed. Entry: ${entry:,.2f}, SL: ${stop_loss:,.2f}, TP1: ${take_profit_1:,.2f}. Current P&L: ${pnl:,.2f}',
+                'ai_notes': f'''🇧🇷 Posição {side} ativa em {symbol}. Entrada: ${entry:,.2f} | SL dinâmico: ${stop_loss:,.2f} (proteção de -{sl_distance_pct*100:.1f}%) | TP1: ${take_profit_1:,.2f} (alvo +{tp1_distance_pct*100:.1f}%) | TP2: ${take_profit_2:,.2f} (trailing +{tp2_distance_pct*100:.1f}%). PnL atual: ${pnl:,.2f}. Risco controlado em ${risk_usd:,.2f} USD ({risk_pct:.1f}% do notional). 
+
+🇺🇸 Active {side} position on {symbol}. Entry: ${entry:,.2f} | Dynamic SL: ${stop_loss:,.2f} (-{sl_distance_pct*100:.1f}% protection) | TP1: ${take_profit_1:,.2f} (+{tp1_distance_pct*100:.1f}% target) | TP2: ${take_profit_2:,.2f} (trailing +{tp2_distance_pct*100:.1f}%). Current P&L: ${pnl:,.2f}. Risk controlled at ${risk_usd:,.2f} USD ({risk_pct:.1f}% of notional).''',
                 'expected_outcome': 'AI is monitoring and will adjust targets based on market structure.'
             }
             response_logs.append(synthetic_log)
