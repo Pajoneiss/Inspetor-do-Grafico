@@ -750,16 +750,47 @@ function DashboardContent() {
                           </div>
                         </div>
 
-                        {/* AI Notes */}
-                        {tradeLog.ai_notes && (
-                          <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                            <div className="flex items-center gap-2 mb-2">
-                              <BrainCircuit className="w-4 h-4 text-purple-400" />
-                              <p className="text-xs font-bold uppercase tracking-widest text-purple-400">AI Notes</p>
+                        {/* AI Notes - Bilingual 2-Column Layout */}
+                        {tradeLog.ai_notes && (() => {
+                          // Parse bilingual notes (split by 🇺🇸 marker)
+                          const notes = tradeLog.ai_notes;
+                          const [ptNotes, enNotes] = notes.split('🇺🇸');
+                          const ptText = (ptNotes || '').replace('🇧🇷', '').trim();
+                          const enText = (enNotes || '').trim();
+
+                          return (
+                            <div className="p-4 rounded-xl bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-purple-500/20">
+                              <div className="flex items-center gap-2 mb-3">
+                                <BrainCircuit className="w-4 h-4 text-purple-400" />
+                                <p className="text-xs font-bold uppercase tracking-widest text-purple-300">AI Notes</p>
+                              </div>
+
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                {/* Coluna PT-BR */}
+                                <div className="space-y-2 p-3 bg-black/20 rounded-lg border border-white/5">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-lg">🇧🇷</span>
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-green-400">Português</span>
+                                  </div>
+                                  <div className="space-y-1.5 text-[11px] font-medium leading-relaxed text-white/90">
+                                    {ptText}
+                                  </div>
+                                </div>
+
+                                {/* Coluna EN */}
+                                <div className="space-y-2 p-3 bg-black/20 rounded-lg border border-white/5">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-lg">🇺🇸</span>
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-blue-400">English</span>
+                                  </div>
+                                  <div className="space-y-1.5 text-[11px] font-medium leading-relaxed text-white/90">
+                                    {enText}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <p className="text-sm text-white/80 italic leading-relaxed">"{tradeLog.ai_notes}"</p>
-                          </div>
-                        )}
+                          );
+                        })()}
 
                         {/* Confidence */}
                         <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-white/5 to-primary/5 border border-white/10">
