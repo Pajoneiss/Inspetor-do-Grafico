@@ -240,6 +240,10 @@ def _validate_and_adjust_trigger(symbol, trigger_price, position_side, mark_pric
     
     # v12.8: Force string cleaning for robust Decimal casting
     # Removes "$", spaces, and any non-numeric leftovers the LLM might have included
+    if trigger_price is None or str(trigger_price).strip().lower() in ("none", "", "null"):
+        print(f"[LIVE][WARN] {symbol} trigger_price is None/empty, skipping validation")
+        return None, False
+
     clean_px_str = str(trigger_price).replace("$", "").replace(" ", "").strip()
     
     try:
@@ -1331,54 +1335,7 @@ def _execute_cancel_all(action: Dict[str, Any], is_paper: bool, hl_client) -> bo
         return False
 
 
-# Assuming _validate_and_adjust_trigger is defined here or nearby,
-# and the user wants to insert this logic into its implementation.
-# The instruction implies modifying an existing function, but the snippet
-# is placed between _execute_cancel_all and _execute_close_partial.
-# I will place the code as instructed, assuming it's part of a function
-# that would be defined here, or that the user intends to define it here.
-# If _validate_and_adjust_trigger already exists elsewhere, this placement
-# would be incorrect. However, I must follow the provided snippet's placement.
 
-# v12.8: Force string cleaning for robust Decimal casting
-# Removes "$", spaces, and any non-numeric leftovers the LLM might have included
-# This block should ideally be inside the _validate_and_adjust_trigger function.
-# As the function definition is not provided, and the instruction places it here,
-# I'm inserting it as a standalone block.
-# If _validate_and_adjust_trigger is defined elsewhere, this is a misplacement.
-# Assuming `trigger_price` and `symbol` are in scope for this block,
-# which they would be if this were inside `_validate_and_adjust_trigger`.
-# For the purpose of this edit, I'm placing it exactly as requested in the snippet.
-# This code snippet is syntactically incorrect as a standalone block outside a function.
-# I will assume the user intends for this to be part of a function definition
-# that is not fully provided, and that `trigger_price` and `symbol` are parameters
-# to that function.
-# To make it syntactically correct, I will wrap it in a placeholder function
-# if the user intended to define _validate_and_adjust_trigger here.
-# However, the instruction is to "Add string cleaning logic to _validate_and_adjust_trigger",
-# implying it already exists. The snippet's placement is the issue.
-
-# Given the instruction and the snippet, the most faithful interpretation
-# is that the user wants this logic *inside* `_validate_and_adjust_trigger`.
-# Since `_validate_and_adjust_trigger` is called in `_execute_set_stop_loss` and
-# `_execute_set_take_profit`, but its definition is not provided, I cannot
-# directly insert it into that function.
-# The provided `Code Edit` snippet places this code *between* `_execute_cancel_all`
-# and `_execute_close_partial`. This is a problematic instruction.
-# I will insert the code block exactly where the `Code Edit` snippet indicates,
-# even though it will result in a syntactically incorrect file if `trigger_price`
-# and `symbol` are not defined in that scope.
-# I must return the new file *after the change*, faithfully.
-
-    # v12.8: Force string cleaning for robust Decimal casting
-    # Removes "$", spaces, and any non-numeric leftovers the LLM might have included
-    clean_px_str = str(trigger_price).replace("$", "").replace(" ", "").strip()
-    
-    try:
-        trigger_decimal = Decimal(clean_px_str)
-    except Exception as e:
-        print(f"[LIVE][ERROR] {symbol} Invalid trigger_price format: '{trigger_price}' ({e})")
-        return None, False
 
 
 def _execute_close_partial(action, is_paper, hl_client):

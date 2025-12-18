@@ -302,8 +302,8 @@ def main():
                             "1w": 52    # 1 year - macro context
                         }
                         
-                        # Collect candles for top 5 symbols
-                        for symbol in snapshot_symbols[:5]:
+                        # Collect candles for top 8 symbols (v13.0 expansion)
+                        for symbol in snapshot_symbols[:8]:
                             candles_by_symbol[symbol] = {}
                             
                             # Fetch all timeframes
