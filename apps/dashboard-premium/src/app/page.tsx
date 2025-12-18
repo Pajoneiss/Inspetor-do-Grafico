@@ -241,8 +241,6 @@ function DashboardContent() {
           {[
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-            { id: 'fleet', label: 'Fleet Status', icon: Globe },
-            { id: 'strategy', label: 'AI Strategy', icon: BrainCircuit },
             { id: 'logs', label: 'Execution Logs', icon: Terminal },
           ].map((item) => (
             <button
@@ -617,108 +615,9 @@ function DashboardContent() {
             </motion.div>
           )}
 
-          {activeTab === 'fleet' && (
-            <motion.div key="fleet" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-              <GlassCard className="min-h-[600px] border border-white/5">
-                <div className="flex items-center gap-4 mb-10">
-                  <div className="p-3 rounded-2xl bg-blue-500/20 text-blue-400">
-                    <Globe className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-2xl font-bold tracking-tight">Fleet Intelligence</h3>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {((status as any)?.market_data?.top_symbols || []).map((sym: string) => {
-                    const brief = (status as any)?.market_data?.symbol_briefs?.[sym] || {};
-                    const score = brief.score || 50;
-                    const trend = brief.trend || "Neutral";
-                    return (
-                      <div key={sym} className="p-6 rounded-3xl bg-white/5 border border-white/5 hover:border-primary/20 transition-all group">
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center font-bold">{sym.substring(0, 2)}</div>
-                            <div>
-                              <h4 className="font-bold">{sym}</h4>
-                              <p className="text-[8px] font-bold text-muted-foreground uppercase opacity-50 tracking-tighter">Market Score: {score}</p>
-                            </div>
-                          </div>
-                          <div className={cn(
-                            "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                            score > 70 ? "bg-primary/10 text-primary" : score < 40 ? "bg-secondary/10 text-secondary" : "bg-yellow-400/10 text-yellow-400"
-                          )}>
-                            {trend}
-                          </div>
-                        </div>
-                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${score}%` }}
-                            className={cn("h-full neon-glow", score > 50 ? "bg-primary" : "bg-secondary")}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </GlassCard>
-            </motion.div>
-          )}
 
-          {activeTab === 'strategy' && (
-            <motion.div key="strategy" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <GlassCard className="min-h-[600px] border border-white/5">
-                  <div className="flex items-center gap-4 mb-10">
-                    <div className="p-3 rounded-2xl bg-purple-500/20 text-purple-400">
-                      <BrainCircuit className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-2xl font-bold tracking-tight">AI Strategy Core</h3>
-                  </div>
-                  <div className="space-y-8">
-                    {(thoughts || []).map((thought, i) => (
-                      <div key={i} className="flex gap-6">
-                        <div className="flex flex-col items-center">
-                          <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-xl shadow-xl">{thought.emoji || '🧐'}</div>
-                          {i !== thoughts.length - 1 && <div className="w-px flex-1 bg-white/10 my-3" />}
-                        </div>
-                        <div className="pt-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className="text-xs font-bold text-muted-foreground">{new Date(thought.timestamp).toLocaleString()}</span>
-                            <span className={cn("px-2 py-0.5 rounded-lg text-[8px] font-bold tracking-widest uppercase", getConfidenceColor(thought.confidence))}>CONF {(thought.confidence * 100).toFixed(0)}%</span>
-                          </div>
-                          <p className="text-white/80 leading-relaxed font-medium">{thought.summary}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </GlassCard>
-                <GlassCard className="border border-white/5">
-                  <div className="flex items-center gap-4 mb-10">
-                    <div className="p-3 rounded-2xl bg-secondary/20 text-secondary">
-                      <Shield className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-2xl font-bold tracking-tight">Risk Parameters</h3>
-                  </div>
-                  <div className="space-y-6">
-                    {[
-                      { label: 'Max Leverage', value: '40x', status: 'Active' },
-                      { label: 'Isolation Mode', value: 'Enabled', status: 'Operational' },
-                      { label: 'Max Drawdown', value: '2.5%', status: 'Hard Limit' },
-                      { label: 'Min Notional', value: '$10.00', status: 'Live' }
-                    ].map(p => (
-                      <div key={p.label} className="p-5 rounded-3xl bg-white/5 flex justify-between items-center">
-                        <div>
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{p.label}</p>
-                          <p className="text-lg font-bold mt-1">{p.value}</p>
-                        </div>
-                        <span className="px-3 py-1 rounded-full bg-white/5 text-[8px] font-bold uppercase tracking-widest text-primary">{p.status}</span>
-                      </div>
-                    ))}
-                  </div>
-                </GlassCard>
-              </div>
-            </motion.div>
-          )}
+
 
           {activeTab === 'logs' && (
             <motion.div key="logs" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
