@@ -77,6 +77,29 @@ class HLClient:
         self._meta_cache_time = 0
         self._meta_cache_ttl = 300  # 5 minutes
         
+        # ========== INTELLIGENT CACHING SYSTEM (Rate Limit Mitigation) ==========
+        # Candles cache: {(symbol, interval): (data, timestamp)}
+        self._candles_cache = {}
+        
+        # Timeframe-specific TTLs (in seconds)
+        self._candle_ttl = {
+            "1w": 300,   # 5 min - weekly data changes slowly
+            "1d": 300,   # 5 min - daily data changes slowly  
+            "4h": 120,   # 2 min - 4h candles stable
+            "1h": 120,   # 2 min - hourly moderate
+            "15m": 30,   # 30 sec - 15m needs freshness
+            "5m": 30,    # 30 sec - 5m active
+            "1m": 10     # 10 sec - 1m most active
+        }
+        
+        # Orderbook cache: {symbol: (data, timestamp)}
+        self._orderbook_cache = {}
+        self._orderbook_ttl = 15  # 15 sec - orderbooks change fast but not every tick
+        
+        # Funding cache: {symbol: (data, timestamp)}
+        self._funding_cache = {}
+        self._funding_ttl = 60  # 1 min - funding rates stable
+        
         # Initialize clients
         self._init_clients()
     
@@ -525,12 +548,12 @@ class HLClient:
     
     def get_candles(self, symbol: str, interval: str, limit: int = 100) -> list:
         """
-        Get historical candles (MCP-first: using info_client.candles_snapshot)
-        Uses inspect to detect correct signature and adapt
+        Get historical candles with intelligent caching
+        Cache TTL varies by timeframe: 1w/1d=5min, 4h/1h=2min, 15m/5m=30s, 1m=10s
         
         Args:
             symbol: Trading symbol
-            interval: Candle interval (1m, 5m, 15m, 1h, 4h, 1d)
+            interval: Candle interval (1m, 5m, 15m, 1h, 4h, 1d, 1w)
             limit: Number of candles (max 5000)
         
         Returns:
@@ -540,6 +563,20 @@ class HLClient:
             if not self.info_client:
                 return []
             
+            import time
+            current_time = time.time()
+            
+            # Check cache first
+            cache_key = (symbol, interval)
+            if cache_key in self._candles_cache:
+                cached_data, cached_time = self._candles_cache[cache_key]
+                ttl = self._candle_ttl.get(interval, 60)  # Default 1 min
+                
+                if (current_time - cached_time) < ttl:
+                    # Cache hit!
+                    return cached_data
+            
+            # Cache miss or expired - fetch fresh data
             # Detect signature once
             if not hasattr(self, '_candles_sig_detected'):
                 import inspect
@@ -549,8 +586,7 @@ class HLClient:
                 print(f"[HL] candles_signature={self._candles_params}")
             
             # Calculate time range
-            import time
-            now_ms = int(time.time() * 1000)
+            now_ms = int(current_time * 1000)
             
             interval_ms = {
                 "1m": 60 * 1000,
@@ -558,7 +594,8 @@ class HLClient:
                 "15m": 15 * 60 * 1000,
                 "1h": 60 * 60 * 1000,
                 "4h": 4 * 60 * 60 * 1000,
-                "1d": 24 * 60 * 60 * 1000
+                "1d": 24 * 60 * 60 * 1000,
+                "1w": 7 * 24 * 60 * 60 * 1000
             }.get(interval, 60 * 1000)
             
             start_ms = now_ms - (limit * interval_ms)
@@ -567,6 +604,9 @@ class HLClient:
             try:
                 candles = self.info_client.candles_snapshot(symbol, interval, start_ms, now_ms)
                 if candles:
+                    # Cache the result
+                    self._candles_cache[cache_key] = (candles, current_time)
+                    print(f"[HL][CACHE] Stored {symbol} {interval} ({len(candles)} candles, TTL={self._candle_ttl.get(interval, 60)}s)")
                     return candles
             except TypeError:
                 pass  # Try fallback
@@ -580,6 +620,9 @@ class HLClient:
                     endTime=now_ms
                 )
                 if candles:
+                    # Cache the result
+                    self._candles_cache[cache_key] = (candles, current_time)
+                    print(f"[HL][CACHE] Stored {symbol} {interval} ({len(candles)} candles, TTL={self._candle_ttl.get(interval, 60)}s)")
                     return candles
             except Exception as e2:
                 print(f"[HL][WARN] candles unavailable {symbol} {interval}: {e2}")
@@ -593,8 +636,8 @@ class HLClient:
     
     def get_orderbook(self, symbol: str, depth: int = 10) -> dict:
         """
-        Get L2 orderbook snapshot (MCP-first: using info_client.l2_snapshot)
-        Robust parsing to handle multiple response formats
+        Get L2 orderbook snapshot with 15s caching
+        Reduces API spam while keeping data reasonably fresh
         
         Args:
             symbol: Trading symbol
@@ -606,6 +649,15 @@ class HLClient:
         try:
             if not self.info_client:
                 return {}
+            
+            import time
+            current_time = time.time()
+            
+            # Check cache
+            if symbol in self._orderbook_cache:
+                cached_data, cached_time = self._orderbook_cache[symbol]
+                if (current_time - cached_time) < self._orderbook_ttl:
+                    return cached_data
             
             # Use MCP info_client.l2_snapshot
             snapshot = self.info_client.l2_snapshot(symbol)
@@ -658,12 +710,17 @@ class HLClient:
                 ask_volume = sum(a[1] for a in asks_normalized)
                 imbalance = bid_volume / ask_volume if ask_volume > 0 else 1.0
                 
-                return {
+                result = {
                     "bids": bids_normalized,
                     "asks": asks_normalized,
                     "spread": spread,
                     "imbalance": imbalance
                 }
+                
+                # Cache the result
+                self._orderbook_cache[symbol] = (result, current_time)
+                
+                return result
                 
             except Exception as parse_error:
                 print(f"[HL][ERROR] get_orderbook({symbol}) parse failed: {parse_error}")
@@ -676,7 +733,8 @@ class HLClient:
     
     def get_funding_info(self, symbol: str) -> dict:
         """
-        Get funding rate and market info (MCP-first: using info_client.meta_and_asset_ctxs)
+        Get funding rate and market info with 60s caching
+        Funding rates change slowly, safe to cache
         
         Args:
             symbol: Trading symbol
@@ -688,7 +746,16 @@ class HLClient:
             if not self.info_client:
                 return {}
             
-            # Use MCP info_client.meta_and_asset_ctxs
+            import time
+            current_time = time.time()
+            
+            # Check cache
+            if symbol in self._funding_cache:
+                cached_data, cached_time = self._funding_cache[symbol]
+                if (current_time - cached_time) < self._funding_ttl:
+                    return cached_data
+            
+            # Fetch fresh data
             meta_and_ctxs = self.info_client.meta_and_asset_ctxs()
             
             if not meta_and_ctxs:
@@ -712,6 +779,9 @@ class HLClient:
                     # Add open interest if available
                     if "openInterest" in ctx:
                         result["open_interest"] = float(ctx["openInterest"])
+                    
+                    # Cache the result
+                    self._funding_cache[symbol] = (result, current_time)
                     
                     return result
             
