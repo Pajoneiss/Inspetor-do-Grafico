@@ -316,12 +316,20 @@ def api_pnl():
         
         history = get_pnl_history(current_equity=current_equity)
         
+        # Helper to safely extract numeric PNL value
+        def safe_pnl(window_key):
+            val = pnl_data.get(window_key, {}).get("pnl", 0)
+            if isinstance(val, (int, float)):
+                return round(val, 2)
+            return 0
+        
         return jsonify({
             "ok": True,
             "data": history if request.path == '/api/pnl/history' else {
-                "pnl_24h": pnl_data.get("24h", {}).get("pnl", 0),
-                "pnl_7d": pnl_data.get("7d", {}).get("pnl", 0),
-                "pnl_30d": pnl_data.get("30d", {}).get("pnl", 0),
+                "pnl_24h": safe_pnl("24h"),
+                "pnl_7d": safe_pnl("7d"),
+                "pnl_30d": safe_pnl("30d"),
+                "pnl_all": safe_pnl("allTime"),
                 "trades_24h": pnl_data.get("24h", {}).get("trades", 0),
                 "trades_7d": pnl_data.get("7d", {}).get("trades", 0),
                 "trades_30d": pnl_data.get("30d", {}).get("trades", 0),
@@ -332,7 +340,7 @@ def api_pnl():
         return jsonify({
             "ok": True,
             "data": [] if request.path == '/api/pnl/history' else {
-                "pnl_24h": 0, "pnl_7d": 0, "pnl_30d": 0,
+                "pnl_24h": 0, "pnl_7d": 0, "pnl_30d": 0, "pnl_all": 0,
                 "trades_24h": 0, "trades_7d": 0, "trades_30d": 0,
             },
             "server_time_ms": int(time.time() * 1000)

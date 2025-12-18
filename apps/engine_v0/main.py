@@ -651,13 +651,29 @@ def main():
             # Update Dashboard state (sync with dashboard API)
             if DASHBOARD_AVAILABLE:
                 try:
+                    # Build positions with correct format including symbol
+                    formatted_positions = []
+                    for sym, pos in state.get("positions", {}).items():
+                        pos_detail = state.get("position_details", {}).get(sym, {})
+                        mark_px = state.get("prices", {}).get(sym, pos.get("entry_price", 0))
+                        formatted_positions.append({
+                            "symbol": str(sym).upper(),
+                            "side": pos.get("side", "UNKNOWN"),
+                            "size": abs(float(pos.get("size", 0))),
+                            "entry_price": float(pos.get("entry_price", 0)),
+                            "mark_price": float(mark_px),
+                            "unrealized_pnl": float(pos.get("unrealized_pnl", 0)),
+                            "pnl_pct": pos_detail.get("pnl_pct", 0),
+                            "leverage": int(pos.get("leverage", 1)),
+                        })
+                    
                     update_dashboard_state({
                         "account": {
                             "equity": state.get("equity", 0),
-                            "buying_power": state.get("available_margin", 0), # Real Available Margin
+                            "buying_power": state.get("available_margin", 0),  # Real Available Margin
                             "positions_count": len(state.get("positions", {}))
                         },
-                        "positions": list(state.get("positions", {}).values()),
+                        "positions": formatted_positions,
                         "market": state.get("market", {})
                     })
                 except Exception as e:
