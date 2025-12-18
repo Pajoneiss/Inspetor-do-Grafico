@@ -18,7 +18,7 @@ def calculate_indicators(candles: List[Dict[str, Any]]) -> Dict[str, Any]:
         dict: Calculated indicators (Tier 2 complete)
     """
     try:
-        if not candles or len(candles) < 50:
+        if not candles or len(candles) < 20:
             return {
                 "ema_9": 0,
                 "ema_21": 0,

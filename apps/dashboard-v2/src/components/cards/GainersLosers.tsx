@@ -41,7 +41,7 @@ export default function GainersLosers() {
     if (loading) {
         return (
             <div className="glass-card glass-card-hover p-10 animate-pulse">
-                <div className="h-6 bg-white/10 rounded w-1/3 mb-4"></div>
+                <div className="h-6 bg-white/10 w-1/3 mb-4"></div>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         {[...Array(3)].map((_, i) => (

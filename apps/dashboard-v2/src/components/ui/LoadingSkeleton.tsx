@@ -9,6 +9,6 @@ export default function LoadingSkeleton({ variant = 'default', className = '' }:
     }
 
     return (
-        <div className={`${variants[variant]} ${className} bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer rounded-lg`} />
+        <div className={`${variants[variant]} ${className} bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer`} />
     )
 }

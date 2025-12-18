@@ -5,6 +5,11 @@
    Dashboard V2 Premium - Glassmorphism
    ========================================= */
 
+/* Global Industrial Look - Zero Rounding */
+* {
+  border-radius: 0 !important;
+}
+
 :root {
   /* Backgrounds */
   --bg-primary: #0B0F14;

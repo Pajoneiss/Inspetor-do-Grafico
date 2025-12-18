@@ -101,7 +101,7 @@ def get_pnl_windows(hl_client=None) -> Dict[str, Any]:
     return get_pnl_from_hyperliquid(hl_client)
 
 
-def get_pnl_history(hl_client=None) -> List[Dict[str, Any]]:
+def get_pnl_history(hl_client=None, current_equity: float = 0) -> List[Dict[str, Any]]:
     """
     Get historical equity points for the chart.
     Currently returns a generated path from 24h PnL if no snapshots exist.
@@ -109,16 +109,17 @@ def get_pnl_history(hl_client=None) -> List[Dict[str, Any]]:
     pnl_data = get_pnl_windows(hl_client)
     pnl_24h = pnl_data.get("24h", {}).get("pnl", 0)
     
-    # Try to get current equity
-    from config import HYPERLIQUID_WALLET_ADDRESS
-    equity = 0
-    if hl_client or _hl_client_ref:
-        client = hl_client or _hl_client_ref
-        try:
-            user_state = client.info.user_state(HYPERLIQUID_WALLET_ADDRESS)
-            equity = float(user_state.get("marginSummary", {}).get("accountValue", 0))
-        except:
-            pass
+    # Use provided equity or try to fetch it
+    equity = current_equity
+    if equity == 0:
+        from config import HYPERLIQUID_WALLET_ADDRESS
+        if hl_client or _hl_client_ref:
+            client = hl_client or _hl_client_ref
+            try:
+                user_state = client.info.user_state(HYPERLIQUID_WALLET_ADDRESS)
+                equity = float(user_state.get("marginSummary", {}).get("accountValue", 0))
+            except:
+                pass
     
     if equity == 0:
         equity = 100 # Default fallback for empty accounts

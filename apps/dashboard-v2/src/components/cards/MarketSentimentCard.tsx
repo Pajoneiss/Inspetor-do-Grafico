@@ -75,7 +75,6 @@ export function MarketSentimentCard({ loading = false }: { loading?: boolean }) 
             #A8E063 75%, 
             #7CFF6B 100%)`,
         height: '8px',
-        borderRadius: '4px',
         position: 'relative' as const
     };
 
@@ -127,7 +126,7 @@ export function MarketSentimentCard({ loading = false }: { loading?: boolean }) 
             {/* Gradient Bar */}
             <div style={gradientStyle}>
                 <div
-                    className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full border-2 shadow-lg"
+                    className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 shadow-lg"
                     style={{
                         left: `${value}%`,
                         borderColor: color,

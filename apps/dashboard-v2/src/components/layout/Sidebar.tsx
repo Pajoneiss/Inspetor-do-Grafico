@@ -54,12 +54,12 @@ export default function Sidebar({ activePage }: SidebarProps = {}) {
                         <Link
                             key={item.id}
                             href={item.href}
-                            className={`sidebar-item group ${isActive ? 'active shadow-[0_0_20px_rgba(0,229,255,0.15)] bg-white/5' : ''} !rounded-none`}
+                            className={`sidebar-item group ${isActive ? 'active shadow-[0_0_20px_rgba(0,229,255,0.15)] bg-white/5' : ''}`}
                         >
                             <Icon className={`w-5 h-5 transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-[var(--accent-cyan)]' : ''}`} />
                             <span className={isActive ? 'font-bold' : ''}>{item.label}</span>
                             {isActive && (
-                                <div className="ml-auto w-1 h-4 rounded-full bg-[var(--accent-cyan)] shadow-[0_0_10px_var(--accent-cyan)]" />
+                                <div className="ml-auto w-1 h-4 bg-[var(--accent-cyan)] shadow-[0_0_10px_var(--accent-cyan)]" />
                             )}
                         </Link>
                     );

@@ -38,7 +38,7 @@ export default function TrendingCoins() {
     if (loading) {
         return (
             <div className="glass-card glass-card-hover p-10 animate-pulse">
-                <div className="h-6 bg-white/10 rounded w-1/3 mb-4"></div>
+                <div className="h-6 bg-white/10 w-1/3 mb-4"></div>
                 <div className="space-y-2">
                     {[...Array(5)].map((_, i) => (
                         <div key={i} className="h-12 bg-white/10"></div>

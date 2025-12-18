@@ -115,11 +115,11 @@ export default function CandlestickChart({ symbol, entryPrice, markPrice, side, 
     const entryColor = side === 'LONG' ? 'rgb(16, 185, 129)' : 'rgb(239, 68, 68)';
 
     return (
-        <div className="relative w-full h-32 bg-[var(--bg-secondary)] rounded-lg p-2 overflow-hidden group">
+        <div className="relative w-full h-32 bg-[var(--bg-secondary)] p-2 overflow-hidden group">
             {/* Legend */}
             <div className="absolute top-2 left-2 flex items-center gap-3 text-xs z-10">
                 <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entryColor, opacity: 0.6 }}></div>
+                    <div className="w-2 h-2" style={{ backgroundColor: entryColor, opacity: 0.6 }}></div>
                     <span className="text-[var(--text-muted)]">Entry ${entryPrice.toFixed(2)}</span>
                 </div>
                 <div className={`flex items-center gap-1 ${isProfit ? 'text-[var(--accent-green)]' : 'text-[var(--accent-red)]'}`}>

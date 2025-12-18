@@ -14,7 +14,7 @@ const KpiCard = ({ label, value, delta, deltaColor, loading }: MetricProps) => (
         <div className="text-[11px] text-white/50 uppercase tracking-[0.15em] font-black mb-2">{label}</div>
         <div className="flex items-baseline gap-2">
             {loading ? (
-                <div className="h-9 w-28 bg-[var(--glass-border)] animate-pulse rounded-lg" />
+                <div className="h-9 w-28 bg-[var(--glass-border)] animate-pulse" />
             ) : (
                 <>
                     <span className="data-value data-value-lg text-[var(--color-text-primary)] tracking-tight leading-none">{value}</span>

@@ -24,17 +24,17 @@ export default function EquityChart({ data, loading }: EquityChartProps) {
                     {/* Header Skeleton */}
                     <div className="flex items-center justify-between mb-10">
                         <div className="flex flex-col gap-2">
-                            <div className="h-3 w-32 bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer rounded" />
-                            <div className="h-8 w-40 bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer rounded-lg" />
+                            <div className="h-3 w-32 bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer" />
+                            <div className="h-8 w-40 bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer" />
                         </div>
-                        <div className="flex gap-1.5 p-1 rounded-xl bg-white/5 border border-white/5">
+                        <div className="flex gap-1.5 p-1 bg-white/5 border border-white/5">
                             {['24H', '1W', '1M', 'All'].map(r => (
-                                <div key={r} className="w-12 h-7 bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer rounded-lg" />
+                                <div key={r} className="w-12 h-7 bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer" />
                             ))}
                         </div>
                     </div>
                     {/* Chart Skeleton */}
-                    <div className="flex-1 w-full bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer rounded-xl" />
+                    <div className="flex-1 w-full bg-gradient-to-r from-[var(--glass-bg)] via-[var(--glass-border)] to-[var(--glass-bg)] bg-[length:200%_100%] animate-shimmer" />
                 </div>
             </Card>
         )
@@ -55,7 +55,7 @@ export default function EquityChart({ data, loading }: EquityChartProps) {
                     <span className="text-[10px] text-[var(--color-text-muted)] uppercase font-black tracking-[0.2em] opacity-80 mb-1">Portfolio Performance</span>
                     <div className="flex items-baseline gap-3">
                         <span className="data-value data-value-lg text-[var(--color-text-primary)] tracking-tighter shadow-sm">${last.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-black flex items-center gap-1 ${pnl >= 0 ? 'bg-[var(--color-profit)]/10 text-[var(--color-profit)] neon-glow-emerald' : 'bg-[var(--color-loss)]/10 text-[var(--color-loss)] neon-glow-ruby'}`}>
+                        <span className={`px-2 py-0.5 text-[10px] font-black flex items-center gap-1 ${pnl >= 0 ? 'bg-[var(--color-profit)]/10 text-[var(--color-profit)] neon-glow-emerald' : 'bg-[var(--color-loss)]/10 text-[var(--color-loss)] neon-glow-ruby'}`}>
                             {pnl >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                             ${Math.abs(pnl).toFixed(2)}
                         </span>
@@ -65,7 +65,7 @@ export default function EquityChart({ data, loading }: EquityChartProps) {
                     {['24H', '1W', '1M', 'All'].map(r => (
                         <button
                             key={r}
-                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${r === '24H' ? 'bg-[var(--color-accent-cyan)] text-[var(--bg-deep)] shadow-[0_0_20px_rgba(0,229,255,0.4)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-white/5'}`}
+                            className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${r === '24H' ? 'bg-[var(--color-accent-cyan)] text-[var(--bg-deep)] shadow-[0_0_20px_rgba(0,229,255,0.4)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-white/5'}`}
                         >
                             {r}
                         </button>
@@ -95,7 +95,7 @@ export default function EquityChart({ data, loading }: EquityChartProps) {
                             width={45}
                         />
                         <Tooltip
-                            contentStyle={{ backgroundColor: 'rgba(10, 13, 18, 0.9)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '11px', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.5)' }}
+                            contentStyle={{ backgroundColor: 'rgba(10, 13, 18, 0.9)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0px', fontSize: '11px', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.5)' }}
                             itemStyle={{ color: '#00e5ff', fontWeight: 800 }}
                             labelStyle={{ color: '#94a3b8', marginBottom: '6px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em' }}
                             formatter={(v: number) => [`$${v.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 'Balance']}

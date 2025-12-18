@@ -23,9 +23,9 @@ export default function PositionsTable({ positions, loading }: PositionsTablePro
     if (loading) {
         return (
             <div className="glass p-10 animate-pulse">
-                <div className="h-4 w-32 bg-white/5 rounded-full mb-6" />
+                <div className="h-4 w-32 bg-white/5 mb-6" />
                 <div className="space-y-4">
-                    {[1, 2, 3].map(i => <div key={i} className="h-10 bg-white/5 rounded-xl" />)}
+                    {[1, 2, 3].map(i => <div key={i} className="h-10 bg-white/5" />)}
                 </div>
             </div>
         )
@@ -36,7 +36,7 @@ export default function PositionsTable({ positions, loading }: PositionsTablePro
             <div className="px-10 py-6 border-b border-white/5 flex items-center justify-between bg-white/5 backdrop-blur-md">
                 <div className="flex items-center gap-3">
                     <span className="text-sm font-black text-[var(--color-text-primary)] uppercase tracking-widest">Active Fleet</span>
-                    <span className="px-2 py-0.5 bg-[var(--color-accent-cyan)]/10 text-[var(--color-accent-cyan)] rounded-full text-[10px] font-black neon-glow-cyan">{positions.length}</span>
+                    <span className="px-2 py-0.5 bg-[var(--color-accent-cyan)]/10 text-[var(--color-accent-cyan)] text-[10px] font-black neon-glow-cyan">{positions.length}</span>
                 </div>
                 <div className="text-[11px] text-[var(--color-text-muted)] font-bold uppercase tracking-widest">
                     Fleet uPnL: <span className={`text-sm tracking-tighter ml-2 ${positions.reduce((a, b) => a + b.unrealizedPnl, 0) >= 0 ? 'text-[var(--color-profit)] neon-glow-emerald' : 'text-[var(--color-loss)] neon-glow-ruby'}`}>
@@ -68,13 +68,13 @@ export default function PositionsTable({ positions, loading }: PositionsTablePro
                                 <tr key={i} className="group hover:bg-white/5 transition-all duration-300">
                                     <td className="px-10 py-6 font-black text-sm text-[var(--color-text-primary)] tracking-tight">{p.symbol}</td>
                                     <td className="px-2 py-4">
-                                        <span className={`px-2 py-1 rounded-md font-black text-[9px] tracking-widest ${p.side.toLowerCase() === 'long' ? 'bg-[var(--color-profit)]/10 text-[var(--color-profit)] border border-[var(--color-profit)]/20 shadow-[0_0_10px_rgba(0,255,136,0.1)]' : 'bg-[var(--color-loss)]/10 text-[var(--color-loss)] border border-[var(--color-loss)]/20 shadow-[0_0_10px_rgba(255,59,105,0.1)]'
+                                        <span className={`px-2 py-1 font-black text-[9px] tracking-widest ${p.side.toLowerCase() === 'long' ? 'bg-[var(--color-profit)]/10 text-[var(--color-profit)] border border-[var(--color-profit)]/20 shadow-[0_0_10px_rgba(0,255,136,0.1)]' : 'bg-[var(--color-loss)]/10 text-[var(--color-loss)] border border-[var(--color-loss)]/20 shadow-[0_0_10px_rgba(255,59,105,0.1)]'
                                             }`}>
                                             {p.side.toUpperCase()}
                                         </span>
                                     </td>
                                     <td className="px-2 py-4 text-right font-bold text-[var(--color-text-secondary)]">
-                                        {p.size.toFixed(4)} {p.leverage && <span className="text-[9px] opacity-70 px-1.5 py-0.5 bg-white/10 rounded ml-1">{p.leverage}x</span>}
+                                        {p.size.toFixed(4)} {p.leverage && <span className="text-[9px] opacity-70 px-1.5 py-0.5 bg-white/10 ml-1">{p.leverage}x</span>}
                                     </td>
                                     <td className="px-2 py-4 text-right text-[var(--color-text-muted)] font-medium">${p.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                     <td className="px-2 py-4 text-right text-[var(--color-text-secondary)] font-semibold">${p.markPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>

@@ -37,7 +37,7 @@ export function EquityCurve({ data, loading = false }: EquityCurveProps) {
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
             return (
-                <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-lg p-3 shadow-lg">
+                <div className="bg-[var(--bg-card)] border border-[var(--border)] p-3 shadow-lg">
                     <p className="text-xs text-[var(--text-muted)] mb-1">{label}</p>
                     <p className="text-sm font-semibold text-[var(--text-primary)]">
                         {formatCurrency(payload[0].value)}
@@ -56,7 +56,7 @@ export function EquityCurve({ data, loading = false }: EquityCurveProps) {
                     {['24h', '7d', '30d', 'ALL'].map((period) => (
                         <button
                             key={period}
-                            className="px-2 py-1 text-xs rounded-md text-[var(--text-muted)] hover:bg-[var(--bg-primary)] transition-colors"
+                            className="px-2 py-1 text-xs text-[var(--text-muted)] hover:bg-[var(--bg-primary)] transition-colors"
                         >
                             {period}
                         </button>

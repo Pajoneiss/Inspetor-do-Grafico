@@ -309,7 +309,11 @@ def api_pnl():
     try:
         from pnl_tracker import get_pnl_windows, get_pnl_history
         pnl_data = get_pnl_windows()
-        history = get_pnl_history()
+        
+        with _state_lock:
+            current_equity = _dashboard_state.get("account", {}).get("equity", 0)
+        
+        history = get_pnl_history(current_equity=current_equity)
         
         return jsonify({
             "ok": True,

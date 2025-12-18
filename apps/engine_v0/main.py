@@ -295,9 +295,9 @@ def main():
                         TIMEFRAMES_CONFIG = {
                             "1m": 60,   # 1 hour - micro confirmation
                             "5m": 60,   # 5 hours - scalp setups
-                            "15m": 40,  # 10 hours - entry precision
-                            "1h": 48,   # 2 days - swing structure
-                            "4h": 42,   # 1 week - intermediate trend
+                            "15m": 60,  # 15 hours - entry precision
+                            "1h": 60,   # 2.5 days - swing structure
+                            "4h": 60,   # 10 days - intermediate trend
                             "1d": 90,   # 3 months - primary trend
                             "1w": 52    # 1 year - macro context
                         }

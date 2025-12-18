@@ -67,7 +67,7 @@ export default function CMCMarketOverview() {
                     Global Market
                 </h3>
                 <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse-glow"></div>
+                    <div className="w-2 h-2 bg-green-400 animate-pulse-glow"></div>
                     <span className="text-xs text-white/40">Live</span>
                 </div>
             </div>
@@ -105,9 +105,9 @@ export default function CMCMarketOverview() {
                         <div className="data-value data-value-sm text-white mb-1">
                             {data.btc_dominance.toFixed(1)}%
                         </div>
-                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-white/10 overflow-hidden">
                             <div
-                                className="h-full gradient-info rounded-full transition-all duration-500"
+                                className="h-full gradient-info transition-all duration-500"
                                 style={{ width: `${data.btc_dominance}%` }}
                             ></div>
                         </div>
@@ -119,9 +119,9 @@ export default function CMCMarketOverview() {
                         <div className="data-value data-value-sm text-white mb-1">
                             {data.eth_dominance.toFixed(1)}%
                         </div>
-                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-white/10 overflow-hidden">
                             <div
-                                className="h-full gradient-primary rounded-full transition-all duration-500"
+                                className="h-full gradient-primary transition-all duration-500"
                                 style={{ width: `${data.eth_dominance}%` }}
                             ></div>
                         </div>

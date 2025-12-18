@@ -70,7 +70,7 @@ export default function PositionMiniChart({ symbol, entryPrice, markPrice, side,
     const fillOpacity = Math.min(Math.abs(roe) / 100, 0.3);
 
     return (
-        <div className="relative w-full h-16 bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] rounded-lg overflow-hidden">
+        <div className="relative w-full h-16 bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] overflow-hidden">
             <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                 <defs>
                     <linearGradient id={`grad-${symbol}`} x1="0%" y1="0%" x2="0%" y2="100%">

@@ -114,14 +114,14 @@ export function AiChat() {
                         className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                         {msg.role === 'assistant' && (
-                            <div className="w-8 h-8 rounded-full bg-[var(--accent-cyan-bg)] flex items-center justify-center flex-shrink-0">
+                            <div className="w-8 h-8 bg-[var(--accent-cyan-bg)] flex items-center justify-center flex-shrink-0">
                                 <Bot className="w-4 h-4 text-[var(--accent-cyan)]" />
                             </div>
                         )}
                         <div
-                            className={`max-w-[80%] p-3 rounded-xl ${msg.role === 'user'
-                                    ? 'bg-[var(--accent-cyan)] text-[var(--bg-primary)]'
-                                    : 'bg-[var(--bg-primary)]'
+                            className={`max-w-[80%] p-3 ${msg.role === 'user'
+                                ? 'bg-[var(--accent-cyan)] text-[var(--bg-primary)]'
+                                : 'bg-[var(--bg-primary)]'
                                 }`}
                         >
                             <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
@@ -131,7 +131,7 @@ export function AiChat() {
                             </p>
                         </div>
                         {msg.role === 'user' && (
-                            <div className="w-8 h-8 rounded-full bg-[var(--accent-green-bg)] flex items-center justify-center flex-shrink-0">
+                            <div className="w-8 h-8 bg-[var(--accent-green-bg)] flex items-center justify-center flex-shrink-0">
                                 <User className="w-4 h-4 text-[var(--accent-green)]" />
                             </div>
                         )}
@@ -139,10 +139,10 @@ export function AiChat() {
                 ))}
                 {loading && (
                     <div className="flex gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[var(--accent-cyan-bg)] flex items-center justify-center">
+                        <div className="w-8 h-8 bg-[var(--accent-cyan-bg)] flex items-center justify-center">
                             <div className="spinner" />
                         </div>
-                        <div className="bg-[var(--bg-primary)] p-3 rounded-xl">
+                        <div className="bg-[var(--bg-primary)] p-3">
                             <p className="text-sm text-[var(--text-muted)]">Pensando...</p>
                         </div>
                     </div>
@@ -152,7 +152,7 @@ export function AiChat() {
 
             {/* Error Banner */}
             {error && (
-                <div className="mx-4 mb-2 p-3 rounded-lg bg-[var(--accent-red-bg)] flex items-center gap-2">
+                <div className="mx-4 mb-2 p-3 bg-[var(--accent-red-bg)] flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-[var(--loss)]" />
                     <span className="text-sm text-[var(--loss)]">{error}</span>
                 </div>
@@ -166,13 +166,13 @@ export function AiChat() {
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Faça uma pergunta sobre o bot..."
-                        className="flex-1 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)]"
+                        className="flex-1 bg-[var(--bg-primary)] border border-[var(--border)] px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-cyan)]"
                         disabled={loading}
                     />
                     <button
                         type="submit"
                         disabled={loading || !input.trim()}
-                        className="p-3 rounded-xl bg-[var(--accent-cyan)] text-[var(--bg-primary)] hover:opacity-90 disabled:opacity-50 transition-opacity"
+                        className="p-3 bg-[var(--accent-cyan)] text-[var(--bg-primary)] hover:opacity-90 disabled:opacity-50 transition-opacity"
                     >
                         <Send className="w-5 h-5" />
                     </button>
