@@ -305,12 +305,11 @@ DETAILED CHART ANALYSIS (Top 5 Symbols):
 {candles_str}
 
 📊 STRATEGIC GUIDANCE:
-- Every timeframe now includes RSI(14) and EMA(9/21). Use them to confirm momentum.
-- RSI > 60 + Trend UP = Strong entry potential. RSI < 40 + Trend DOWN = Strong short potential.
-- Identify institutional structures (SwingH/SwingL) across 1h/4h to set protected Stops.
-- Don't claim 'insufficient data' unless the chart strings are literally empty. You have enough.
+- You have access to RSI(14) and EMA(9/21) for every timeframe. Treat them as supplementary technical signals for your discretionary analysis.
+- Use the institutional structures (SwingH/SwingL) across all timeframes to assist in identifying key support/resistance zones and defining logical invalidation points.
+- You have comprehensive market context across multiple timeframes. Analyze the interplay between scales (top-down) before making your final decision.
 
-Perform a professional top-down analysis and execute with conviction. What is your decision?"""
+Perform a professional top-down analysis and execute with your full discretionary conviction. What is your decision?"""
 
     def _parse_json_response(self, content: str) -> Dict[str, Any]:
         """

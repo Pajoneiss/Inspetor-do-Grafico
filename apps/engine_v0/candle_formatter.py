@@ -56,12 +56,9 @@ def format_multi_timeframe_candles(state):
     candles_str = ""
     
     # DEBUG: Log what we received
-    print(f"[CANDLES] Received {len(candles_data)} symbols: {list(candles_data.keys())}")
-    for sym in list(candles_data.keys())[:3]:
-        tfs = candles_data.get(sym, {})
-        print(f"[CANDLES] {sym} has {len(tfs)} timeframes: {list(tfs.keys())}")
-        for tf, candles in tfs.items():
-            print(f"[CANDLES]   {tf}: {len(candles)} candles")
+    # v12.8: Condensed summary log for clarity
+    counts = {sym: len(candles_data.get(sym, {})) for sym in list(candles_data.keys())[:5]}
+    print(f"[CANDLES] Processing {len(candles_data)} symbols {list(candles_data.keys())} (Charts: {counts})")
     
     # Timeframe display order (macro to micro for context-first analysis)
     TF_ORDER = ["1w", "1d", "4h", "1h", "15m", "5m", "1m"]
