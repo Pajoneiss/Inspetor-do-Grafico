@@ -48,13 +48,20 @@ def format_multi_timeframe_candles(state):
             
             recent = candles[-display_count:] if len(candles) >= display_count else candles
             
+            # SAFETY: Filter out malformed candles
+            valid_candles = [c for c in recent if isinstance(c, dict) and 'close' in c and 'high' in c and 'low' in c]
+            
+            if not valid_candles:
+                candles_str += f"  {label}\n    (no valid data)\n"
+                continue
+            
             # Format closes as progression
             closes_str = " -> ".join([f"{c['close']:.2f}" if tf in ["15m", "5m", "1m"] else f"{c['close']:.0f}" 
-                                     for c in recent[-min(display_count, len(recent)):]])
+                                     for c in valid_candles[-min(display_count, len(valid_candles)):]])
             
             # Calculate H/L from ALL candles (not just displayed)
-            high = max(c['high'] for c in candles)
-            low = min(c['low'] for c in candles)
+            high = max(c['high'] for c in candles if isinstance(c, dict) and 'high' in c)
+            low = min(c['low'] for c in candles if isinstance(c, dict) and 'low' in c)
             range_str = f"H/L: {high:.2f}/{low:.2f}" if tf in ["15m", "5m", "1m"] else f"H/L: {high:.0f}/{low:.0f}"
             
             candles_str += f"  {label}\n"
