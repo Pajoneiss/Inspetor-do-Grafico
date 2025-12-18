@@ -18,7 +18,9 @@ import {
   BarChart3,
   ListFilter,
   BrainCircuit,
-  RefreshCcw
+  RefreshCcw,
+  MessageSquare,
+  Send
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -174,6 +176,9 @@ function DashboardContent() {
   const [pnlData, setPnlData] = useState<any>(null);
   const [pnlHistory, setPnlHistory] = useState<any[]>([]);
   const [pnlPeriod, setPnlPeriod] = useState<'24H' | '7D' | '30D' | 'ALL'>('24H');
+  const [chatMessages, setChatMessages] = useState<{ role: string, content: string }[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -201,6 +206,44 @@ function DashboardContent() {
       if (loading) setError("Failed to connect to Bot API");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const sendChatMessage = async () => {
+    if (!chatInput.trim() || chatLoading) return;
+
+    const userMessage = chatInput.trim();
+    setChatInput('');
+
+    // Add user message
+    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setChatLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/ai/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: userMessage })
+      });
+
+      const data = await response.json();
+
+      if (data.ok) {
+        setChatMessages(prev => [...prev, { role: 'assistant', content: data.answer }]);
+      } else {
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.message || data.error || 'Failed to get response'
+        }]);
+      }
+    } catch (err) {
+      console.error('Chat error:', err);
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Failed to connect to AI. Please try again.'
+      }]);
+    } finally {
+      setChatLoading(false);
     }
   };
 
@@ -241,6 +284,7 @@ function DashboardContent() {
           {[
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+            { id: 'chat', label: 'AI Chat', icon: MessageSquare },
             { id: 'logs', label: 'Execution Logs', icon: Terminal },
           ].map((item) => (
             <button
@@ -614,9 +658,128 @@ function DashboardContent() {
               </GlassCard>
             </motion.div>
           )}
+{
+    activeTab === 'chat' && (
+        <motion.div key="chat" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+            <GlassCard className="min-h-[600px] border border-white/5 flex flex-col">
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="p-3 rounded-2xl bg-purple-500/20 text-purple-400 neon-glow">
+                        <MessageSquare className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h3 className="text-2xl font-bold tracking-tight">AI Chat</h3>
+                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">Ask me anything about trading</p>
+                    </div>
+                </div>
 
+                {/* Quick Suggestions */}
+                {chatMessages.length === 0 && (
+                    <div className="mb-6">
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Quick Questions:</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {[
+                                "What's my current equity?",
+                                "Show my open positions",
+                                "What's the market sentiment?",
+                                "Explain your trading strategy"
+                            ].map((suggestion, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => { setChatInput(suggestion); setTimeout(sendChatMessage, 100); }}
+                                    className="text-left px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-sm border border-white/5 hover:border-primary/30"
+                                >
+                                    {suggestion}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
+                {/* Chat Messages */}
+                <div className="flex-1 overflow-y-auto space-y-4 mb-6 min-h-[400px] max-h-[500px]">
+                    {chatMessages.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center opacity-20">
+                            <BrainCircuit className="w-16 h-16 mb-4 animate-pulse" />
+                            <p className="text-sm font-bold uppercase tracking-widest">Start a conversation...</p>
+                        </div>
+                    ) : (
+                        chatMessages.map((msg, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className={cn(
+                                    "flex gap-3",
+                                    msg.role === 'user' ? "justify-end" : "justify-start"
+                                )}
+                            >
+                                {msg.role === 'assistant' && (
+                                    <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
+                                        <BrainCircuit className="w-4 h-4 text-purple-400" />
+                                    </div>
+                                )}
+                                <div
+                                    className={cn(
+                                        "max-w-[80%] px-4 py-3 rounded-2xl",
+                                        msg.role === 'user'
+                                            ? "bg-primary/20 text-white border border-primary/30"
+                                            : "bg-white/5 text-white/90 border border-white/10"
+                                    )}
+                                >
+                                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                </div>
+                                {msg.role === 'user' && (
+                                    <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                                        <span className="text-xs font-bold">YOU</span>
+                                    </div>
+                                )}
+                            </motion.div>
+                        ))
+                    )}
+                    {chatLoading && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="flex gap-3"
+                        >
+                            <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                                <BrainCircuit className="w-4 h-4 text-purple-400 animate-pulse" />
+                            </div>
+                            <div className="bg-white/5 px-4 py-3 rounded-2xl border border-white/10">
+                                <div className="flex gap-1">
+                                    <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                    <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                    <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </div>
 
+                {/* Input */}
+                <div className="flex gap-3 pt-4 border-t border-white/5">
+                    <input
+                        type="text"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
+                        placeholder="Ask me anything..."
+                        disabled={chatLoading}
+                        className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 focus:outline-none text-sm placeholder:text-muted-foreground disabled:opacity-50"
+                    />
+                    <button
+                        onClick={sendChatMessage}
+                        disabled={chatLoading || !chatInput.trim()}
+                        className="px-6 py-3 rounded-xl bg-primary text-black font-bold hover:neon-glow transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        <Send className="w-4 h-4" />
+                        <span className="hidden sm:inline">Send</span>
+                    </button>
+                </div>
+            </GlassCard>
+        </motion.div>
+    )
+}
 
 
           {activeTab === 'logs' && (
