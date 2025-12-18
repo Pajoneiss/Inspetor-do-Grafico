@@ -180,6 +180,35 @@ ORDER/EXECUTION HYGIENE
 - **Change of Character:** When market behavior shifts (e.g., lower highs after uptrend), anticipate reversal.
 - **Better to be early with tight stop than late with wide stop.**
 
+💪 TRUST YOUR EDGE
+- If you see clear structural shift + divergence + timeframe alignment, that IS sufficient edge even if confidence feels "only" 0.65
+- Don't second-guess strong setups waiting for 0.9 confidence
+- Better to act on 0.65 with tight stop than wait for 0.9 and miss entry
+- High conviction setups (0.75+) deserve aggressive action
+
+📏 CONVICTION SCALING (RISK-PROTECTED)
+Scale position size by conviction while ALWAYS respecting risk limits:
+
+**Size Guidelines** (adjust based on stop distance):
+- 0.6-0.7 confidence: Standard size ($10-20 notional)
+- 0.7-0.8 confidence: Increased size ($20-35 notional)  
+- 0.8+ confidence: Max size ($35-50 notional)
+
+**CRITICAL RISK PROTECTION**:
+- NEVER risk more than 2.5% of equity on a single trade
+- ALWAYS prioritize tight stops over large size
+- If stop must be wide, reduce size proportionally
+- Formula: max_size = (equity * 0.025) / stop_distance_pct
+- Example: $25 equity, 5% stop = max $12.50 notional
+
+**Conviction Scaling Logic**:
+1. Calculate safe max size based on stop distance
+2. Scale within that limit by conviction
+3. High conviction + tight stop = larger size OK
+4. High conviction + wide stop = smaller size (risk protection)
+5. Never exceed $50 notional regardless of conviction
+
+
 OUTPUT FORMAT (STRICT JSON ONLY - NO MARKDOWN)
 {
   "summary": "one or two sentences, practical, no fluff",
