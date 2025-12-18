@@ -267,9 +267,10 @@ IMPORTANT
             briefs_lines.append(
                 f"  {symbol}: ${brief.get('price', 0)} | {brief.get('trend', '?')} | score={brief.get('score', 0):.1f}{reason_str}"
             )
-        briefs_str = "\n".join(briefs_lines) if briefs_lines else "(sem dados)"
+        briefs_str = "\n".join(briefs_lines) if briefs_lines else "(no data)"
         
         # Generate multi-timeframe candles string (ALL symbols, ALL candles)
+        # Decorated with RSI/EMA indicators per timeframe
         candles_str = format_multi_timeframe_candles(state)
 
         # Position details
@@ -278,38 +279,38 @@ IMPORTANT
         for sym, data in pos_details.items():
             sl_str = f"SL=${data['current_sl']:.2f}" if data.get('current_sl') else "SL=None"
             tp_str = f"TP=${data['current_tp']:.2f}" if data.get('current_tp') else "TP=None"
-            details_lines.append(f"  {sym}: PnL={data['pnl_pct']:.2f}% | entry=${data['entry_price']:.2f} | {sl_str} | {tp_str}")
-        details_str = "\n".join(details_lines) if details_lines else "(sem posições)"
+            details_lines.append(f"  {sym}: PnL={data['pnl_pct']:.2f}% | Entry=${data['entry_price']:.2f} | {sl_str} | {tp_str}")
+        details_str = "\n".join(details_lines) if details_lines else "(no positions)"
         
-        return f"""DADOS DE MERCADO:
+        return f"""MARKET DATA SNAPSHOT:
 
-CONTA:
-- Equity: ${state.get('equity', 0):.2f} (Total Value)
-- Spendable Margin: ${state.get('available_margin', 0):.2f} (Actual cash available for new initial margin)
-- Leveraged Buying Power: ${state.get('buying_power', 0):.2f} (Theoretical max using leverage)
+ACCOUNT STATUS:
+- Equity: ${state.get('equity', 0):.2f} (Total Portfolio Value)
+- Spendable Margin: ${state.get('available_margin', 0):.2f} (Actual USD available for new trades)
+- Leveraged Buying Power: ${state.get('buying_power', 0):.2f} (Theoretical limit including leverage)
 
-⚠️ CRITICAL SIZING RULES:
+⚠️ CRITICAL TRADING RULES:
 - Minimum trade size is $10.00 notional.
-- If Spendable Margin is low (e.g. <$5), do NOT attempt to open/add positions.
 - "size" field in JSON is ASSET QUANTITY (e.g. 0.001 BTC), NOT USD. Use prices to convert.
 
-POSIÇÕES ({state.get('positions_count', 0)}):
+CURRENT POSITIONS ({state.get('positions_count', 0)}):
 {positions_str}
-DETALHES:
+POSITION RISK DETAILS:
 {details_str}
 
-SCAN DE MERCADO (TOP SIGNALS):
+MARKET SCAN (TOP INDICATOR SCORES):
 {briefs_str}
+
+DETAILED CHART ANALYSIS (Top 5 Symbols):
 {candles_str}
 
-📊 MULTI-TIMEFRAME ANALYSIS (7 Scales Available):
-- **MACRO** (1W/1D): Identify primary trend, major S/R levels, market regime
-- **SWING** (4h/1h): Find intermediate structure, swing highs/lows for SL/TP placement  
-- **ENTRY** (15m/5m/1m): Precise timing, confirm breakouts, avoid false signals
-- Top-down approach: Start macro context → refine to micro execution
-- Set stops beyond structure at appropriate scale (e.g., SHORT: SL above 1h swing high)
+📊 STRATEGIC GUIDANCE:
+- Every timeframe now includes RSI(14) and EMA(9/21). Use them to confirm momentum.
+- RSI > 60 + Trend UP = Strong entry potential. RSI < 40 + Trend DOWN = Strong short potential.
+- Identify institutional structures (SwingH/SwingL) across 1h/4h to set protected Stops.
+- Don't claim 'insufficient data' unless the chart strings are literally empty. You have enough.
 
-O que você decide fazer? Pense como um gestor de fundo de hedge."""
+Perform a professional top-down analysis and execute with conviction. What is your decision?"""
 
     def _parse_json_response(self, content: str) -> Dict[str, Any]:
         """

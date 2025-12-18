@@ -89,16 +89,16 @@ def format_multi_timeframe_candles(state):
             candles = symbol_candles[tf]
             label = TF_LABELS.get(tf, tf)
             
-            # Show last N closes based on timeframe
+            # Show last N closes based on timeframe (Expanded for better context)
             display_count = {
-                "1w": 8,   # Last 8 weeks
-                "1d": 12,  # Last 12 days
-                "4h": 10,  # Last 40 hours
-                "1h": 12,  # Last 12 hours
-                "15m": 10, # Last 150 min
-                "5m": 8,   # Last 40 min
-                "1m": 6    # Last 6 min
-            }.get(tf, 10)
+                "1w": 12,  # Last 3 months
+                "1d": 30,  # Last month
+                "4h": 24,  # Last 4 days
+                "1h": 24,  # Last day
+                "15m": 20, # Last 5 hours
+                "5m": 20,  # Last 1.5 hours
+                "1m": 15   # Last 15 min
+            }.get(tf, 20)
             
             recent = candles[-display_count:] if len(candles) >= display_count else candles
             
@@ -145,6 +145,33 @@ def format_multi_timeframe_candles(state):
             
             candles_str += f"  {label}\n"
             candles_str += f"    {structure_str}\n"
-            candles_str += f"    {closes_str}\n"
+
+            # Calculate indicators for this timeframe
+            try:
+                from indicators import calculate_indicators
+                ind = calculate_indicators(candles)
+                rsi_val = ind.get("rsi_14", 50)
+                ema9 = ind.get("ema_9", 0)
+                ema21 = ind.get("ema_21", 0)
+                trend_val = ind.get("trend", "neutral").upper()
+                indicator_str = f"    [Indicators] RSI(14): {rsi_val:.1f} | EMA(9/21): {ema9:.2f}/{ema21:.2f} | Trend: {trend_val}\n"
+            except:
+                indicator_str = ""
+            
+            if indicator_str:
+                candles_str += indicator_str
+
+            # Format closes as progression
+            # Using 'close' key from valid_candles, not 'c'
+            closes = [c['close'] for c in valid_candles[-min(display_count, len(valid_candles)):]]
+            closes_str_formatted = []
+            for c_val in closes:
+                if tf in ["15m", "5m", "1m"]:
+                    closes_str_formatted.append(f"{c_val:.2f}")
+                else:
+                    closes_str_formatted.append(f"{c_val:.0f}")
+            closes_str = " -> ".join(closes_str_formatted)
+            
+            candles_str += f"    Closes: {closes_str}\n"
     
     return candles_str
