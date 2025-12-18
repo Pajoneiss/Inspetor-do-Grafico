@@ -296,6 +296,32 @@ IMPORTANT
             details_lines.append(f"  {sym}: PnL={data['pnl_pct']:.2f}% | Entry=${data['entry_price']:.2f} | {sl_str} | {tp_str}")
         details_str = "\n".join(details_lines) if details_lines else "(no positions)"
         
+        # Format market structure data
+        market_structure = state.get("market_structure", {})
+        structure_lines = []
+        for symbol, tf_data in market_structure.items():
+            structure_lines.append(f"\n{symbol}:")
+            for tf, data in tf_data.items():
+                trend = data.get('trend', 'UNKNOWN')
+                bos = data.get('last_bos', 'None')
+                choch = "YES" if data.get('choch_detected') else "NO"
+                
+                structure_lines.append(f"  {tf}: Trend={trend} | BOS={bos} | CHoCH={choch}")
+                
+                # Order blocks
+                order_blocks = data.get('order_blocks', [])
+                if order_blocks:
+                    ob_str = ", ".join([f"${ob['price']:.2f}({ob['type']})" for ob in order_blocks[:2]])
+                    structure_lines.append(f"    Order Blocks: {ob_str}")
+                
+                # Liquidity zones
+                liq_zones = data.get('liquidity_zones', [])
+                if liq_zones:
+                    lz_str = ", ".join([f"${lz:.2f}" for lz in liq_zones[:3]])
+                    structure_lines.append(f"    Liquidity Zones: {lz_str}")
+        
+        structure_str = "\n".join(structure_lines) if structure_lines else "(no structure data)"
+        
         return f"""MARKET DATA SNAPSHOT:
 
 ACCOUNT STATUS:
@@ -315,8 +341,40 @@ POSITION RISK DETAILS:
 MARKET SCAN (TOP INDICATOR SCORES):
 {briefs_str}
 
+MARKET STRUCTURE (SMC):
+{structure_str}
+
 DETAILED CHART ANALYSIS (Top 8 Symbols):
 {candles_str}
+
+📐 MARKET STRUCTURE (SMART MONEY CONCEPTS)
+You now have access to institutional market structure data for key timeframes:
+
+**Trend**: Based on Higher Highs/Higher Lows (BULLISH) or Lower Highs/Lower Lows (BEARISH)
+**BOS (Break of Structure)**: Trend continuation signal
+  - UP: Price broke above recent swing high (bullish continuation)
+  - DOWN: Price broke below recent swing low (bearish continuation)
+**CHoCH (Change of Character)**: Early reversal warning
+  - In uptrend: Failed to make HH, made LH instead
+  - In downtrend: Failed to make LL, made HL instead
+**Order Blocks**: Institutional entry zones (last candle before strong move)
+  - BULLISH: Last red candle before up move = potential support
+  - BEARISH: Last green candle before down move = potential resistance
+**Liquidity Zones**: Clustered swing highs/lows where stops are placed
+
+HOW TO USE SMC DATA:
+- **Trend Following**: Enter on pullbacks to order blocks in trending markets
+- **Reversal Trading**: CHoCH = early warning, consider exits or reversal entries
+- **Target Selection**: Liquidity zones = high-probability targets (stops get hit)
+- **Structure Confirmation**: BOS confirms trend, wait for pullback to order block
+- **Multi-TF Alignment**: 1h trend + 15m BOS + 5m order block = high conviction
+
+EXAMPLE DECISION FLOW:
+1. Check 1h trend: BULLISH
+2. See 15m BOS: UP (confirms trend)
+3. Wait for pullback to 1h order block
+4. Enter LONG with stop below order block
+5. Target: Next liquidity zone above
 
 📊 STRATEGIC GUIDANCE:
 - You have access to RSI(14) and EMA(9/21) for every timeframe. Treat them as supplementary technical signals for your discretionary analysis.
