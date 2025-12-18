@@ -13,7 +13,7 @@ interface EquityChartProps {
 }
 
 const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-    <div className={`glass glass-hover rounded-2xl p-6 flex flex-col animate-in ${className}`}>{children}</div>
+    <div className={`glass glass-hover rounded-2xl p-6 flex flex-col animate-in border border-white/5 bg-white/[0.02] ${className}`}>{children}</div>
 )
 
 export default function EquityChart({ data, loading }: EquityChartProps) {
@@ -54,8 +54,8 @@ export default function EquityChart({ data, loading }: EquityChartProps) {
                 <div className="flex flex-col">
                     <span className="text-[10px] text-[var(--color-text-muted)] uppercase font-black tracking-[0.2em] opacity-80 mb-1">Portfolio Performance</span>
                     <div className="flex items-baseline gap-3">
-                        <span className="text-3xl font-black text-[var(--color-text-primary)] tracking-tighter shadow-sm">${last.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        <span className={`px-2 py-0.5 rounded-md text-xs font-black flex items-center gap-1 ${pnl >= 0 ? 'bg-[var(--color-profit)]/10 text-[var(--color-profit)] neon-glow-emerald' : 'bg-[var(--color-loss)]/10 text-[var(--color-loss)] neon-glow-ruby'}`}>
+                        <span className="data-value data-value-lg text-[var(--color-text-primary)] tracking-tighter shadow-sm">${last.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-black flex items-center gap-1 ${pnl >= 0 ? 'bg-[var(--color-profit)]/10 text-[var(--color-profit)] neon-glow-emerald' : 'bg-[var(--color-loss)]/10 text-[var(--color-loss)] neon-glow-ruby'}`}>
                             {pnl >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                             ${Math.abs(pnl).toFixed(2)}
                         </span>

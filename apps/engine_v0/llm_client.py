@@ -4,6 +4,7 @@ OpenAI integration for trading decisions
 """
 import json
 import traceback
+from .candle_formatter import format_multi_timeframe_candles
 from typing import Dict, Any
 from openai import OpenAI
 
@@ -267,6 +268,9 @@ IMPORTANT
                 f"  {symbol}: ${brief.get('price', 0)} | {brief.get('trend', '?')} | score={brief.get('score', 0):.1f}{reason_str}"
             )
         briefs_str = "\n".join(briefs_lines) if briefs_lines else "(sem dados)"
+        
+        # Generate multi-timeframe candles string (ALL symbols, ALL candles)
+        candles_str = format_multi_timeframe_candles(state)
 
         # Position details
         pos_details = state.get("position_details", {})
@@ -280,8 +284,14 @@ IMPORTANT
         return f"""DADOS DE MERCADO:
 
 CONTA:
-- Equity: ${state.get('equity', 0):.2f}
-- Buying Power: ${state.get('buying_power', 0):.2f}
+- Equity: ${state.get('equity', 0):.2f} (Total Value)
+- Spendable Margin: ${state.get('available_margin', 0):.2f} (Actual cash available for new initial margin)
+- Leveraged Buying Power: ${state.get('buying_power', 0):.2f} (Theoretical max using leverage)
+
+⚠️ CRITICAL SIZING RULES:
+- Minimum trade size is $10.00 notional.
+- If Spendable Margin is low (e.g. <$5), do NOT attempt to open/add positions.
+- "size" field in JSON is ASSET QUANTITY (e.g. 0.001 BTC), NOT USD. Use prices to convert.
 
 POSIÇÕES ({state.get('positions_count', 0)}):
 {positions_str}
@@ -290,6 +300,13 @@ DETALHES:
 
 SCAN DE MERCADO (TOP SIGNALS):
 {briefs_str}
+{candles_str}
+
+📊 MULTI-TIMEFRAME ANALYSIS:
+- Use 4H for directional bias and major swing levels
+- Use 1H to identify intraday swing highs/lows for stop placement
+- Use 15M for precise entries
+- Set stops beyond structure (e.g., SHORT: SL above recent swing high, not arbitrary %)
 
 O que você decide fazer? Pense como um gestor de fundo de hedge."""
 

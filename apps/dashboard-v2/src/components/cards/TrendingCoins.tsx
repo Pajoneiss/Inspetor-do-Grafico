@@ -71,44 +71,52 @@ export default function TrendingCoins() {
             </div>
 
             {/* Coins List */}
-            <div className="space-y-3">
-                {coins.slice(0, 10).map((coin, index) => {
-                    const isPositive = coin.percent_change_24h >= 0;
-                    return (
-                        <div
-                            key={coin.symbol}
-                            className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-200 group"
-                        >
-                            {/* Left: Rank + Name */}
-                            <div className="flex items-center gap-3 flex-1">
-                                <div className="w-6 h-6 rounded-full bg-gradient-info flex items-center justify-center text-xs font-bold text-white">
-                                    {index + 1}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="font-semibold text-white text-sm truncate">
-                                        {coin.symbol}
+            {coins.length === 0 ? (
+                <div className="text-center py-8 text-white/40">
+                    <div className="text-4xl mb-2">📊</div>
+                    <div className="text-sm">No trending data available</div>
+                    <div className="text-xs mt-1">API may be rate limited or unavailable</div>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {coins.slice(0, 10).map((coin, index) => {
+                        const isPositive = coin.percent_change_24h >= 0;
+                        return (
+                            <div
+                                key={coin.symbol}
+                                className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-200 group"
+                            >
+                                {/* Left: Rank + Name */}
+                                <div className="flex items-center gap-3 flex-1">
+                                    <div className="w-6 h-6 rounded-full bg-gradient-info flex items-center justify-center text-xs font-bold text-white">
+                                        {index + 1}
                                     </div>
-                                    <div className="text-xs text-white/40 truncate">{coin.name}</div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-semibold text-white text-sm truncate">
+                                            {coin.symbol}
+                                        </div>
+                                        <div className="text-xs text-white/40 truncate">{coin.name}</div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* Right: Price + Change */}
-                            <div className="text-right">
-                                <div className="data-value data-value-sm text-white/90">
-                                    {formatPrice(coin.price)}
-                                </div>
-                                <div
-                                    className={`text-xs font-mono ${isPositive ? "text-profit" : "text-loss"
-                                        }`}
-                                >
-                                    {isPositive ? "+" : ""}
-                                    {coin.percent_change_24h.toFixed(2)}%
+                                {/* Right: Price + Change */}
+                                <div className="text-right">
+                                    <div className="data-value data-value-sm text-white/90">
+                                        {formatPrice(coin.price)}
+                                    </div>
+                                    <div
+                                        className={`text-xs font-mono ${isPositive ? "text-profit" : "text-loss"
+                                            }`}
+                                    >
+                                        {isPositive ? "+" : ""}
+                                        {coin.percent_change_24h.toFixed(2)}%
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    );
-                })}
-            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }

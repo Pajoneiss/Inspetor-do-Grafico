@@ -135,12 +135,12 @@ export default function DashboardPage() {
           {/* KPI Strip */}
           <MetricStrip account={data.account} loading={loading} />
 
-          {/* Top Row: CMC Market Overview + Trending */}
+          {/* Top Row: CMC Market Overview + Trending - FIXED LAYOUT */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 min-h-[300px]">
               <CMCMarketOverview />
             </div>
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 min-h-[300px]">
               <TrendingCoins />
             </div>
           </div>

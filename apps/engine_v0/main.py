@@ -158,10 +158,11 @@ def main():
                     state["prices"] = prices
                     state["available_margin"] = summary["available"]  # Free collateral
                     
-                    # v10.2: Calculate buying power with leverage (default 40x for BTC)
+                    # v12.7: Calculate actual current buying power (leveraged available margin)
                     default_leverage = 40
                     state["leverage"] = default_leverage
-                    state["buying_power"] = state["equity"] * default_leverage
+                    state["available_margin"] = float(summary.get("available", 0))
+                    state["buying_power"] = state["available_margin"] * default_leverage
 
                     
                     # Get constraints for snapshot symbols
@@ -284,13 +285,15 @@ def main():
                         
                         # Candles/indicators for top 5 symbols (avoid API spam)
                         for symbol in snapshot_symbols[:5]:
-                            # Get candles for multiple timeframes
+                            # Get candles for multiple timeframes (multi-fractal analysis)
                             candles_15m = hl.get_candles(symbol, "15m", limit=50)
                             candles_1h = hl.get_candles(symbol, "1h", limit=50)
+                            candles_4h = hl.get_candles(symbol, "4h", limit=50)
                             
                             candles_by_symbol[symbol] = {
-                                "15m": candles_15m[-20:] if candles_15m else [],
-                                "1h": candles_1h[-20:] if candles_1h else []
+                                "15m": candles_15m[-20:] if candles_15m else [],  # 5 hours (entry precision)
+                                "1h": candles_1h[-24:] if candles_1h else [],     # 1 day (intraday swings)
+                                "4h": candles_4h[-30:] if candles_4h else []      # 5 days (trend context)
                             }
                             
                             # Calculate indicators from 15m if available

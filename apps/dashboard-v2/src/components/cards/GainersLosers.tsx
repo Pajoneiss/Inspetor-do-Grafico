@@ -77,72 +77,80 @@ export default function GainersLosers() {
                 </h3>
             </div>
 
-            {/* Split View */}
-            <div className="grid grid-cols-2 gap-6">
-                {/* Gainers */}
-                <div>
-                    <div className="flex items-center gap-2 mb-4">
-                        <div className="w-2 h-2 rounded-full bg-profit animate-pulse-glow"></div>
-                        <span className="text-xs font-semibold text-profit uppercase tracking-wide">
-                            Top Gainers
-                        </span>
-                    </div>
-                    <div className="space-y-2">
-                        {data.gainers.slice(0, 5).map((coin) => (
-                            <div
-                                key={coin.symbol}
-                                className="p-3 rounded-xl bg-gradient-to-r from-profit/10 to-transparent hover:from-profit/20 transition-all duration-200"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="font-semibold text-white text-sm truncate">
-                                            {coin.symbol}
+            {/* Empty State */}
+            {(!data.gainers || data.gainers.length === 0) && (!data.losers || data.losers.length === 0) ? (
+                <div className="text-center py-8 text-white/40">
+                    <div className="text-4xl mb-2">📈📉</div>
+                    <div className="text-sm">No market movers data</div>
+                    <div className="text-xs mt-1">Check back soon</div>
+                </div>
+            ) : (
+                <div className="grid grid-cols-2 gap-6">
+                    {/* Gainers */}
+                    <div>
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="w-2 h-2 rounded-full bg-profit animate-pulse-glow"></div>
+                            <span className="text-xs font-semibold text-profit uppercase tracking-wide">
+                                Top Gainers
+                            </span>
+                        </div>
+                        <div className="space-y-2">
+                            {data.gainers.slice(0, 5).map((coin) => (
+                                <div
+                                    key={coin.symbol}
+                                    className="p-3 rounded-xl bg-gradient-to-r from-profit/10 to-transparent hover:from-profit/20 transition-all duration-200"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-semibold text-white text-sm truncate">
+                                                {coin.symbol}
+                                            </div>
+                                            <div className="text-xs text-white/40 truncate">
+                                                {formatPrice(coin.price)}
+                                            </div>
                                         </div>
-                                        <div className="text-xs text-white/40 truncate">
-                                            {formatPrice(coin.price)}
+                                        <div className="data-value data-value-sm text-profit">
+                                            +{coin.percent_change_24h.toFixed(1)}%
                                         </div>
-                                    </div>
-                                    <div className="data-value data-value-sm text-profit">
-                                        +{coin.percent_change_24h.toFixed(1)}%
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
 
-                {/* Losers */}
-                <div>
-                    <div className="flex items-center gap-2 mb-4">
-                        <div className="w-2 h-2 rounded-full bg-loss animate-pulse-glow"></div>
-                        <span className="text-xs font-semibold text-loss uppercase tracking-wide">
-                            Top Losers
-                        </span>
-                    </div>
-                    <div className="space-y-2">
-                        {data.losers.slice(0, 5).map((coin) => (
-                            <div
-                                key={coin.symbol}
-                                className="p-3 rounded-xl bg-gradient-to-r from-loss/10 to-transparent hover:from-loss/20 transition-all duration-200"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="font-semibold text-white text-sm truncate">
-                                            {coin.symbol}
+                    {/* Losers */}
+                    <div>
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="w-2 h-2 rounded-full bg-loss animate-pulse-glow"></div>
+                            <span className="text-xs font-semibold text-loss uppercase tracking-wide">
+                                Top Losers
+                            </span>
+                        </div>
+                        <div className="space-y-2">
+                            {data.losers.slice(0, 5).map((coin) => (
+                                <div
+                                    key={coin.symbol}
+                                    className="p-3 rounded-xl bg-gradient-to-r from-loss/10 to-transparent hover:from-loss/20 transition-all duration-200"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-semibold text-white text-sm truncate">
+                                                {coin.symbol}
+                                            </div>
+                                            <div className="text-xs text-white/40 truncate">
+                                                {formatPrice(coin.price)}
+                                            </div>
                                         </div>
-                                        <div className="text-xs text-white/40 truncate">
-                                            {formatPrice(coin.price)}
+                                        <div className="data-value data-value-sm text-loss">
+                                            {coin.percent_change_24h.toFixed(1)}%
                                         </div>
-                                    </div>
-                                    <div className="data-value data-value-sm text-loss">
-                                        {coin.percent_change_24h.toFixed(1)}%
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

@@ -10,16 +10,16 @@ interface MetricProps {
 }
 
 const KpiCard = ({ label, value, delta, deltaColor, loading }: MetricProps) => (
-    <div className="glass glass-hover rounded-xl p-4 flex flex-col justify-between animate-in min-h-[88px]">
-        <div className="text-[11px] text-[var(--color-text-secondary)] uppercase tracking-[0.12em] font-semibold mb-2">{label}</div>
+    <div className="glass glass-hover rounded-xl p-4 flex flex-col justify-between animate-in min-h-[100px] border border-white/5 bg-white/[0.03]">
+        <div className="text-[11px] text-white/50 uppercase tracking-[0.15em] font-black mb-2">{label}</div>
         <div className="flex items-baseline gap-2">
             {loading ? (
                 <div className="h-9 w-28 bg-[var(--glass-border)] animate-pulse rounded-lg" />
             ) : (
                 <>
-                    <span className="text-3xl font-black text-[var(--color-text-primary)] tracking-tight leading-none">{value}</span>
+                    <span className="data-value data-value-lg text-[var(--color-text-primary)] tracking-tight leading-none">{value}</span>
                     {delta !== undefined && (
-                        <span className={`text-xs font-bold px-2 py-1 rounded-md ${deltaColor === 'profit' ? 'bg-[var(--color-accent-green)]/10 text-[var(--color-accent-green)] neon-glow-emerald' :
+                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${deltaColor === 'profit' ? 'bg-[var(--color-accent-green)]/10 text-[var(--color-accent-green)] neon-glow-emerald' :
                             deltaColor === 'loss' ? 'bg-[var(--color-loss)]/10 text-[var(--color-loss)] neon-glow-ruby' : 'bg-white/5 text-[var(--color-text-muted)]'
                             }`}>
                             {delta}
