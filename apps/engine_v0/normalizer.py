@@ -4,7 +4,7 @@ Ensures orders comply with Hyperliquid constraints
 """
 import json
 from typing import Dict, Any, Optional, Tuple
-from decimal import Decimal, ROUND_DOWN
+from decimal import Decimal, ROUND_DOWN, ROUND_UP
 
 from config import MIN_NOTIONAL_USD, AUTO_CAP_LEVERAGE
 

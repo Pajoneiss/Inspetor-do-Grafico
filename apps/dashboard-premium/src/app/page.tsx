@@ -172,6 +172,8 @@ function DashboardContent() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [pnlData, setPnlData] = useState<any>(null);
+  const [pnlHistory, setPnlHistory] = useState<any[]>([]);
+  const [pnlPeriod, setPnlPeriod] = useState<'24H' | '7D' | '30D' | 'ALL'>('24H');
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -179,17 +181,19 @@ function DashboardContent() {
     if (!API_URL) return;
 
     try {
-      const [statusRes, posRes, thoughtRes, pnlRes] = await Promise.all([
+      const [statusRes, posRes, thoughtRes, pnlRes, historyRes] = await Promise.all([
         fetch(`${API_URL}/api/status`).then(r => r.json()),
         fetch(`${API_URL}/api/positions`).then(r => r.json()),
         fetch(`${API_URL}/api/ai/thoughts`).then(r => r.json()),
-        fetch(`${API_URL}/api/pnl`).then(r => r.json())
+        fetch(`${API_URL}/api/pnl`).then(r => r.json()),
+        fetch(`${API_URL}/api/pnl/history`).then(r => r.json())
       ]);
 
       if (statusRes.ok) setStatus(statusRes.data);
       if (posRes.ok) setPositions(posRes.data);
       if (thoughtRes.ok) setThoughts(thoughtRes.data);
       if (pnlRes.ok) setPnlData(pnlRes.data);
+      if (historyRes.ok && Array.isArray(historyRes.data)) setPnlHistory(historyRes.data);
 
       setError(null);
     } catch (err) {
@@ -349,7 +353,7 @@ function DashboardContent() {
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Main Chart Card */}
-                <GlassCard className="lg:col-span-2 min-h-[440px] flex flex-col" delay={0.2}>
+                <GlassCard className="lg:col-span-1 min-h-[440px] flex flex-col" delay={0.2}>
                   <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-4">
                       <div className="p-2 rounded-xl bg-primary/20 text-primary">
@@ -388,6 +392,110 @@ function DashboardContent() {
                         ))}
                       </div>
                     )}
+                  </div>
+                </GlassCard>
+
+                {/* PNL Chart Card */}
+                <GlassCard className="lg:col-span-1 min-h-[440px] flex flex-col" delay={0.25}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2 rounded-xl bg-primary/20 text-primary">
+                        <Activity className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-xl font-bold tracking-tight">PnL Performance</h3>
+                    </div>
+                    <div className="flex gap-1">
+                      {(['24H', '7D', '30D', 'ALL'] as const).map(period => (
+                        <button
+                          key={period}
+                          onClick={() => setPnlPeriod(period)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all",
+                            pnlPeriod === period
+                              ? "bg-primary text-black"
+                              : "bg-white/5 text-muted-foreground hover:bg-white/10"
+                          )}
+                        >
+                          {period}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* PNL Summary */}
+                  <div className="text-center mb-4">
+                    <p className={cn("text-3xl font-bold", (pnlData?.[`pnl_${pnlPeriod.toLowerCase()}`] || pnlData?.pnl_24h || 0) >= 0 ? "text-primary neon-glow" : "text-secondary")}>
+                      {(pnlData?.[`pnl_${pnlPeriod.toLowerCase()}`] || pnlData?.pnl_24h || 0) >= 0 ? '+' : ''}${(pnlData?.[`pnl_${pnlPeriod.toLowerCase()}`] || pnlData?.pnl_24h || 0).toFixed(2)}
+                    </p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Realized PnL ({pnlPeriod})</p>
+                  </div>
+
+                  {/* Chart */}
+                  <div className="flex-1 w-full overflow-hidden px-2">
+                    {pnlHistory?.length > 0 ? (
+                      <svg width="100%" height="100%" viewBox="0 0 100 40" preserveAspectRatio="none">
+                        <defs>
+                          <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#00ff9d" stopOpacity="0.3" />
+                            <stop offset="100%" stopColor="#00ff9d" stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+                        <motion.path
+                          d={`M 0 40 ${pnlHistory.map((p: any, i: number) => {
+                            const x = (i / (pnlHistory.length - 1)) * 100;
+                            const minVal = Math.min(...pnlHistory.map((d: any) => d.value));
+                            const maxVal = Math.max(...pnlHistory.map((d: any) => d.value));
+                            const range = maxVal - minVal || 1;
+                            const y = 35 - ((p.value - minVal) / range) * 30;
+                            return `L ${x} ${y}`;
+                          }).join(' ')} L 100 40 Z`}
+                          fill="url(#chartGradient)"
+                        />
+                        <motion.path
+                          d={`M ${pnlHistory.map((p: any, i: number) => {
+                            const x = (i / (pnlHistory.length - 1)) * 100;
+                            const minVal = Math.min(...pnlHistory.map((d: any) => d.value));
+                            const maxVal = Math.max(...pnlHistory.map((d: any) => d.value));
+                            const range = maxVal - minVal || 1;
+                            const y = 35 - ((p.value - minVal) / range) * 30;
+                            return `${x} ${y}`;
+                          }).join(' L ')}`}
+                          fill="none"
+                          stroke="#00ff9d"
+                          strokeWidth="0.8"
+                          initial={{ pathLength: 0 }}
+                          animate={{ pathLength: 1 }}
+                          transition={{ duration: 1.5 }}
+                          className="neon-glow"
+                        />
+                      </svg>
+                    ) : (
+                      <div className="h-full flex items-center justify-center opacity-20 italic text-sm">
+                        Waiting for history data...
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Stats Row */}
+                  <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/5 mt-4">
+                    <div className="text-center">
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase">24H</p>
+                      <p className={cn("text-sm font-bold", (pnlData?.pnl_24h || 0) >= 0 ? "text-primary" : "text-secondary")}>
+                        {(pnlData?.pnl_24h || 0) >= 0 ? '+' : ''}${(pnlData?.pnl_24h || 0).toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase">7D</p>
+                      <p className={cn("text-sm font-bold", (pnlData?.pnl_7d || 0) >= 0 ? "text-primary" : "text-secondary")}>
+                        {(pnlData?.pnl_7d || 0) >= 0 ? '+' : ''}${(pnlData?.pnl_7d || 0).toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase">30D</p>
+                      <p className={cn("text-sm font-bold", (pnlData?.pnl_30d || 0) >= 0 ? "text-primary" : "text-secondary")}>
+                        {(pnlData?.pnl_30d || 0) >= 0 ? '+' : ''}${(pnlData?.pnl_30d || 0).toFixed(2)}
+                      </p>
+                    </div>
                   </div>
                 </GlassCard>
 
