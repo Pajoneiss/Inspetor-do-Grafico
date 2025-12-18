@@ -480,6 +480,43 @@ def add_trade_log(log: dict):
     _trade_logs = _trade_logs[:50]
 
 
+def update_trade_log(symbol: str, update_data: dict):
+    """Update existing trade log for a symbol (for SL/TP changes)"""
+    global _trade_logs
+    
+    # Find the most recent log for this symbol
+    for log in _trade_logs:
+        if log.get('symbol') == symbol and log.get('action') in ['ENTRY', 'HOLDING']:
+            # Update risk management fields
+            if 'stop_loss' in update_data:
+                if 'risk_management' not in log:
+                    log['risk_management'] = {}
+                log['risk_management']['stop_loss'] = update_data['stop_loss']
+                log['risk_management']['stop_loss_reason'] = update_data.get('stop_loss_reason', 'AI adjustment')
+            
+            if 'take_profit_1' in update_data:
+                if 'risk_management' not in log:
+                    log['risk_management'] = {}
+                log['risk_management']['take_profit_1'] = update_data['take_profit_1']
+                log['risk_management']['tp1_reason'] = update_data.get('tp1_reason', 'AI target')
+            
+            # Update confidence and notes
+            if 'confidence' in update_data:
+                log['confidence'] = update_data['confidence']
+            if 'ai_notes' in update_data:
+                log['ai_notes'] = update_data['ai_notes']
+            
+            # Mark as updated
+            log['last_update'] = datetime.now(timezone.utc).isoformat()
+            log['update_type'] = update_data.get('update_type', 'MANUAL')
+            
+            print(f"[DASHBOARD] Trade log updated: {symbol}")
+            return True
+    
+    print(f"[DASHBOARD] No trade log found for {symbol} to update")
+    return False
+
+
 @app.route('/api/ai/current-thinking')
 @app.route('/api/ai/thoughts')
 def api_ai_thoughts():

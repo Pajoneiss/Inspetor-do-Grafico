@@ -103,6 +103,99 @@ class LLMClient:
             except Exception as e:
                 print(f"[LLM] Failed to add thought to dashboard: {e}")
             
+            # Record detailed trade logs for entries and risk management updates
+            try:
+                from dashboard_api import add_trade_log, update_trade_log
+                
+                for action in actions:
+                    action_type = action.get("type", "")
+                    symbol = action.get("symbol", "UNKNOWN")
+                    
+                    # Entry actions - create new trade log
+                    if action_type in ["PLACE_ORDER", "ADD_TO_POSITION"]:
+                        # Get state snapshot for confluence factors
+                        state_snapshot = decision.get("state_snapshot", {})
+                        key_levels = state_snapshot.get("key_levels", [])
+                        triggers = decision.get("next_call_triggers", [])
+                        
+                        # Build confluence factors from AI's analysis
+                        confluence = []
+                        if key_levels:
+                            confluence.extend([f"Key level: {lvl}" for lvl in key_levels[:3]])
+                        if triggers:
+                            confluence.extend([f"Trigger: {t}" for t in triggers[:2]])
+                        if not confluence:
+                            confluence = [
+                                f"{action.get('side', 'LONG')} entry based on structure",
+                                "Multi-timeframe confluence",
+                                action.get("reason", "AI discretionary decision")[:50]
+                            ]
+                        
+                        # Get price from action or estimate from state
+                        entry_price = action.get("price")
+                        if not entry_price:
+                            prices = state.get("prices", {})
+                            entry_price = prices.get(symbol, 0)
+                        
+                        trade_log = {
+                            'symbol': symbol,
+                            'action': 'ENTRY',
+                            'side': action.get('side', 'LONG'),
+                            'entry_price': entry_price,
+                            'size': action.get('size', 0),
+                            'leverage': action.get('leverage', 1),
+                            'strategy': {
+                                'name': decision.get('decision_id', 'AI Discretionary Trade'),
+                                'timeframe': 'Multi-TF Analysis',
+                                'setup_quality': round(confidence * 10, 1),
+                                'confluence_factors': confluence
+                            },
+                            'entry_rationale': action.get('reason', summary),
+                            'risk_management': {
+                                'stop_loss': action.get('stop_price', 0),
+                                'stop_loss_reason': state_snapshot.get('invalidation', 'Structure-based stop'),
+                                'risk_usd': 0,  # Will be calculated by dashboard
+                                'risk_pct': 0,
+                                'take_profit_1': action.get('tp_price', 0),
+                                'tp1_reason': 'AI target level',
+                                'tp1_size_pct': 50,
+                                'take_profit_2': 0,
+                                'tp2_reason': 'Trailing',
+                                'tp2_size_pct': 50
+                            },
+                            'confidence': confidence,
+                            'ai_notes': summary,
+                            'expected_outcome': state_snapshot.get('thesis', 'AI managing position dynamically')
+                        }
+                        add_trade_log(trade_log)
+                        print(f"[LLM] Trade log recorded: {symbol} {action.get('side')} @ {entry_price}")
+                    
+                    # Risk management updates - update existing log
+                    elif action_type in ["SET_STOP_LOSS", "SET_TAKE_PROFIT", "MOVE_STOP_TO_BREAKEVEN"]:
+                        update_data = {
+                            'symbol': symbol,
+                            'action': 'UPDATE',
+                            'update_type': action_type,
+                            'confidence': confidence,
+                            'ai_notes': f"[{action_type}] {action.get('reason', summary)}"
+                        }
+                        
+                        if action_type == "SET_STOP_LOSS" or action_type == "MOVE_STOP_TO_BREAKEVEN":
+                            update_data['stop_loss'] = action.get('price', action.get('stop_price', 0))
+                            update_data['stop_loss_reason'] = action.get('reason', 'AI dynamic adjustment')
+                        elif action_type == "SET_TAKE_PROFIT":
+                            update_data['take_profit_1'] = action.get('price', action.get('tp_price', 0))
+                            update_data['tp1_reason'] = action.get('reason', 'AI target')
+                        
+                        try:
+                            update_trade_log(symbol, update_data)
+                            print(f"[LLM] Trade log updated: {symbol} - {action_type}")
+                        except Exception as ue:
+                            print(f"[LLM] Failed to update trade log: {ue}")
+                            
+            except Exception as e:
+                print(f"[LLM] Failed to record trade log: {e}")
+            
             return decision
             
         except Exception as e:
