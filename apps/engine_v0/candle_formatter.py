@@ -49,7 +49,7 @@ def format_multi_timeframe_candles(state):
             recent = candles[-display_count:] if len(candles) >= display_count else candles
             
             # Format closes as progression
-            closes_str = " → ".join([f"{c['close']:.2f}" if tf in ["15m", "5m", "1m"] else f"{c['close']:.0f}" 
+            closes_str = " -> ".join([f"{c['close']:.2f}" if tf in ["15m", "5m", "1m"] else f"{c['close']:.0f}" 
                                      for c in recent[-min(display_count, len(recent)):]])
             
             # Calculate H/L from ALL candles (not just displayed)
