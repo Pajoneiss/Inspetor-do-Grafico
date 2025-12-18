@@ -85,9 +85,45 @@ const StatCard = ({ title, value, sub, icon: Icon, trend }: { title: string; val
   </GlassCard>
 );
 
-// --- Main Page ---
+// --- Error Boundary ---
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: any, errorInfo: any) { console.error("UI Crash:", error, errorInfo); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-screen flex flex-col items-center justify-center bg-black text-white p-10 text-center">
+          <div className="w-20 h-20 rounded-full bg-secondary/20 flex items-center justify-center mb-6">
+            <Shield className="w-10 h-10 text-secondary" />
+          </div>
+          <h1 className="text-2xl font-bold mb-2 uppercase tracking-tighter">System Malfunction</h1>
+          <p className="text-muted-foreground max-w-md mb-8">A client-side exception occurred. The neural link with the fleet has been interrupted.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-8 py-4 rounded-2xl bg-primary text-black font-bold uppercase tracking-widest hover:neon-glow transition-all"
+          >
+            Re-initialize System
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function Dashboard() {
+  return (
+    <ErrorBoundary>
+      <DashboardContent />
+    </ErrorBoundary>
+  );
+}
+
+function DashboardContent() {
   const [mounted, setMounted] = useState(false);
   const [time, setTime] = useState(new Date());
   const [status, setStatus] = useState<DashboardData | null>(null);
@@ -231,28 +267,28 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           <StatCard
             title="Total Equity"
-            value={status ? `$${status.equity.toFixed(2)}` : "---"}
+            value={status?.equity !== undefined ? `$${Number(status.equity).toFixed(2)}` : "---"}
             sub="Update Live"
             trend="neutral"
             icon={Wallet}
           />
           <StatCard
             title="Unrealized PnL"
-            value={status ? `${status.unrealized_pnl >= 0 ? '+' : ''}$${status.unrealized_pnl.toFixed(2)}` : "---"}
-            sub={status ? `${((status.unrealized_pnl / status.equity) * 100 || 0).toFixed(2)}%` : "---"}
-            trend={status && status.unrealized_pnl >= 0 ? "up" : "down"}
+            value={status?.unrealized_pnl !== undefined ? `${status.unrealized_pnl >= 0 ? '+' : ''}$${Number(status.unrealized_pnl).toFixed(2)}` : "---"}
+            sub={status?.equity ? `${((Number(status.unrealized_pnl || 0) / Number(status.equity)) * 100).toFixed(2)}%` : "---"}
+            trend={status && (status.unrealized_pnl || 0) >= 0 ? "up" : "down"}
             icon={Activity}
           />
           <StatCard
             title="Buying Power"
-            value={status ? `$${status.buying_power.toFixed(0)}` : "---"}
+            value={status?.buying_power !== undefined ? `$${Number(status.buying_power).toFixed(0)}` : "---"}
             sub={`Usage: ${status?.margin_usage || 0}%`}
             icon={Shield}
           />
           <StatCard
             title="Active Fleet"
-            value={status ? `${status.positions_count} Symbols` : "---"}
-            sub={positions.length > 0 ? positions.map(p => p.symbol).join(', ') : "No positions"}
+            value={status?.positions_count !== undefined ? `${status.positions_count} Symbols` : "---"}
+            sub={positions?.length > 0 ? (positions || []).map(p => p.symbol).join(', ') : "No positions"}
             icon={Target}
           />
         </div>
@@ -278,21 +314,21 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {positions.map((pos, idx) => (
+                  {(positions || []).map((pos, idx) => (
                     <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/[0.08] transition-all">
                       <div className="flex items-center gap-4">
                         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs", pos.side === 'LONG' ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary")}>
-                          {pos.symbol.substring(0, 2)}
+                          {(pos.symbol || "??").substring(0, 2)}
                         </div>
                         <div>
-                          <p className="text-sm font-bold tracking-tight">{pos.symbol}</p>
-                          <p className={cn("text-[10px] font-bold uppercase tracking-widest", pos.side === 'LONG' ? "text-primary" : "text-secondary")}>{pos.side} {pos.size}x</p>
+                          <p className="text-sm font-bold tracking-tight">{pos.symbol || "Unknown"}</p>
+                          <p className={cn("text-[10px] font-bold uppercase tracking-widest", pos.side === 'LONG' ? "text-primary" : "text-secondary")}>{(pos.side || "").toUpperCase()} {pos.size || 0}x</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold tracking-tight">${pos.entry_price.toFixed(2)}</p>
-                        <p className={cn("text-xs font-bold", pos.unrealized_pnl >= 0 ? "text-primary" : "text-secondary")}>
-                          {pos.unrealized_pnl >= 0 ? '+' : ''}{pos.unrealized_pnl.toFixed(2)}
+                        <p className="text-sm font-bold tracking-tight">${Number(pos.entry_price || 0).toFixed(2)}</p>
+                        <p className={cn("text-xs font-bold", (pos.unrealized_pnl || 0) >= 0 ? "text-primary" : "text-secondary")}>
+                          {(pos.unrealized_pnl || 0) >= 0 ? '+' : ''}{Number(pos.unrealized_pnl || 0).toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -312,28 +348,28 @@ export default function Dashboard() {
             </div>
 
             <div className="flex-1 space-y-6">
-              {thoughts.length === 0 ? (
+              {thoughts?.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center opacity-20">
                   <BrainCircuit className="w-12 h-12 mb-4 animate-pulse" />
                   <p className="text-xs font-bold uppercase tracking-widest">Syncing AI Feed...</p>
                 </div>
               ) : (
-                thoughts.slice(0, 5).map((thought, i) => (
+                (thoughts || []).slice(0, 5).map((thought, i) => (
                   <div key={i} className="flex gap-4 group">
                     <div className="flex flex-col items-center">
                       <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-lg">{thought.emoji || '🧐'}</div>
-                      {i !== Math.min(thoughts.length, 5) - 1 && <div className="w-px flex-1 bg-white/10 my-2" />}
+                      {i !== Math.min((thoughts || []).length, 5) - 1 && <div className="w-px flex-1 bg-white/10 my-2" />}
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                          {new Date(thought.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {thought.timestamp ? new Date(thought.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--:--"}
                         </span>
-                        <span className={cn("px-1.5 py-0.5 rounded-md text-[8px] font-bold tracking-wider", getConfidenceColor(thought.confidence))}>
-                          CONF: {(thought.confidence * 100).toFixed(0)}%
+                        <span className={cn("px-1.5 py-0.5 rounded-md text-[8px] font-bold tracking-wider", getConfidenceColor(thought.confidence || 0))}>
+                          CONF: {((thought.confidence || 0) * 100).toFixed(0)}%
                         </span>
                       </div>
-                      <p className="text-sm text-white/80 leading-relaxed font-medium group-hover:text-white transition-colors">{thought.summary}</p>
+                      <p className="text-sm text-white/80 leading-relaxed font-medium group-hover:text-white transition-colors">{thought.summary || "No summary"}</p>
                     </div>
                   </div>
                 ))
