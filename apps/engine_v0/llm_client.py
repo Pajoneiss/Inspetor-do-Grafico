@@ -302,11 +302,12 @@ SCAN DE MERCADO (TOP SIGNALS):
 {briefs_str}
 {candles_str}
 
-📊 MULTI-TIMEFRAME ANALYSIS:
-- Use 4H for directional bias and major swing levels
-- Use 1H to identify intraday swing highs/lows for stop placement
-- Use 15M for precise entries
-- Set stops beyond structure (e.g., SHORT: SL above recent swing high, not arbitrary %)
+📊 MULTI-TIMEFRAME ANALYSIS (7 Scales Available):
+- **MACRO** (1W/1D): Identify primary trend, major S/R levels, market regime
+- **SWING** (4h/1h): Find intermediate structure, swing highs/lows for SL/TP placement  
+- **ENTRY** (15m/5m/1m): Precise timing, confirm breakouts, avoid false signals
+- Top-down approach: Start macro context → refine to micro execution
+- Set stops beyond structure at appropriate scale (e.g., SHORT: SL above 1h swing high)
 
 O que você decide fazer? Pense como um gestor de fundo de hedge."""
 

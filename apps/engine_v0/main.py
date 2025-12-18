@@ -287,22 +287,33 @@ def main():
                         indicators_available = False
                     
                     try:
-                        # v10.3: Multi-symbol candles and indicators
+                        # v12.0: Multi-symbol candles with 7 timeframes (micro to macro)
                         candles_by_symbol = {}
                         indicators_by_symbol = {}
                         
-                        # Candles/indicators for top 5 symbols (avoid API spam)
+                        # Optimized timeframe config: covers all scales without API spam
+                        TIMEFRAMES_CONFIG = {
+                            "1m": 60,   # 1 hour - micro confirmation
+                            "5m": 60,   # 5 hours - scalp setups
+                            "15m": 40,  # 10 hours - entry precision
+                            "1h": 48,   # 2 days - swing structure
+                            "4h": 42,   # 1 week - intermediate trend
+                            "1D": 90,   # 3 months - primary trend
+                            "1W": 52    # 1 year - macro context
+                        }
+                        
+                        # Collect candles for top 5 symbols
                         for symbol in snapshot_symbols[:5]:
-                            # Get candles for multiple timeframes (multi-fractal analysis)
-                            candles_15m = hl.get_candles(symbol, "15m", limit=50)
-                            candles_1h = hl.get_candles(symbol, "1h", limit=50)
-                            candles_4h = hl.get_candles(symbol, "4h", limit=50)
+                            candles_by_symbol[symbol] = {}
                             
-                            candles_by_symbol[symbol] = {
-                                "15m": candles_15m[-20:] if candles_15m else [],  # 5 hours (entry precision)
-                                "1h": candles_1h[-24:] if candles_1h else [],     # 1 day (intraday swings)
-                                "4h": candles_4h[-30:] if candles_4h else []      # 5 days (trend context)
-                            }
+                            # Fetch all timeframes
+                            for tf, limit in TIMEFRAMES_CONFIG.items():
+                                try:
+                                    candles = hl.get_candles(symbol, tf, limit=limit)
+                                    candles_by_symbol[symbol][tf] = candles if candles else []
+                                except Exception as e:
+                                    print(f"[VISION][WARN] Failed to get {tf} candles for {symbol}: {e}")
+                                    candles_by_symbol[symbol][tf] = []
                             
                             # Calculate indicators from 15m if available
                             if indicators_available and candles_15m:
