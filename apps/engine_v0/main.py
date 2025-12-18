@@ -500,7 +500,7 @@ def main():
                                 pos_detail = state.get("position_details", {}).get(sym, {})
                                 mark_px = state.get("prices", {}).get(sym, pos.get("entry_price", 0))
                                 dashboard_positions.append({
-                                    "symbol": sym,
+                                    "symbol": str(sym).upper(),
                                     "side": pos.get("side", "UNKNOWN"),
                                     "size": abs(float(pos.get("size", 0))),
                                     "entry_price": float(pos.get("entry_price", 0)),
