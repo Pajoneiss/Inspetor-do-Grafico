@@ -333,23 +333,23 @@ function DashboardContent() {
           ].map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
                 activeTab === item.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-white/5 hover:text-white"
               )}
             >
               <item.icon className={cn("w-5 h-5", activeTab === item.id && "neon-glow")} />
-              <span className="hidden lg:block font-semibold text-sm">{item.label}</span>
+              <span className="font-semibold text-sm">{item.label}</span>
               {activeTab === item.id && <motion.div layoutId="nav-pill" className="ml-auto w-1.5 h-1.5 rounded-full bg-primary neon-glow" />}
             </button>
           ))}
         </nav>
 
         <div className="w-full pt-8 mt-8 border-t border-white/5 space-y-2">
-          <button className="w-full flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-white transition-colors">
+          <button onClick={() => setSidebarOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-white transition-colors">
             <Settings className="w-5 h-5" />
-            <span className="hidden lg:block font-semibold text-sm">Settings</span>
+            <span className="font-semibold text-sm">Settings</span>
           </button>
         </div>
       </aside>
@@ -357,25 +357,27 @@ function DashboardContent() {
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto relative scroll-smooth p-6 lg:p-10">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          {/* Mobile hamburger button */}
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all absolute left-4 top-4 z-30"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight mb-2">Operational Dashboard</h2>
-            <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest">
-              <span className={cn("flex items-center gap-2", error ? "text-secondary" : "text-primary")}>
-                <span className={cn("w-2 h-2 rounded-full", error ? "bg-secondary" : "bg-primary animate-pulse neon-glow")} />
-                {error ? "API Disconnected" : "System Live"}
-              </span>
-              <span className="text-muted-foreground">/</span>
-              <span className="flex items-center gap-2 text-white/50">
-                <Activity className="w-3 h-3" />
-                {status ? `${status.margin_usage}% Margin Use` : "Fetching Data..."}
-              </span>
+          <div className="flex items-center gap-4">
+            {/* Mobile hamburger button */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <div>
+              <h2 className="text-2xl lg:text-3xl font-bold tracking-tight mb-1">Operational Dashboard</h2>
+              <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest">
+                <span className={cn("flex items-center gap-2", error ? "text-secondary" : "text-primary")}>
+                  <span className={cn("w-2 h-2 rounded-full", error ? "bg-secondary" : "bg-primary animate-pulse neon-glow")} />
+                  {error ? "API Disconnected" : "System Live"}
+                </span>
+                <span className="text-muted-foreground">/</span>
+                <span className="flex items-center gap-2 text-white/50">
+                  <Activity className="w-3 h-3" />
+                  {status ? `${status.margin_usage}% Margin Use` : "Fetching Data..."}
+                </span>
+              </div>
             </div>
           </div>
 
