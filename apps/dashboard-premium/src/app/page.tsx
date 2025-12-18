@@ -187,12 +187,13 @@ function DashboardContent() {
     if (!API_URL) return;
 
     try {
-      const [statusRes, posRes, thoughtRes, pnlRes, historyRes] = await Promise.all([
+      const [statusRes, posRes, thoughtRes, pnlRes, historyRes, tradeLogsRes] = await Promise.all([
         fetch(`${API_URL}/api/status`).then(r => r.json()),
         fetch(`${API_URL}/api/positions`).then(r => r.json()),
         fetch(`${API_URL}/api/ai/thoughts`).then(r => r.json()),
         fetch(`${API_URL}/api/pnl`).then(r => r.json()),
-        fetch(`${API_URL}/api/pnl/history`).then(r => r.json())
+        fetch(`${API_URL}/api/pnl/history`).then(r => r.json()),
+        fetch(`${API_URL}/api/ai/trade-logs`).then(r => r.json())
       ]);
 
       if (statusRes.ok) setStatus(statusRes.data);
@@ -200,6 +201,7 @@ function DashboardContent() {
       if (thoughtRes.ok) setThoughts(thoughtRes.data);
       if (pnlRes.ok) setPnlData(pnlRes.data);
       if (historyRes.ok && Array.isArray(historyRes.data)) setPnlHistory(historyRes.data);
+      if (tradeLogsRes.ok && tradeLogsRes.data && tradeLogsRes.data.length > 0) setTradeLog(tradeLogsRes.data[0]);
 
       setError(null);
     } catch (err) {
@@ -541,6 +543,180 @@ function DashboardContent() {
                     </div>
                   </div>
                 </GlassCard>
+// Latest AI Trade Analysis Card Component
+// Insert this in the Overview section of page.tsx
+
+{/* Latest AI Trade Analysis - WOW Feature */ }
+<GlassCard className="lg:col-span-3 border border-purple-500/20" delay={0.35}>
+    <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-purple-500/20 text-purple-400 neon-glow">
+                <BrainCircuit className="w-6 h-6" />
+            </div>
+            <div>
+                <h3 className="text-xl font-bold tracking-tight">Latest AI Trade Analysis</h3>
+                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">Detailed Strategy Breakdown</p>
+            </div>
+        </div>
+        <button className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-all text-xs font-bold uppercase tracking-wider">
+            View All
+        </button>
+    </div>
+
+    {tradeLog ? (
+        <div className="space-y-6">
+            {/* Trade Header */}
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 to-primary/10 border border-white/10">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center font-bold text-lg">
+                        {tradeLog.symbol?.substring(0, 2) || 'BTC'}
+                    </div>
+                    <div>
+                        <h4 className="text-lg font-bold">{tradeLog.symbol} {tradeLog.side}</h4>
+                        <p className="text-xs text-muted-foreground font-bold">@ ${tradeLog.entry_price?.toLocaleString() || '0'}</p>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Setup Quality</p>
+                    <div className="flex items-center gap-2 mt-1">
+                        <div className="h-2 w-24 bg-white/10 rounded-full overflow-hidden">
+                            <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${(tradeLog.strategy?.setup_quality || 0) * 10}%` }}
+                                className="h-full bg-gradient-to-r from-primary to-purple-500 neon-glow"
+                            />
+                        </div>
+                        <span className="text-sm font-bold text-primary">{tradeLog.strategy?.setup_quality || 0}/10</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Strategy */}
+            <div>
+                <div className="flex items-center gap-2 mb-3">
+                    <Target className="w-4 h-4 text-primary" />
+                    <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Strategy</h5>
+                </div>
+                <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                    <p className="text-xs font-bold text-primary mb-1">{tradeLog.strategy?.name || 'N/A'} • {tradeLog.strategy?.timeframe || 'N/A'}</p>
+                    <p className="text-sm text-white/80 leading-relaxed">{tradeLog.entry_rationale || 'No rationale provided'}</p>
+                </div>
+            </div>
+
+            {/* Confluence Factors */}
+            {tradeLog.strategy?.confluence_factors && (
+                <div>
+                    <div className="flex items-center gap-2 mb-3">
+                        <Shield className="w-4 h-4 text-primary" />
+                        <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Confluence ({tradeLog.strategy.confluence_factors.length} factors)</h5>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {tradeLog.strategy.confluence_factors.map((factor, i) => (
+                            <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-white/5">
+                                <span className="text-primary text-xs mt-0.5">✓</span>
+                                <span className="text-xs text-white/70">{factor}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Risk Management */}
+            <div>
+                <div className="flex items-center gap-2 mb-3">
+                    <Activity className="w-4 h-4 text-secondary" />
+                    <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Risk Management</h5>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Stop Loss */}
+                    <div className="p-3 rounded-xl bg-secondary/10 border border-secondary/20">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Stop Loss</p>
+                        <p className="text-lg font-bold text-secondary">${tradeLog.risk_management?.stop_loss?.toLocaleString() || '0'}</p>
+                        <p className="text-xs text-white/60 mt-1">{tradeLog.risk_management?.stop_loss_reason || 'N/A'}</p>
+                    </div>
+
+                    {/* TP1 */}
+                    <div className="p-3 rounded-xl bg-primary/10 border border-primary/20">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Take Profit 1 ({tradeLog.risk_management?.tp1_size_pct || 0}%)</p>
+                        <p className="text-lg font-bold text-primary">${tradeLog.risk_management?.take_profit_1?.toLocaleString() || '0'}</p>
+                        <p className="text-xs text-white/60 mt-1">{tradeLog.risk_management?.tp1_reason || 'N/A'}</p>
+                    </div>
+
+                    {/* TP2 */}
+                    <div className="p-3 rounded-xl bg-primary/10 border border-primary/20">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Take Profit 2 ({tradeLog.risk_management?.tp2_size_pct || 0}%)</p>
+                        <p className="text-lg font-bold text-primary">${tradeLog.risk_management?.take_profit_2?.toLocaleString() || '0'}</p>
+                        <p className="text-xs text-white/60 mt-1">{tradeLog.risk_management?.tp2_reason || 'N/A'}</p>
+                    </div>
+
+                    {/* Risk */}
+                    <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Risk</p>
+                        <p className="text-lg font-bold">${tradeLog.risk_management?.risk_usd?.toFixed(2) || '0'}</p>
+                        <p className="text-xs text-white/60 mt-1">{tradeLog.risk_management?.risk_pct?.toFixed(2) || '0'}% of equity</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Breakeven & Trailing */}
+            {(tradeLog.risk_management?.breakeven_plan?.enabled || tradeLog.risk_management?.trailing_stop?.enabled) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {tradeLog.risk_management?.breakeven_plan?.enabled && (
+                        <div className="p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+                            <div className="flex items-center gap-2 mb-2">
+                                <ChevronRight className="w-4 h-4 text-yellow-500" />
+                                <p className="text-xs font-bold uppercase tracking-widest text-yellow-500">Breakeven Plan</p>
+                            </div>
+                            <p className="text-sm text-white/80">Move to ${tradeLog.risk_management.breakeven_plan.move_to?.toLocaleString() || '0'}</p>
+                            <p className="text-xs text-white/60 mt-1">{tradeLog.risk_management.breakeven_plan.trigger || 'N/A'}</p>
+                        </div>
+                    )}
+
+                    {tradeLog.risk_management?.trailing_stop?.enabled && (
+                        <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Activity className="w-4 h-4 text-blue-400" />
+                                <p className="text-xs font-bold uppercase tracking-widest text-blue-400">Trailing Stop</p>
+                            </div>
+                            <p className="text-sm text-white/80">{tradeLog.risk_management.trailing_stop.distance || 'N/A'}</p>
+                            <p className="text-xs text-white/60 mt-1">{tradeLog.risk_management.trailing_stop.activation || 'N/A'}</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* AI Notes */}
+            {tradeLog.ai_notes && (
+                <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                        <BrainCircuit className="w-4 h-4 text-purple-400" />
+                        <p className="text-xs font-bold uppercase tracking-widest text-purple-400">AI Notes</p>
+                    </div>
+                    <p className="text-sm text-white/80 italic leading-relaxed">"{tradeLog.ai_notes}"</p>
+                </div>
+            )}
+
+            {/* Confidence */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-white/5 to-primary/5 border border-white/10">
+                <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">AI Confidence</p>
+                    <p className="text-2xl font-bold text-primary">{((tradeLog.confidence || 0) * 100).toFixed(0)}%</p>
+                </div>
+                <div className="text-right max-w-md">
+                    <p className="text-xs text-white/60">{tradeLog.expected_outcome || 'No outcome prediction'}</p>
+                </div>
+            </div>
+        </div>
+    ) : (
+        <div className="h-64 flex flex-col items-center justify-center opacity-20">
+            <BrainCircuit className="w-16 h-16 mb-4 animate-pulse" />
+            <p className="text-sm font-bold uppercase tracking-widest">No trade logs yet</p>
+        </div>
+    )}
+</GlassCard>
+
+
+
 
                 {/* AI Thinking Feed */}
                 <GlassCard className="flex flex-col" delay={0.3}>
@@ -659,128 +835,128 @@ function DashboardContent() {
               </GlassCard>
             </motion.div>
           )}
-{
-    activeTab === 'chat' && (
-        <motion.div key="chat" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-            <GlassCard className="min-h-[600px] border border-white/5 flex flex-col">
-                <div className="flex items-center gap-4 mb-6">
+          {
+            activeTab === 'chat' && (
+              <motion.div key="chat" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                <GlassCard className="min-h-[600px] border border-white/5 flex flex-col">
+                  <div className="flex items-center gap-4 mb-6">
                     <div className="p-3 rounded-2xl bg-purple-500/20 text-purple-400 neon-glow">
-                        <MessageSquare className="w-6 h-6" />
+                      <MessageSquare className="w-6 h-6" />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-bold tracking-tight">AI Chat</h3>
-                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">Ask me anything about trading</p>
+                      <h3 className="text-2xl font-bold tracking-tight">AI Chat</h3>
+                      <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">Ask me anything about trading</p>
                     </div>
-                </div>
+                  </div>
 
-                {/* Quick Suggestions */}
-                {chatMessages.length === 0 && (
+                  {/* Quick Suggestions */}
+                  {chatMessages.length === 0 && (
                     <div className="mb-6">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Quick Questions:</p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            {[
-                                "What's my current equity?",
-                                "Show my open positions",
-                                "What's the market sentiment?",
-                                "Explain your trading strategy"
-                            ].map((suggestion, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => { setChatInput(suggestion); setTimeout(sendChatMessage, 100); }}
-                                    className="text-left px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-sm border border-white/5 hover:border-primary/30"
-                                >
-                                    {suggestion}
-                                </button>
-                            ))}
-                        </div>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Quick Questions:</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {[
+                          "What's my current equity?",
+                          "Show my open positions",
+                          "What's the market sentiment?",
+                          "Explain your trading strategy"
+                        ].map((suggestion, i) => (
+                          <button
+                            key={i}
+                            onClick={() => { setChatInput(suggestion); setTimeout(sendChatMessage, 100); }}
+                            className="text-left px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-sm border border-white/5 hover:border-primary/30"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                )}
+                  )}
 
-                {/* Chat Messages */}
-                <div className="flex-1 overflow-y-auto space-y-4 mb-6 min-h-[400px] max-h-[500px]">
+                  {/* Chat Messages */}
+                  <div className="flex-1 overflow-y-auto space-y-4 mb-6 min-h-[400px] max-h-[500px]">
                     {chatMessages.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center opacity-20">
-                            <BrainCircuit className="w-16 h-16 mb-4 animate-pulse" />
-                            <p className="text-sm font-bold uppercase tracking-widest">Start a conversation...</p>
-                        </div>
+                      <div className="h-full flex flex-col items-center justify-center opacity-20">
+                        <BrainCircuit className="w-16 h-16 mb-4 animate-pulse" />
+                        <p className="text-sm font-bold uppercase tracking-widest">Start a conversation...</p>
+                      </div>
                     ) : (
-                        chatMessages.map((msg, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className={cn(
-                                    "flex gap-3",
-                                    msg.role === 'user' ? "justify-end" : "justify-start"
-                                )}
-                            >
-                                {msg.role === 'assistant' && (
-                                    <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
-                                        <BrainCircuit className="w-4 h-4 text-purple-400" />
-                                    </div>
-                                )}
-                                <div
-                                    className={cn(
-                                        "max-w-[80%] px-4 py-3 rounded-2xl",
-                                        msg.role === 'user'
-                                            ? "bg-primary/20 text-white border border-primary/30"
-                                            : "bg-white/5 text-white/90 border border-white/10"
-                                    )}
-                                >
-                                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                                </div>
-                                {msg.role === 'user' && (
-                                    <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                                        <span className="text-xs font-bold">YOU</span>
-                                    </div>
-                                )}
-                            </motion.div>
-                        ))
+                      chatMessages.map((msg, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className={cn(
+                            "flex gap-3",
+                            msg.role === 'user' ? "justify-end" : "justify-start"
+                          )}
+                        >
+                          {msg.role === 'assistant' && (
+                            <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
+                              <BrainCircuit className="w-4 h-4 text-purple-400" />
+                            </div>
+                          )}
+                          <div
+                            className={cn(
+                              "max-w-[80%] px-4 py-3 rounded-2xl",
+                              msg.role === 'user'
+                                ? "bg-primary/20 text-white border border-primary/30"
+                                : "bg-white/5 text-white/90 border border-white/10"
+                            )}
+                          >
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                          </div>
+                          {msg.role === 'user' && (
+                            <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                              <span className="text-xs font-bold">YOU</span>
+                            </div>
+                          )}
+                        </motion.div>
+                      ))
                     )}
                     {chatLoading && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="flex gap-3"
-                        >
-                            <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                                <BrainCircuit className="w-4 h-4 text-purple-400 animate-pulse" />
-                            </div>
-                            <div className="bg-white/5 px-4 py-3 rounded-2xl border border-white/10">
-                                <div className="flex gap-1">
-                                    <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />
-                                    <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
-                                    <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '300ms' }} />
-                                </div>
-                            </div>
-                        </motion.div>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex gap-3"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                          <BrainCircuit className="w-4 h-4 text-purple-400 animate-pulse" />
+                        </div>
+                        <div className="bg-white/5 px-4 py-3 rounded-2xl border border-white/10">
+                          <div className="flex gap-1">
+                            <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </div>
+                        </div>
+                      </motion.div>
                     )}
-                </div>
+                  </div>
 
-                {/* Input */}
-                <div className="flex gap-3 pt-4 border-t border-white/5">
+                  {/* Input */}
+                  <div className="flex gap-3 pt-4 border-t border-white/5">
                     <input
-                        type="text"
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
-                        placeholder="Ask me anything..."
-                        disabled={chatLoading}
-                        className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 focus:outline-none text-sm placeholder:text-muted-foreground disabled:opacity-50"
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
+                      placeholder="Ask me anything..."
+                      disabled={chatLoading}
+                      className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 focus:outline-none text-sm placeholder:text-muted-foreground disabled:opacity-50"
                     />
                     <button
-                        onClick={sendChatMessage}
-                        disabled={chatLoading || !chatInput.trim()}
-                        className="px-6 py-3 rounded-xl bg-primary text-black font-bold hover:neon-glow transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      onClick={sendChatMessage}
+                      disabled={chatLoading || !chatInput.trim()}
+                      className="px-6 py-3 rounded-xl bg-primary text-black font-bold hover:neon-glow transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                        <Send className="w-4 h-4" />
-                        <span className="hidden sm:inline">Send</span>
+                      <Send className="w-4 h-4" />
+                      <span className="hidden sm:inline">Send</span>
                     </button>
-                </div>
-            </GlassCard>
-        </motion.div>
-    )
-}
+                  </div>
+                </GlassCard>
+              </motion.div>
+            )
+          }
 
 
           {activeTab === 'logs' && (
