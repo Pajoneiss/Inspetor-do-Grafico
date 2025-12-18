@@ -18,3 +18,6 @@ This is the high-performance, rich-aesthetic dashboard for the Inspetor trading 
 - **Glassmorphism:** All cards use backdrop-blur for a premium feel.
 - **Micro-animations:** Integrated with `framer-motion` for fluid state transitions.
 - **Liquid Theme:** Ultra-dark (#050505) with neon green accents.
+
+---
+*Triggering fresh deployment with updated Vercel settings.*
