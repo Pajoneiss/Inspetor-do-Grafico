@@ -573,8 +573,11 @@ def main():
                     equity_change_pct = abs((current_equity - last_equity) / last_equity * 100) if last_equity > 0 else 100
                     positions_changed = len(state.get("positions", {})) != len(state.get("_last_positions", {}))
                     
-                    # Build simple state hash (positions + equity rounded)
-                    current_hash = f"{len(state.get('positions', {}))}_{int(current_equity)}"
+                    # Calculate total unrealized PnL for sensitivity
+                    total_unpnl = sum(p.get("unrealized_pnl", 0) for p in state.get("positions", {}).values())
+                    
+                    # Build sensitive state hash (positions + equity + unpnl rounded)
+                    current_hash = f"{len(state.get('positions', {}))}_{int(current_equity)}_{int(total_unpnl)}"
                     state_changed = current_hash != last_state_hash
                     material_change = equity_change_pct >= LLM_STATE_CHANGE_THRESHOLD or state_changed
                     

@@ -107,6 +107,12 @@ class TelegramBot:
         
         while self.running:
             try:
+                # KICK STALE SESSIONS: Clear any existing webhook/polling
+                try:
+                    await app.bot.delete_webhook(drop_pending_updates=True)
+                except Exception as e:
+                    print(f"[TG][WARN] Clear webhook failed: {e}")
+                
                 await app.updater.start_polling(drop_pending_updates=True)
                 
                 # Keep running - reset retry delay on success

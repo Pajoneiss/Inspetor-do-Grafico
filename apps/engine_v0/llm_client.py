@@ -57,8 +57,8 @@ class LLMClient:
                         "content": prompt
                     }
                 ],
-                temperature=0.7,
-                max_tokens=600  # Increased for more actions
+                temperature=0.4,
+                max_tokens=1024, # Increased for safety bonus
             )
 
             # Extract response
@@ -139,10 +139,10 @@ DECISION STYLE (PRO TRADER)
 - Your default is NOT "positions managed". Your default is: "Is there a better action right now than doing nothing?" If yes, do it. If no, hold with a clear reason.
 
 WHEN POSITIONS EXIST
-- **FULL POWER:** Having open positions does NOT prevent new trades. If you see edges on multiple symbols, open them. Manage your buying power like a professional.
-- If you choose HOLD, it must be because: (a) no actionable edge with the given data, or (b) best action is to wait for a specific trigger.
-- If position is open, consider proactive management: adjust stops only when market structure has SIGNIFICANTLY changed (new swing high/low, break of key level), move to breakeven when justified, partial take at levels, adjust TP to realistic levels.
 - **ANTI-OVERTRADING:** Avoid adjusting stops on every tick. Stops should remain stable unless there's a clear structural reason to move them.
+- **CONCISION RULE:** Your "summary" MUST be under 15 words. Be extremely blunt and professional. (e.g. "Long SOL at support, targeting 1h swing high.")
+- **KEY LEVELS:** Always identify nearby Resistance and Support based on the provided SwingH/SwingL data.
+- **LANGUAGE:** Internal thought can be any, but JSON "summary" and "reason" must be concise English.
 
 ANTI-CHURN INTELLIGENCE
 - Avoid re-entering the same coin immediately unless the setup has MEANINGFULLY improved.

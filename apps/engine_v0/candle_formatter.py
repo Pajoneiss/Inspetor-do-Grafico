@@ -75,8 +75,8 @@ def format_multi_timeframe_candles(state):
         "1m": "MICRO (1 hour confirmation)"
     }
     
-    # Show top 3 symbols (token optimization)
-    for symbol in list(candles_data.keys())[:3]:
+    # Show top 5 symbols (token optimization)
+    for symbol in list(candles_data.keys())[:5]:
         symbol_candles = candles_data[symbol]
         current_price = state.get("prices", {}).get(symbol, 0)
         
