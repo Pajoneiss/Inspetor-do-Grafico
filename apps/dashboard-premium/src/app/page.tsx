@@ -67,24 +67,24 @@ const GlassCard = ({ children, className, delay = 0 }: { children: React.ReactNo
 );
 
 const StatCard = ({ title, value, sub, icon: Icon, trend }: { title: string; value: string; sub: string; icon: any; trend?: "up" | "down" | "neutral" }) => (
-  <GlassCard className="flex flex-col gap-2">
+  <GlassCard className="flex flex-col gap-1.5">
     <div className="flex justify-between items-start">
-      <div className="p-2.5 rounded-2xl bg-white/5 border border-white/10">
-        <Icon className="w-5 h-5 text-primary" />
+      <div className="p-1.5 rounded-lg bg-white/5 border border-white/10">
+        <Icon className="w-4 h-4 text-primary" />
       </div>
       {trend && trend !== "neutral" && (
         <span className={cn(
-          "px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider",
+          "px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider",
           trend === "up" ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
         )}>
           {sub}
         </span>
       )}
     </div>
-    <div className="mt-4">
-      <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase">{title}</p>
-      <h3 className="text-2xl font-bold tracking-tight mt-1">{value}</h3>
-      <p className="text-muted-foreground text-[10px] mt-1">{trend === "neutral" ? sub : "Current Metric"}</p>
+    <div className="mt-2">
+      <p className="text-muted-foreground text-[10px] font-semibold tracking-widest uppercase">{title}</p>
+      <h3 className="text-xl font-bold tracking-tight mt-0.5">{value}</h3>
+      <p className="text-muted-foreground text-[9px] mt-0.5">{trend === "neutral" ? sub : "Current Metric"}</p>
     </div>
   </GlassCard>
 );
@@ -491,13 +491,13 @@ function DashboardContent() {
                 </GlassCard>
 
                 {/* PNL Chart Card */}
-                <GlassCard className="lg:col-span-1 min-h-[440px] flex flex-col" delay={0.25}>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 rounded-xl bg-primary/20 text-primary">
-                        <Activity className="w-5 h-5" />
+                <GlassCard className="lg:col-span-1 flex flex-col" delay={0.25}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 text-primary">
+                        <Activity className="w-4 h-4" />
                       </div>
-                      <h3 className="text-xl font-bold tracking-tight">PnL Performance</h3>
+                      <h3 className="text-base font-bold tracking-tight">PnL Performance</h3>
                     </div>
                     <div className="flex gap-1">
                       {(['24H', '7D', '30D', 'ALL'] as const).map(period => (
@@ -518,15 +518,15 @@ function DashboardContent() {
                   </div>
 
                   {/* PNL Summary */}
-                  <div className="text-center mb-4">
-                    <p className={cn("text-3xl font-bold", (pnlData?.[`pnl_${pnlPeriod.toLowerCase()}`] || pnlData?.pnl_24h || 0) >= 0 ? "text-primary neon-glow" : "text-secondary")}>
+                  <div className="text-center mb-2.5">
+                    <p className={cn("text-2xl font-bold", (pnlData?.[`pnl_${pnlPeriod.toLowerCase()}`] || pnlData?.pnl_24h || 0) >= 0 ? "text-primary neon-glow" : "text-secondary")}>
                       {(pnlData?.[`pnl_${pnlPeriod.toLowerCase()}`] || pnlData?.pnl_24h || 0) >= 0 ? '+' : ''}${(pnlData?.[`pnl_${pnlPeriod.toLowerCase()}`] || pnlData?.pnl_24h || 0).toFixed(2)}
                     </p>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Realized PnL ({pnlPeriod})</p>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Realized PnL ({pnlPeriod})</p>
                   </div>
 
                   {/* Chart */}
-                  <div className="flex-1 w-full overflow-hidden px-2">
+                  <div className="h-32 w-full overflow-hidden px-1">
                     {pnlHistory?.length > 0 ? (
                       <svg width="100%" height="100%" viewBox="0 0 100 40" preserveAspectRatio="none">
                         <defs>
@@ -572,7 +572,7 @@ function DashboardContent() {
                   </div>
 
                   {/* Stats Row */}
-                  <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/5 mt-4">
+                  <div className="grid grid-cols-3 gap-2 pt-2.5 border-t border-white/5 mt-2.5">
                     <div className="text-center">
                       <p className="text-[9px] font-bold text-muted-foreground uppercase">24H</p>
                       <p className={cn("text-sm font-bold", (pnlData?.pnl_24h || 0) >= 0 ? "text-primary" : "text-secondary")}>
