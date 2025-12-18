@@ -58,7 +58,7 @@ class LLMClient:
                     }
                 ],
                 temperature=0.4,
-                max_tokens=1024, # Increased for safety bonus
+                max_tokens=2048, # Increased to prevent truncation
             )
 
             # Extract response
@@ -243,6 +243,7 @@ Before any action, answer mentally:
 
 IMPORTANT
 - **FULL AUTONOMY:** You are not limited to one trade. You can open multiple positions if the account has buying power.
+- **PURE NUMBERS:** Always output price, size, and leverage as pure numbers in JSON (e.g., 125.5 instead of "$125.5").
 - Pure JSON only, no markdown blocks, no ```json```.
 """
 

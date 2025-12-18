@@ -65,7 +65,7 @@ def normalize_place_order(
     size_decimal = Decimal(str(size))
     size_rounded = float(size_decimal.quantize(
         Decimal(10) ** -sz_decimals,
-        rounding=ROUND_DOWN
+        rounding=ROUND_UP
     ))
     
     if size_rounded != size:
