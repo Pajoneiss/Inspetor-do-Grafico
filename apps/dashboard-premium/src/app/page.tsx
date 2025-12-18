@@ -17,9 +17,37 @@ import {
   LayoutDashboard,
   BarChart3,
   ListFilter,
-  BrainCircuit
+  BrainCircuit,
+  RefreshCcw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// --- Types ---
+interface DashboardData {
+  equity: number;
+  unrealized_pnl: number;
+  buying_power: number;
+  positions_count: number;
+  margin_usage: number;
+  last_update: string;
+}
+
+interface Position {
+  symbol: string;
+  side: string;
+  size: number;
+  entry_price: number;
+  mark_price: number;
+  unrealized_pnl: number;
+}
+
+interface AIThought {
+  timestamp: string;
+  emoji?: string;
+  summary: string;
+  confidence: number;
+  actions?: any[];
+}
 
 // --- Components ---
 
@@ -34,25 +62,25 @@ const GlassCard = ({ children, className, delay = 0 }: { children: React.ReactNo
   </motion.div>
 );
 
-const StatCard = ({ title, value, sub, icon: Icon, trend }: { title: string; value: string; sub: string; icon: any; trend?: "up" | "down" }) => (
+const StatCard = ({ title, value, sub, icon: Icon, trend }: { title: string; value: string; sub: string; icon: any; trend?: "up" | "down" | "neutral" }) => (
   <GlassCard className="flex flex-col gap-2">
     <div className="flex justify-between items-start">
       <div className="p-2.5 rounded-2xl bg-white/5 border border-white/10">
         <Icon className="w-5 h-5 text-primary" />
       </div>
-      {trend && (
+      {trend && trend !== "neutral" && (
         <span className={cn(
           "px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider",
           trend === "up" ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
         )}>
-          {trend === "up" ? "+" : "-"}{sub}
+          {sub}
         </span>
       )}
     </div>
     <div className="mt-4">
       <p className="text-muted-foreground text-xs font-semibold tracking-widest uppercase">{title}</p>
       <h3 className="text-2xl font-bold tracking-tight mt-1">{value}</h3>
-      {!trend && <p className="text-muted-foreground text-[10px] mt-1">{sub}</p>}
+      <p className="text-muted-foreground text-[10px] mt-1">{trend === "neutral" ? sub : "Current Metric"}</p>
     </div>
   </GlassCard>
 );
@@ -62,14 +90,59 @@ const StatCard = ({ title, value, sub, icon: Icon, trend }: { title: string; val
 export default function Dashboard() {
   const [mounted, setMounted] = useState(false);
   const [time, setTime] = useState(new Date());
+  const [status, setStatus] = useState<DashboardData | null>(null);
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [thoughts, setThoughts] = useState<AIThought[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+
+  const fetchData = async () => {
+    if (!API_URL) {
+      setError("API URL not configured (NEXT_PUBLIC_API_URL)");
+      return;
+    }
+
+    try {
+      const [statusRes, posRes, thoughtRes] = await Promise.all([
+        fetch(`${API_URL}/api/status`).then(r => r.json()),
+        fetch(`${API_URL}/api/positions`).then(r => r.json()),
+        fetch(`${API_URL}/api/ai/thoughts`).then(r => r.json())
+      ]);
+
+      if (statusRes.ok) setStatus(statusRes.data);
+      if (posRes.ok) setPositions(posRes.data);
+      if (thoughtRes.ok) setThoughts(thoughtRes.data);
+
+      setError(null);
+    } catch (err) {
+      console.error("Fetch error:", err);
+      // Don't set error on background refreshes unless first load
+      if (loading) setError("Failed to connect to Bot API");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
+    fetchData();
     const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
+    const apiTimer = setInterval(fetchData, 5000); // UI Refresh 5s
+    return () => {
+      clearInterval(timer);
+      clearInterval(apiTimer);
+    };
   }, []);
 
   if (!mounted) return null;
+
+  const getConfidenceColor = (conf: number) => {
+    if (conf >= 0.8) return "text-primary bg-primary/10";
+    if (conf >= 0.5) return "text-yellow-400 bg-yellow-400/10";
+    return "text-secondary bg-secondary/10";
+  };
 
   return (
     <div className="flex h-screen overflow-hidden text-foreground">
@@ -121,21 +194,21 @@ export default function Dashboard() {
           <div>
             <h2 className="text-3xl font-bold tracking-tight mb-2">Operational Dashboard</h2>
             <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest">
-              <span className="flex items-center gap-2 text-primary">
-                <span className="w-2 h-2 rounded-full bg-primary animate-pulse neon-glow" />
-                System Live
+              <span className={cn("flex items-center gap-2", error ? "text-secondary" : "text-primary")}>
+                <span className={cn("w-2 h-2 rounded-full", error ? "bg-secondary" : "bg-primary animate-pulse neon-glow")} />
+                {error ? "API Disconnected" : "System Live"}
               </span>
               <span className="text-muted-foreground">/</span>
               <span className="flex items-center gap-2 text-white/50">
                 <Activity className="w-3 h-3" />
-                98.4% Efficiency
+                {status ? `${status.margin_usage}% Margin Use` : "Fetching Data..."}
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex flex-col items-end mr-4">
-              <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Server Time</span>
+              <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Local Time</span>
               <span className="text-sm font-mono tracking-tighter text-white/80">{time.toLocaleTimeString()}</span>
             </div>
             <button className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all">
@@ -148,7 +221,7 @@ export default function Dashboard() {
               </div>
               <div className="hidden lg:block">
                 <p className="text-[10px] font-bold tracking-widest uppercase opacity-50 leading-none mb-1">Commander</p>
-                <p className="text-xs font-bold">0x742d...424</p>
+                <p className="text-xs font-bold">Trading Mode: LIVE</p>
               </div>
             </div>
           </div>
@@ -156,10 +229,32 @@ export default function Dashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          <StatCard title="Total Equity" value="$28.84" sub="4.2%" trend="up" icon={Wallet} />
-          <StatCard title="Unrealized PnL" value="+$0.33" sub="1.15%" trend="up" icon={Activity} />
-          <StatCard title="Buying Power" value="$186.42" sub="Max Leverage: 20x" icon={Shield} />
-          <StatCard title="Active Fleet" value="1 Symbol" sub="SOL Perpetuals" icon={Target} />
+          <StatCard
+            title="Total Equity"
+            value={status ? `$${status.equity.toFixed(2)}` : "---"}
+            sub="Update Live"
+            trend="neutral"
+            icon={Wallet}
+          />
+          <StatCard
+            title="Unrealized PnL"
+            value={status ? `${status.unrealized_pnl >= 0 ? '+' : ''}$${status.unrealized_pnl.toFixed(2)}` : "---"}
+            sub={status ? `${((status.unrealized_pnl / status.equity) * 100 || 0).toFixed(2)}%` : "---"}
+            trend={status && status.unrealized_pnl >= 0 ? "up" : "down"}
+            icon={Activity}
+          />
+          <StatCard
+            title="Buying Power"
+            value={status ? `$${status.buying_power.toFixed(0)}` : "---"}
+            sub={`Usage: ${status?.margin_usage || 0}%`}
+            icon={Shield}
+          />
+          <StatCard
+            title="Active Fleet"
+            value={status ? `${status.positions_count} Symbols` : "---"}
+            sub={positions.length > 0 ? positions.map(p => p.symbol).join(', ') : "No positions"}
+            icon={Target}
+          />
         </div>
 
         {/* Dynamic Center Area */}
@@ -171,26 +266,39 @@ export default function Dashboard() {
                 <div className="p-2 rounded-xl bg-primary/20 text-primary">
                   <BarChart3 className="w-5 h-5" />
                 </div>
-                <h3 className="text-xl font-bold tracking-tight">Portfolio Performance</h3>
-              </div>
-              <div className="flex gap-1 p-1 bg-white/5 rounded-xl border border-white/10">
-                {['1H', '4H', '1D', '1W'].map(f => (
-                  <button key={f} className={cn("px-3 py-1 rounded-lg text-[10px] font-bold tracking-tighter transition-all", f === '1D' ? "bg-white/10 text-white" : "text-muted-foreground hover:text-white")}>
-                    {f}
-                  </button>
-                ))}
+                <h3 className="text-xl font-bold tracking-tight">Active Positions</h3>
               </div>
             </div>
 
-            <div className="flex-1 flex items-center justify-center text-muted-foreground/20 italic font-mono uppercase tracking-[0.2em]">
-              <div className="relative w-full h-full min-h-[200px] flex flex-col items-center justify-center">
-                {/* Visual Placeholder for a liquid chart */}
-                <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-primary/10 to-transparent rounded-b-[32px]" />
-                <svg className="w-full h-40 text-primary/30" viewBox="0 0 1000 100" preserveAspectRatio="none">
-                  <path d="M0,80 Q150,20 300,50 T600,30 T1000,10" fill="none" stroke="currentColor" strokeWidth="2" />
-                </svg>
-                <span className="relative z-10 text-xs font-bold tracking-[0.5em] mt-8">Establishing Data Stream...</span>
-              </div>
+            <div className="flex-1">
+              {positions.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center opacity-20">
+                  <LayoutDashboard className="w-12 h-12 mb-4" />
+                  <p className="text-xs font-bold uppercase tracking-widest">No active positions</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {positions.map((pos, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/[0.08] transition-all">
+                      <div className="flex items-center gap-4">
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs", pos.side === 'LONG' ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary")}>
+                          {pos.symbol.substring(0, 2)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold tracking-tight">{pos.symbol}</p>
+                          <p className={cn("text-[10px] font-bold uppercase tracking-widest", pos.side === 'LONG' ? "text-primary" : "text-secondary")}>{pos.side} {pos.size}x</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold tracking-tight">${pos.entry_price.toFixed(2)}</p>
+                        <p className={cn("text-xs font-bold", pos.unrealized_pnl >= 0 ? "text-primary" : "text-secondary")}>
+                          {pos.unrealized_pnl >= 0 ? '+' : ''}{pos.unrealized_pnl.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </GlassCard>
 
@@ -204,29 +312,36 @@ export default function Dashboard() {
             </div>
 
             <div className="flex-1 space-y-6">
-              {[
-                { time: '2m ago', emoji: '🧐', text: 'Analyzing SOL structure on 15m. Identifying support at $122.50.', conf: '88%' },
-                { time: '14m ago', emoji: '⚖️', text: 'Momentum steady. Maintaining LONG position. Target set at $128.', conf: '92%' },
-                { time: '1h ago', emoji: '🚀', text: 'Bullish breakout confirmed on 1h timeframe. Opening SOL LONG.', conf: '84%' },
-              ].map((thought, i) => (
-                <div key={i} className="flex gap-4 group">
-                  <div className="flex flex-col items-center">
-                    <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-lg">{thought.emoji}</div>
-                    {i !== 2 && <div className="w-px flex-1 bg-white/10 my-2" />}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{thought.time}</span>
-                      <span className="px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-400 text-[8px] font-bold tracking-wider">CONF: {thought.conf}</span>
-                    </div>
-                    <p className="text-sm text-white/80 leading-relaxed font-medium group-hover:text-white transition-colors">{thought.text}</p>
-                  </div>
+              {thoughts.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center opacity-20">
+                  <BrainCircuit className="w-12 h-12 mb-4 animate-pulse" />
+                  <p className="text-xs font-bold uppercase tracking-widest">Syncing AI Feed...</p>
                 </div>
-              ))}
+              ) : (
+                thoughts.slice(0, 5).map((thought, i) => (
+                  <div key={i} className="flex gap-4 group">
+                    <div className="flex flex-col items-center">
+                      <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-lg">{thought.emoji || '🧐'}</div>
+                      {i !== Math.min(thoughts.length, 5) - 1 && <div className="w-px flex-1 bg-white/10 my-2" />}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                          {new Date(thought.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className={cn("px-1.5 py-0.5 rounded-md text-[8px] font-bold tracking-wider", getConfidenceColor(thought.confidence))}>
+                          CONF: {(thought.confidence * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                      <p className="text-sm text-white/80 leading-relaxed font-medium group-hover:text-white transition-colors">{thought.summary}</p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             <button className="mt-8 w-full py-4 rounded-2xl bg-primary/10 border border-primary/20 text-primary font-bold text-xs uppercase tracking-widest hover:bg-primary/20 hover:neon-glow transition-all flex items-center justify-center gap-2">
-              View Strategy Graph <ChevronRight className="w-4 h-4" />
+              Refresh Feed <RefreshCcw className="w-4 h-4" />
             </button>
           </GlassCard>
         </div>
@@ -234,7 +349,7 @@ export default function Dashboard() {
         {/* Footer info */}
         <footer className="mt-12 pt-8 border-t border-white/5 flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           <div className="flex gap-8">
-            <span>Hyperliquid API: <span className="text-primary">Connected</span></span>
+            <span>Hyperliquid API: <span className={cn(error ? "text-secondary" : "text-primary")}>{error ? "Offline" : "Connected"}</span></span>
             <span>OpenAI gpt-4o-mini: <span className="text-primary">Operational</span></span>
           </div>
           <div>© 2025 Ladder Labs</div>
