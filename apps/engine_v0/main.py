@@ -34,6 +34,14 @@ except ImportError:
     TELEGRAM_AVAILABLE = False
     print("[TG][WARN] Telegram module not available, skipping")
 
+# Dashboard API integration
+try:
+    from dashboard_api import update_dashboard_state
+    DASHBOARD_AVAILABLE = True
+except ImportError:
+    DASHBOARD_AVAILABLE = False
+    print("[DASHBOARD][WARN] Dashboard API not available")
+
 
 def main():
     """Main bot loop"""
@@ -597,6 +605,20 @@ def main():
                     else:
                         remaining = LLM_MIN_SECONDS - time_since_last_call if not min_time_passed else AI_CALL_INTERVAL_SECONDS - time_since_last_call
                         print(f"[LLM] skipped (cooldown {max(0, remaining):.0f}s, state_changed={state_changed})")
+            
+            # Update Dashboard state (sync with dashboard API)
+            if DASHBOARD_AVAILABLE:
+                try:
+                    update_dashboard_state({
+                        "account": {
+                            "equity": state.get("equity", 0),
+                            "buying_power": state.get("available_margin", 0) * 10,
+                            "positions_count": len(state.get("positions", {}))
+                        },
+                        "positions": list(state.get("positions", {}).values())
+                    })
+                except Exception as e:
+                    print(f"[DASHBOARD][ERROR] {e}")
             
             # Sleep until next iteration
             time.sleep(LOOP_INTERVAL_SECONDS)
