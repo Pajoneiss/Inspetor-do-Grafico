@@ -751,7 +751,9 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
             return None  # Skipped
         
         # Execute market order
-        is_buy = (side == "BUY")
+        # CRITICAL FIX: LLM sends 'LONG'/'SHORT', but SDK expects is_buy boolean
+        # is_buy=True for LONG/BUY, is_buy=False for SHORT/SELL
+        is_buy = (side in ["BUY", "LONG"])
         
         # DEBUG: Log side before API call (for flip bug diagnosis)
         print(f"[LIVE][PRE-ORDER] {symbol} side={side} is_buy={is_buy} size={normalized['size']}")
