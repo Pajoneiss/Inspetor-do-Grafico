@@ -20,7 +20,9 @@ import {
   BrainCircuit,
   RefreshCcw,
   MessageSquare,
-  Send
+  Send,
+  Menu,
+  X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -166,6 +168,7 @@ export default function Dashboard() {
 
 function DashboardContent() {
   const [mounted, setMounted] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [time, setTime] = useState(new Date());
   const [status, setStatus] = useState<DashboardData | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -185,7 +188,6 @@ function DashboardContent() {
   const [openOrders, setOpenOrders] = useState<any[]>([]);
   const [recentFills, setRecentFills] = useState<any[]>([]);
   const [transfers, setTransfers] = useState<any[]>([]);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -287,15 +289,39 @@ function DashboardContent() {
   return (
     <div className="flex h-screen overflow-hidden text-foreground">
       {/* Sidebar - Pro Design */}
-      <aside className="w-20 lg:w-64 border-r border-white/5 flex flex-col items-center lg:items-start py-8 px-4 glass shrink-0">
-        <div className="flex items-center gap-3 px-3 mb-12">
-          <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center neon-glow">
-            <Zap className="text-black w-6 h-6 fill-current" />
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm"
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={cn(
+        "fixed lg:relative z-50 h-full w-64 border-r border-white/5 flex flex-col items-start py-8 px-4 glass shrink-0 transition-transform duration-300",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      )}>
+        <div className="flex items-center justify-between w-full px-3 mb-12">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center neon-glow">
+              <Zap className="text-black w-6 h-6 fill-current" />
+            </div>
+            <div>
+              <h1 className="font-bold tracking-tight text-lg leading-tight uppercase">Ladder Labs</h1>
+              <p className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold opacity-50">Fleet Commander</p>
+            </div>
           </div>
-          <div className="hidden lg:block">
-            <h1 className="font-bold tracking-tight text-lg leading-tight uppercase">Ladder Labs</h1>
-            <p className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold opacity-50">Fleet Commander</p>
-          </div>
+          {/* Close button for mobile */}
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-2 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         <nav className="flex-1 w-full space-y-2">
@@ -331,6 +357,13 @@ function DashboardContent() {
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto relative scroll-smooth p-6 lg:p-10">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+          {/* Mobile hamburger button */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden p-2 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all absolute left-4 top-4 z-30"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
           <div>
             <h2 className="text-3xl font-bold tracking-tight mb-2">Operational Dashboard</h2>
             <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest">
