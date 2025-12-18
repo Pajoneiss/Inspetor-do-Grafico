@@ -182,6 +182,10 @@ function DashboardContent() {
   const [chatLoading, setChatLoading] = useState(false);
   const [tradeLog, setTradeLog] = useState<any>(null);
   const [fullAnalytics, setFullAnalytics] = useState<any>(null);
+  const [openOrders, setOpenOrders] = useState<any[]>([]);
+  const [recentFills, setRecentFills] = useState<any[]>([]);
+  const [transfers, setTransfers] = useState<any[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -189,14 +193,17 @@ function DashboardContent() {
     if (!API_URL) return;
 
     try {
-      const [statusRes, posRes, thoughtRes, pnlRes, historyRes, tradeLogsRes, fullAnalyticsRes] = await Promise.all([
+      const [statusRes, posRes, thoughtRes, pnlRes, historyRes, tradeLogsRes, fullAnalyticsRes, ordersRes, fillsRes, transfersRes] = await Promise.all([
         fetch(`${API_URL}/api/status`).then(r => r.json()),
         fetch(`${API_URL}/api/positions`).then(r => r.json()),
         fetch(`${API_URL}/api/ai/thoughts`).then(r => r.json()),
         fetch(`${API_URL}/api/pnl`).then(r => r.json()),
         fetch(`${API_URL}/api/pnl/history`).then(r => r.json()),
         fetch(`${API_URL}/api/ai/trade-logs`).then(r => r.json()),
-        fetch(`${API_URL}/api/analytics`).then(r => r.json())
+        fetch(`${API_URL}/api/analytics`).then(r => r.json()),
+        fetch(`${API_URL}/api/orders`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/api/user/trades`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/api/transfers`).then(r => r.json()).catch(() => ({ ok: false }))
       ]);
 
       if (statusRes.ok) setStatus(statusRes.data);
@@ -206,6 +213,9 @@ function DashboardContent() {
       if (historyRes.ok && Array.isArray(historyRes.data)) setPnlHistory(historyRes.data);
       if (tradeLogsRes.ok && tradeLogsRes.data && tradeLogsRes.data.length > 0) setTradeLog(tradeLogsRes.data[0]);
       if (fullAnalyticsRes.ok) setFullAnalytics(fullAnalyticsRes.data);
+      if (ordersRes.ok && Array.isArray(ordersRes.data)) setOpenOrders(ordersRes.data);
+      if (fillsRes.ok && Array.isArray(fillsRes.data)) setRecentFills(fillsRes.data);
+      if (transfersRes.ok && Array.isArray(transfersRes.data)) setTransfers(transfersRes.data);
 
       setError(null);
     } catch (err) {
@@ -215,6 +225,7 @@ function DashboardContent() {
       setLoading(false);
     }
   };
+
 
   const sendChatMessage = async () => {
     if (!chatInput.trim() || chatLoading) return;
@@ -1010,31 +1021,126 @@ function DashboardContent() {
                       <table className="w-full text-left border-collapse">
                         <thead>
                           <tr className="text-[9px] text-muted-foreground uppercase tracking-widest border-b border-white/5">
-                            <th className="pb-3 pl-2 font-bold">Time</th>
-                            <th className="pb-3 font-bold">Symbol</th>
+                            <th className="pb-3 pl-2 font-bold">Symbol</th>
                             <th className="pb-3 font-bold">Type</th>
                             <th className="pb-3 font-bold">Side</th>
                             <th className="pb-3 font-bold">Price</th>
                             <th className="pb-3 font-bold">Size</th>
-                            <th className="pb-3 font-bold">Filled</th>
-                            <th className="pb-3 pr-2 font-bold text-right">Action</th>
+                            <th className="pb-3 pr-2 font-bold text-right">Trigger</th>
                           </tr>
                         </thead>
                         <tbody className="text-sm">
-                          <tr className="border-b border-white/5">
-                            <td colSpan={8} className="py-12 text-center text-muted-foreground/50 text-xs uppercase tracking-widest font-bold">
-                              No open orders
-                            </td>
-                          </tr>
+                          {openOrders.length > 0 ? (
+                            openOrders.map((order: any, idx: number) => (
+                              <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                                <td className="py-3 pl-2 font-bold text-white">{order.symbol}</td>
+                                <td className="py-3 font-mono text-muted-foreground">{order.type}</td>
+                                <td className="py-3">
+                                  <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase", order.side === 'BUY' ? "bg-[#00ff9d]/10 text-[#00ff9d]" : "bg-[#ff3b30]/10 text-[#ff3b30]")}>
+                                    {order.side}
+                                  </span>
+                                </td>
+                                <td className="py-3 font-mono text-white">${order.price?.toFixed(2)}</td>
+                                <td className="py-3 font-mono text-muted-foreground">{order.size}</td>
+                                <td className="py-3 pr-2 text-right font-mono text-muted-foreground">{order.trigger_px ? `$${order.trigger_px.toFixed(2)}` : '—'}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr className="border-b border-white/5">
+                              <td colSpan={6} className="py-12 text-center text-muted-foreground/50 text-xs uppercase tracking-widest font-bold">
+                                No open orders
+                              </td>
+                            </tr>
+                          )}
                         </tbody>
                       </table>
                     )}
 
-                    {/* Generic handler for other tabs for now */}
-                    {['Recent Fills', 'Completed Trades', 'TWAP', 'Deposits & Withdrawals'].includes(activeFleetTab) && (
+                    {activeFleetTab === 'Recent Fills' && (
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="text-[9px] text-muted-foreground uppercase tracking-widest border-b border-white/5">
+                            <th className="pb-3 pl-2 font-bold">Time</th>
+                            <th className="pb-3 font-bold">Symbol</th>
+                            <th className="pb-3 font-bold">Side</th>
+                            <th className="pb-3 font-bold">Price</th>
+                            <th className="pb-3 font-bold">Size</th>
+                            <th className="pb-3 font-bold">Value</th>
+                            <th className="pb-3 pr-2 font-bold text-right">PnL</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-sm">
+                          {recentFills.length > 0 ? (
+                            recentFills.slice(0, 20).map((fill: any, idx: number) => (
+                              <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                                <td className="py-3 pl-2 font-mono text-muted-foreground text-xs">{fill.timestamp ? new Date(fill.timestamp).toLocaleTimeString() : '—'}</td>
+                                <td className="py-3 font-bold text-white">{fill.symbol}</td>
+                                <td className="py-3">
+                                  <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase", fill.side === 'BUY' ? "bg-[#00ff9d]/10 text-[#00ff9d]" : "bg-[#ff3b30]/10 text-[#ff3b30]")}>
+                                    {fill.side}
+                                  </span>
+                                </td>
+                                <td className="py-3 font-mono text-white">${fill.price?.toFixed(4)}</td>
+                                <td className="py-3 font-mono text-muted-foreground">{fill.size}</td>
+                                <td className="py-3 font-mono text-muted-foreground">${fill.value?.toFixed(2)}</td>
+                                <td className={cn("py-3 pr-2 text-right font-mono font-bold", fill.closed_pnl >= 0 ? "text-[#00ff9d]" : "text-[#ff3b30]")}>
+                                  {fill.closed_pnl ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : '—'}
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr className="border-b border-white/5">
+                              <td colSpan={7} className="py-12 text-center text-muted-foreground/50 text-xs uppercase tracking-widest font-bold">
+                                No recent fills
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+
+                    {activeFleetTab === 'Deposits & Withdrawals' && (
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="text-[9px] text-muted-foreground uppercase tracking-widest border-b border-white/5">
+                            <th className="pb-3 pl-2 font-bold">Time</th>
+                            <th className="pb-3 font-bold">Type</th>
+                            <th className="pb-3 font-bold">Amount</th>
+                            <th className="pb-3 pr-2 font-bold text-right">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-sm">
+                          {transfers.length > 0 ? (
+                            transfers.map((transfer: any, idx: number) => (
+                              <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                                <td className="py-3 pl-2 font-mono text-muted-foreground text-xs">{transfer.timestamp ? new Date(transfer.timestamp).toLocaleDateString() : '—'}</td>
+                                <td className="py-3">
+                                  <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase", transfer.type === 'DEPOSIT' ? "bg-[#00ff9d]/10 text-[#00ff9d]" : "bg-[#ff3b30]/10 text-[#ff3b30]")}>
+                                    {transfer.type}
+                                  </span>
+                                </td>
+                                <td className={cn("py-3 font-mono font-bold", transfer.amount >= 0 ? "text-[#00ff9d]" : "text-[#ff3b30]")}>
+                                  ${Math.abs(transfer.amount).toFixed(2)}
+                                </td>
+                                <td className="py-3 pr-2 text-right font-mono text-[#00ff9d] text-xs uppercase">{transfer.status}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr className="border-b border-white/5">
+                              <td colSpan={4} className="py-12 text-center text-muted-foreground/50 text-xs uppercase tracking-widest font-bold">
+                                No deposits or withdrawals
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+
+                    {/* Generic handler for other tabs */}
+                    {['Completed Trades', 'TWAP'].includes(activeFleetTab) && (
                       <div className="py-20 flex flex-col items-center justify-center text-muted-foreground/50">
                         <span className="text-xs uppercase tracking-widest font-bold mb-2">No data for {activeFleetTab}</span>
-                        <span className="text-[10px]">History synchronization pending...</span>
+                        <span className="text-[10px]">Feature coming soon...</span>
                       </div>
                     )}
                   </div>

@@ -423,8 +423,6 @@ def api_full_analytics():
             "error": str(e)
         }), 500
 
-
-
 @app.route('/api/meta')
 def api_meta():
     """Build/version metadata endpoint"""
@@ -438,7 +436,141 @@ def api_meta():
     })
 
 
+@app.route('/api/orders')
+def api_open_orders():
+    """Get open orders from Hyperliquid"""
+    user_address = os.getenv("WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
+    
+    try:
+        response = requests.post(
+            "https://api.hyperliquid.xyz/info",
+            json={"type": "openOrders", "user": user_address},
+            timeout=10
+        )
+        
+        if not response.ok:
+            return jsonify({"ok": False, "error": "Hyperliquid API error"}), 502
+        
+        orders = response.json()
+        
+        # Format orders for frontend
+        formatted_orders = []
+        for order in orders:
+            formatted_orders.append({
+                "oid": order.get("oid"),
+                "symbol": order.get("coin", ""),
+                "side": "BUY" if order.get("side") == "B" else "SELL",
+                "price": float(order.get("limitPx", 0)),
+                "size": float(order.get("sz", 0)),
+                "filled": float(order.get("origSz", 0)) - float(order.get("sz", 0)),
+                "type": "Limit" if order.get("orderType") == "limit" else order.get("orderType", "Unknown"),
+                "timestamp": order.get("timestamp"),
+                "reduce_only": order.get("reduceOnly", False),
+                "is_trigger": order.get("isTrigger", False),
+                "trigger_px": float(order.get("triggerPx", 0)) if order.get("triggerPx") else None
+            })
+        
+        return jsonify({
+            "ok": True,
+            "data": formatted_orders,
+            "server_time_ms": int(time.time() * 1000)
+        })
+        
+    except Exception as e:
+        print(f"[DASHBOARD] Open orders error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/user/trades')
+def api_user_trades():
+    """Get recent fills/trades from Hyperliquid"""
+    user_address = os.getenv("WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
+    
+    try:
+        response = requests.post(
+            "https://api.hyperliquid.xyz/info",
+            json={"type": "userFills", "user": user_address},
+            timeout=10
+        )
+        
+        if not response.ok:
+            return jsonify({"ok": False, "error": "Hyperliquid API error"}), 502
+        
+        fills = response.json()
+        
+        # Format fills for frontend (limit to 50 most recent)
+        formatted_fills = []
+        for fill in fills[:50]:
+            formatted_fills.append({
+                "symbol": fill.get("coin", ""),
+                "side": "BUY" if fill.get("side") == "B" else "SELL",
+                "price": float(fill.get("px", 0)),
+                "size": float(fill.get("sz", 0)),
+                "value": float(fill.get("px", 0)) * float(fill.get("sz", 0)),
+                "fee": float(fill.get("fee", 0)),
+                "timestamp": fill.get("time"),
+                "hash": fill.get("hash"),
+                "closed_pnl": float(fill.get("closedPnl", 0)),
+                "dir": fill.get("dir", ""),
+                "oid": fill.get("oid")
+            })
+        
+        return jsonify({
+            "ok": True,
+            "data": formatted_fills,
+            "server_time_ms": int(time.time() * 1000)
+        })
+        
+    except Exception as e:
+        print(f"[DASHBOARD] User trades error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/transfers')
+def api_transfers():
+    """Get deposits and withdrawals from Hyperliquid"""
+    user_address = os.getenv("WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
+    
+    try:
+        response = requests.post(
+            "https://api.hyperliquid.xyz/info",
+            json={"type": "userNonFundingLedgerUpdates", "user": user_address},
+            timeout=10
+        )
+        
+        if not response.ok:
+            return jsonify({"ok": False, "error": "Hyperliquid API error"}), 502
+        
+        updates = response.json()
+        
+        # Filter and format deposits/withdrawals
+        formatted_transfers = []
+        for update in updates[:50]:
+            delta = update.get("delta", {})
+            update_type = delta.get("type", "")
+            
+            if update_type in ["deposit", "withdraw", "internalTransfer"]:
+                formatted_transfers.append({
+                    "type": update_type.upper(),
+                    "amount": float(delta.get("usdc", 0)),
+                    "timestamp": update.get("time"),
+                    "hash": delta.get("hash", ""),
+                    "status": "completed"
+                })
+        
+        return jsonify({
+            "ok": True,
+            "data": formatted_transfers,
+            "server_time_ms": int(time.time() * 1000)
+        })
+        
+    except Exception as e:
+        print(f"[DASHBOARD] Transfers error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 # AI API endpoints
+
 # Command patterns to block
 COMMAND_PATTERNS = [
     r'\b(buy|sell|long|short|open|close|cancel|execute)\b',
