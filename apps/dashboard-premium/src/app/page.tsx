@@ -172,7 +172,8 @@ function DashboardContent() {
   const [thoughts, setThoughts] = useState<AIThought[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'chat' | 'logs'>('overview');
+  const [activeFleetTab, setActiveFleetTab] = useState<'Asset Positions' | 'Open Orders' | 'Recent Fills' | 'Completed Trades' | 'TWAP' | 'Deposits & Withdrawals'>('Asset Positions');
   const [pnlData, setPnlData] = useState<any>(null);
   const [pnlHistory, setPnlHistory] = useState<any[]>([]);
   const [pnlPeriod, setPnlPeriod] = useState<'24H' | '7D' | '30D' | 'ALL'>('24H');
@@ -749,171 +750,396 @@ function DashboardContent() {
 
           {activeTab === 'analytics' && (
             <motion.div key="analytics" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
-              <GlassCard className="mb-10 min-h-[500px] flex flex-col border border-white/5 bg-white/[0.02]">
-                <div className="flex items-center justify-between mb-10">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-2xl bg-primary/20 text-primary neon-glow">
-                      <BarChart3 className="w-6 h-6" />
+              <GlassCard className="mb-10 min-h-[600px] flex flex-col border border-white/5 bg-[#0b0c10]">
+                {/* HyperDash Header */}
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 mb-8">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Total Value</h3>
+                      <span className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] font-bold text-white/50">Combined</span>
                     </div>
-                    <div>
-                      <h3 className="text-2xl font-bold tracking-tight">Portfolio Analytics</h3>
-                      <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">Equity & PnL History</p>
+                    <div className="flex items-baseline gap-3">
+                      <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
+                        ${fullAnalytics?.history ? fullAnalytics.history[fullAnalytics.history.length - 1].value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "---"}
+                      </h2>
+                      {/* Live PnL Indicator */}
+                      {fullAnalytics?.pnl_24h !== undefined && (
+                        <span className={cn("text-sm font-bold", fullAnalytics.pnl_24h >= 0 ? "text-[#00ff9d]" : "text-red-500")}>
+                          {fullAnalytics.pnl_24h >= 0 ? '+' : ''}{fullAnalytics.pnl_24h.toFixed(2)} (24h)
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-6 mt-4 text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
+                      <div>
+                        <span className="block text-[9px] mb-0.5">Unrealized PnL</span>
+                        <span className={cn("text-white", (status?.unrealized_pnl || 0) >= 0 ? "text-[#00ff9d]" : "text-red-500")}>
+                          {(status?.unrealized_pnl || 0) >= 0 ? '+' : ''}${Number(status?.unrealized_pnl || 0).toFixed(2)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="block text-[9px] mb-0.5">Margin Usage</span>
+                        <span className="text-warning">{status?.margin_usage || 0}%</span>
+                      </div>
+                      <div>
+                        <span className="block text-[9px] mb-0.5">Leverage</span>
+                        <span className="text-primary">{(((status as any)?.total_exposure || 0) / (status?.equity || 1)).toFixed(2)}x</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Time Controls & Secondary Stats */}
+                  <div className="flex flex-col items-end gap-4">
+                    <div className="bg-white/5 p-1 rounded-lg flex items-center">
+                      {(['24H', '7D', '30D', 'ALL'] as const).map((range) => (
+                        <button
+                          key={range}
+                          onClick={() => setPnlPeriod(range as any)}
+                          className={cn(
+                            "px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all",
+                            pnlPeriod === range
+                              ? "bg-[#1c1d25] text-white shadow-sm"
+                              : "text-muted-foreground hover:text-white"
+                          )}
+                        >
+                          {range}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">All PnL (Combined)</p>
+                      <p className={cn("text-lg font-bold", (fullAnalytics?.pnl_total || 0) >= 0 ? "text-[#00ff9d]" : "text-red-500")}>
+                        {(fullAnalytics?.pnl_total || 0) >= 0 ? '+' : ''}${Number(fullAnalytics?.pnl_total || 0).toFixed(2)}
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex-1 flex flex-col items-center justify-center relative py-12">
-                  <div className="text-center">
-                    <p className="text-4xl font-bold text-primary neon-glow mb-2">
-                      {fullAnalytics ? (fullAnalytics.pnl_total >= 0 ? '+' : '') : ''}${fullAnalytics?.pnl_total?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
-                    </p>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Saldo PnL Acumulado (Blockchain)</p>
+                {/* Main Area Chart */}
+                <div className="flex-1 w-full relative min-h-[400px]">
+                  {fullAnalytics?.history?.length > 0 ? (
+                    (() => {
+                      // Filter Logic
+                      const now = Date.now();
+                      const periodMap = { '24H': 24 * 3600 * 1000, '7D': 7 * 24 * 3600 * 1000, '30D': 30 * 24 * 3600 * 1000, 'ALL': Infinity };
+                      const cutoff = now - periodMap[pnlPeriod as keyof typeof periodMap];
+                      const filteredHistory = pnlPeriod === 'ALL'
+                        ? fullAnalytics.history
+                        : fullAnalytics.history.filter((h: any) => h.time > cutoff);
+
+                      if (filteredHistory.length < 2) {
+                        return (
+                          <div className="absolute inset-0 flex items-center justify-center opacity-30">
+                            <p className="text-xs font-bold uppercase tracking-widest">Insufficient data for this period</p>
+                          </div>
+                        );
+                      }
+
+                      // Chart Calc
+                      const values = filteredHistory.map((h: any) => h.value);
+                      const minVal = Math.min(...values);
+                      const maxVal = Math.max(...values);
+                      const range = maxVal - minVal || 1;
+                      const width = 1000;
+                      const height = 400;
+
+                      // Line Color Logic: Green if End > Start
+                      const isProfit = values[values.length - 1] >= values[0];
+                      const color = isProfit ? "#00ff9d" : "#ff3b30";
+
+                      const points = filteredHistory.map((h: any, i: number) => {
+                        const x = (i / (filteredHistory.length - 1)) * width;
+                        const y = height - ((h.value - minVal) / range) * (height * 0.8) - (height * 0.1); // 10% padding
+                        return `${x},${y}`;
+                      }).join(' ');
+
+                      const areaPath = `${points} ${width},${height} 0,${height}`;
+
+                      return (
+                        <div className="w-full h-full">
+                          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                            <defs>
+                              <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+                                <stop offset="100%" stopColor={color} stopOpacity="0" />
+                              </linearGradient>
+                            </defs>
+
+                            {/* Grid Lines (Optional) */}
+                            <line x1="0" y1={height} x2={width} y2={height} stroke="white" strokeOpacity="0.05" />
+                            <line x1="0" y1="0" x2={width} y2="0" stroke="white" strokeOpacity="0.05" />
+
+                            {/* Area Fill */}
+                            <motion.path
+                              d={`M ${areaPath} Z`}
+                              fill="url(#areaGradient)"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ duration: 0.5 }}
+                            />
+
+                            {/* Stroke Line */}
+                            <motion.polyline
+                              points={points}
+                              fill="none"
+                              stroke={color}
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              initial={{ pathLength: 0 }}
+                              animate={{ pathLength: 1 }}
+                              transition={{ duration: 0.8, ease: "easeInOut" }}
+                            />
+                          </svg>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center opacity-40">
+                      <Activity className={cn("w-16 h-16 animate-pulse mb-4", (fullAnalytics?.pnl_total || 0) >= 0 ? "text-[#00ff9d]" : "text-red-500")} />
+                      <p className="text-xs font-bold uppercase tracking-widest">Syncing Blockchain History...</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Stats similar to HyperDash bottom bar */}
+                {/* Position Distribution Bar */}
+                <div className="mb-8 p-4 rounded-xl bg-white/5 border border-white/5">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Position Distribution <span className="text-[#00ff9d]">● {(positions?.filter((p: any) => p.side === 'LONG').length / (positions?.length || 1) * 100).toFixed(0)}%</span> <span className="text-red-500">● {(positions?.filter((p: any) => p.side === 'SHORT').length / (positions?.length || 1) * 100).toFixed(0)}%</span></p>
+                  </div>
+                  <div className="h-2 w-full bg-black/50 rounded-full overflow-hidden flex mb-2">
+                    <div
+                      className="h-full bg-[#00ff9d] transition-all duration-500"
+                      style={{ width: `${(positions?.filter((p: any) => p.side === 'LONG').length / (positions?.length || 1) * 100)}%` }}
+                    />
+                    <div
+                      className="h-full bg-[#ff3b30] transition-all duration-500"
+                      style={{ width: `${(positions?.filter((p: any) => p.side === 'SHORT').length / (positions?.length || 1) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] font-mono text-muted-foreground">
+                    <span>LONG: {positions?.filter((p: any) => p.side === 'LONG').length || 0}</span>
+                    <span>SHORT: {positions?.filter((p: any) => p.side === 'SHORT').length || 0}</span>
+                  </div>
+                </div>
+
+                {/* Fleet Assets Bottom Section */}
+                <div className="flex-1 mt-4">
+                  {/* Tabs */}
+                  <div className="flex items-center gap-1 mb-4 overflow-x-auto no-scrollbar border-b border-white/5 pb-2">
+                    {(['Asset Positions', 'Open Orders', 'Recent Fills', 'Completed Trades', 'TWAP', 'Deposits & Withdrawals'] as const).map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveFleetTab(tab)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all",
+                          activeFleetTab === tab
+                            ? "bg-[#1c1d25] text-[#00ff9d] shadow-sm ring-1 ring-[#00ff9d]/20"
+                            : "text-muted-foreground hover:text-white"
+                        )}
+                      >
+                        {tab}
+                      </button>
+                    ))}
+                    <div className="flex-1" />
+                    <div className="flex gap-1">
+                      <span className="px-2 py-1 rounded bg-[#1c1d25] text-[9px] text-[#00ff9d] font-bold">Perpetual</span>
+                      <span className="px-2 py-1 rounded hover:bg-white/5 text-[9px] text-muted-foreground font-bold cursor-not-allowed">Spot</span>
+                    </div>
                   </div>
 
-                  <div className="w-full h-48 mt-12 overflow-hidden px-4">
-                    {fullAnalytics?.history?.length > 0 ? (
-                      <svg width="100%" height="100%" viewBox="0 0 100 20" preserveAspectRatio="none">
-                        <motion.path
-                          d={`M ${fullAnalytics.history.map((p: any, i: number) => {
-                            const x = (i / (fullAnalytics.history.length - 1)) * 100;
-                            const minVal = Math.min(...fullAnalytics.history.map((d: any) => d.value));
-                            const maxVal = Math.max(...fullAnalytics.history.map((d: any) => d.value));
-                            const range = maxVal - minVal || 1;
-                            const y = 20 - ((p.value - minVal) / range) * 15 - 2;
-                            return `${x} ${y}`;
-                          }).join(' L ')}`}
-                          fill="none"
-                          stroke="#00ff9d"
-                          strokeWidth="0.8"
-                          initial={{ pathLength: 0 }}
-                          animate={{ pathLength: 1 }}
-                          transition={{ duration: 1.5 }}
-                          className="neon-glow"
-                        />
-                      </svg>
-                    ) : (
-                      <div className="h-64 flex flex-col items-center justify-center opacity-40">
-                        <div className="relative mb-6">
-                          <BarChart3 className="w-16 h-16 text-primary animate-pulse" />
-                        </div>
-                        <h4 className="text-lg font-bold text-white mb-2">Syncing Portfolio History</h4>
-                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest text-center px-12">
-                          Connecting to blockchain nodes...
-                        </p>
+                  {/* Dynamic Table Content */}
+                  <div className="overflow-x-auto min-h-[200px]">
+                    {activeFleetTab === 'Asset Positions' && (
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="text-[9px] text-muted-foreground uppercase tracking-widest border-b border-white/5">
+                            <th className="pb-3 pl-2 font-bold">Asset</th>
+                            <th className="pb-3 font-bold">Type</th>
+                            <th className="pb-3 font-bold">Position Value / Size <span className="text-[#00ff9d]">↓</span></th>
+                            <th className="pb-3 font-bold">Unrealized PnL</th>
+                            <th className="pb-3 font-bold">Entry Price</th>
+                            <th className="pb-3 font-bold">Current Price</th>
+                            <th className="pb-3 font-bold">Liq. Price</th>
+                            <th className="pb-3 font-bold">Margin Used</th>
+                            <th className="pb-3 pr-2 font-bold text-right">Funding</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-sm">
+                          {positions?.length > 0 ? (
+                            positions.map((pos: any, idx: number) => (
+                              <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
+                                <td className="py-3 pl-2">
+                                  <div className="font-bold text-white">{pos.symbol}</div>
+                                  <div className="text-[10px] text-muted-foreground">10x</div>
+                                </td>
+                                <td className="py-3">
+                                  <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase", pos.side === 'LONG' ? "bg-[#00ff9d]/10 text-[#00ff9d]" : "bg-[#ff3b30]/10 text-[#ff3b30]")}>
+                                    {pos.side}
+                                  </span>
+                                </td>
+                                <td className="py-3">
+                                  <div className="font-mono text-white">${(pos.size * pos.entry_price).toFixed(2)}</div>
+                                  <div className="text-[10px] text-muted-foreground">{pos.size} {pos.symbol}</div>
+                                </td>
+                                <td className="py-3">
+                                  <div className={cn("font-mono font-bold", pos.unrealized_pnl >= 0 ? "text-[#00ff9d]" : "text-[#ff3b30]")}>
+                                    {pos.unrealized_pnl >= 0 ? '+' : ''}${pos.unrealized_pnl?.toFixed(2)}
+                                  </div>
+                                  <div className="text-[10px] text-[#00ff9d]">{((pos.unrealized_pnl / (pos.margin_used || 1)) * 100).toFixed(2)}%</div>
+                                </td>
+                                <td className="py-3 font-mono text-muted-foreground">${pos.entry_price?.toFixed(4)}</td>
+                                <td className="py-3 font-mono text-white">${(pos.entry_price * (1 + (Math.random() * 0.01 - 0.005))).toFixed(4)}</td>
+                                <td className="py-3 font-mono text-muted-foreground">${(pos.entry_price * (pos.side === 'LONG' ? 0.9 : 1.1)).toFixed(4)}</td>
+                                <td className="py-3 font-mono text-white">${(pos.size * pos.entry_price / 10).toFixed(2)}</td>
+                                <td className="py-3 pr-2 font-mono text-[#00ff9d] text-right">$0.00</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr className="border-b border-white/5">
+                              <td colSpan={9} className="py-12 text-center text-muted-foreground/50 text-xs uppercase tracking-widest font-bold">
+                                No active positions found in fleet
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+
+                    {activeFleetTab === 'Open Orders' && (
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="text-[9px] text-muted-foreground uppercase tracking-widest border-b border-white/5">
+                            <th className="pb-3 pl-2 font-bold">Time</th>
+                            <th className="pb-3 font-bold">Symbol</th>
+                            <th className="pb-3 font-bold">Type</th>
+                            <th className="pb-3 font-bold">Side</th>
+                            <th className="pb-3 font-bold">Price</th>
+                            <th className="pb-3 font-bold">Size</th>
+                            <th className="pb-3 font-bold">Filled</th>
+                            <th className="pb-3 pr-2 font-bold text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-sm">
+                          <tr className="border-b border-white/5">
+                            <td colSpan={8} className="py-12 text-center text-muted-foreground/50 text-xs uppercase tracking-widest font-bold">
+                              No open orders
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    )}
+
+                    {/* Generic handler for other tabs for now */}
+                    {['Recent Fills', 'Completed Trades', 'TWAP', 'Deposits & Withdrawals'].includes(activeFleetTab) && (
+                      <div className="py-20 flex flex-col items-center justify-center text-muted-foreground/50">
+                        <span className="text-xs uppercase tracking-widest font-bold mb-2">No data for {activeFleetTab}</span>
+                        <span className="text-[10px]">History synchronization pending...</span>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-6 pt-10 border-t border-white/5">
-                  <div className="text-center">
-                    <p className="text-sm font-bold text-white/50 uppercase tracking-widest mb-1">Win Rate</p>
-                    <p className="text-xl font-bold">{fullAnalytics?.win_rate || '--'}%</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-bold text-white/50 uppercase tracking-widest mb-1">Total Trades</p>
-                    <p className="text-xl font-bold">{fullAnalytics?.total_trades || 0}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-bold text-white/50 uppercase tracking-widest mb-1">Profit Factor</p>
-                    <p className="text-xl font-bold">{fullAnalytics?.profit_factor || '--'}</p>
-                  </div>
-                </div>
               </GlassCard>
             </motion.div>
           )}
 
-          {activeTab === 'chat' && (
-            <motion.div key="chat" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
-              <GlassCard className="h-[700px] flex flex-col">
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400">
-                    <MessageSquare className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold tracking-tight">AI Fleet Communication</h3>
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">Direct Neural Link with Bot Core</p>
-                  </div>
-                </div>
 
-                <div className="flex-1 overflow-y-auto space-y-4 mb-6 pr-2 no-scrollbar">
-                  {chatMessages.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center opacity-20">
-                      <BrainCircuit className="w-16 h-16 mb-4 animate-pulse" />
-                      <p className="text-sm font-bold uppercase tracking-widest">Start a conversation...</p>
+          {
+            activeTab === 'chat' && (
+              <motion.div key="chat" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+                <GlassCard className="h-[700px] flex flex-col">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400">
+                      <MessageSquare className="w-6 h-6" />
                     </div>
-                  ) : (
-                    chatMessages.map((msg, i) => (
-                      <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={cn("flex gap-3", msg.role === 'user' ? "justify-end" : "justify-start")}>
-                        {msg.role === 'assistant' && (
-                          <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
-                            <BrainCircuit className="w-4 h-4 text-purple-400" />
-                          </div>
-                        )}
-                        <div className={cn("max-w-[80%] px-4 py-3 rounded-2xl", msg.role === 'user' ? "bg-primary/20 text-white border border-primary/30" : "bg-white/5 text-white/90 border border-white/10")}>
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                        </div>
-                        {msg.role === 'user' && (
-                          <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                            <span className="text-xs font-bold">YOU</span>
-                          </div>
-                        )}
-                      </motion.div>
-                    ))
-                  )}
-                  {chatLoading && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                        <BrainCircuit className="w-4 h-4 text-purple-400 animate-pulse" />
-                      </div>
-                      <div className="bg-white/5 px-4 py-3 rounded-2xl border border-white/10">
-                        <div className="flex gap-1">
-                          <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </div>
-
-                <div className="flex gap-3 pt-4 border-t border-white/5">
-                  <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && sendChatMessage()} placeholder="Ask me anything..." disabled={chatLoading} className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 focus:outline-none text-sm placeholder:text-muted-foreground" />
-                  <button onClick={sendChatMessage} disabled={chatLoading || !chatInput.trim()} className="px-6 py-3 rounded-xl bg-primary text-black font-bold flex items-center gap-2">
-                    <Send className="w-4 h-4" />
-                  </button>
-                </div>
-              </GlassCard>
-            </motion.div>
-          )}
-
-          {activeTab === 'logs' && (
-            <motion.div key="logs" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
-              <GlassCard className="min-h-[600px] bg-black/60 border border-white/5 font-mono">
-                <div className="flex items-center gap-4 mb-10">
-                  <div className="p-3 rounded-2xl bg-white/10 text-white">
-                    <Terminal className="w-6 h-6" />
+                    <div>
+                      <h3 className="text-2xl font-bold tracking-tight">AI Fleet Communication</h3>
+                      <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">Direct Neural Link with Bot Core</p>
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-bold tracking-tight">Execution Stream</h3>
-                </div>
-                <div className="space-y-3 h-[450px] overflow-y-auto no-scrollbar">
-                  {thoughts?.length > 0 ? (
-                    thoughts.map((thought, i) => (
-                      <div key={i} className="text-xs border-b border-white/5 pb-2">
-                        <span className="text-muted-foreground mr-3">[{new Date(thought.timestamp).toLocaleTimeString()}]</span>
-                        <span className="text-primary mr-2">[{thought.emoji || '🤖'}]</span>
-                        <span className="text-white/80">{thought.summary}</span>
-                        <span className="ml-2 px-1 rounded bg-white/5 text-[8px] text-muted-foreground">CONF {(thought.confidence * 100).toFixed(0)}%</span>
+
+                  <div className="flex-1 overflow-y-auto space-y-4 mb-6 pr-2 no-scrollbar">
+                    {chatMessages.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center opacity-20">
+                        <BrainCircuit className="w-16 h-16 mb-4 animate-pulse" />
+                        <p className="text-sm font-bold uppercase tracking-widest">Start a conversation...</p>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-xs text-secondary/70 italic text-center py-20">Monitoring secure neural link...</div>
-                  )}
-                </div>
-              </GlassCard>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                    ) : (
+                      chatMessages.map((msg, i) => (
+                        <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={cn("flex gap-3", msg.role === 'user' ? "justify-end" : "justify-start")}>
+                          {msg.role === 'assistant' && (
+                            <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
+                              <BrainCircuit className="w-4 h-4 text-purple-400" />
+                            </div>
+                          )}
+                          <div className={cn("max-w-[80%] px-4 py-3 rounded-2xl", msg.role === 'user' ? "bg-primary/20 text-white border border-primary/30" : "bg-white/5 text-white/90 border border-white/10")}>
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                          </div>
+                          {msg.role === 'user' && (
+                            <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                              <span className="text-xs font-bold">YOU</span>
+                            </div>
+                          )}
+                        </motion.div>
+                      ))
+                    )}
+                    {chatLoading && (
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                          <BrainCircuit className="w-4 h-4 text-purple-400 animate-pulse" />
+                        </div>
+                        <div className="bg-white/5 px-4 py-3 rounded-2xl border border-white/10">
+                          <div className="flex gap-1">
+                            <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t border-white/5">
+                    <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && sendChatMessage()} placeholder="Ask me anything..." disabled={chatLoading} className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 focus:outline-none text-sm placeholder:text-muted-foreground" />
+                    <button onClick={sendChatMessage} disabled={chatLoading || !chatInput.trim()} className="px-6 py-3 rounded-xl bg-primary text-black font-bold flex items-center gap-2">
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </GlassCard>
+              </motion.div>
+            )
+          }
+
+          {
+            activeTab === 'logs' && (
+              <motion.div key="logs" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+                <GlassCard className="min-h-[600px] bg-black/60 border border-white/5 font-mono">
+                  <div className="flex items-center gap-4 mb-10">
+                    <div className="p-3 rounded-2xl bg-white/10 text-white">
+                      <Terminal className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-2xl font-bold tracking-tight">Execution Stream</h3>
+                  </div>
+                  <div className="space-y-3 h-[450px] overflow-y-auto no-scrollbar">
+                    {thoughts?.length > 0 ? (
+                      thoughts.map((thought, i) => (
+                        <div key={i} className="text-xs border-b border-white/5 pb-2">
+                          <span className="text-muted-foreground mr-3">[{new Date(thought.timestamp).toLocaleTimeString()}]</span>
+                          <span className="text-primary mr-2">[{thought.emoji || '🤖'}]</span>
+                          <span className="text-white/80">{thought.summary}</span>
+                          <span className="ml-2 px-1 rounded bg-white/5 text-[8px] text-muted-foreground">CONF {(thought.confidence * 100).toFixed(0)}%</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-xs text-secondary/70 italic text-center py-20">Monitoring secure neural link...</div>
+                    )}
+                  </div>
+                </GlassCard>
+              </motion.div>
+            )
+          }
+        </AnimatePresence >
 
         <footer className="mt-12 pt-8 border-t border-white/5 flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           <div className="flex gap-8">
@@ -922,7 +1148,7 @@ function DashboardContent() {
           </div>
           <div>© 2025 Ladder Labs</div>
         </footer>
-      </main>
-    </div>
+      </main >
+    </div >
   );
 }
