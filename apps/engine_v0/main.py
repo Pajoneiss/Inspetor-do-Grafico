@@ -157,6 +157,13 @@ def main():
                     state["equity"] = summary["equity"]
                     state["positions_count"] = summary["positions_count"]
                     
+                    # v13.0: Persist real equity history for the dashboard chart
+                    try:
+                        from pnl_tracker import save_pnl_snapshot
+                        save_pnl_snapshot(summary["equity"])
+                    except Exception as e:
+                        print(f"[PNL][WARN] Failed to save snapshot: {e}")
+                    
                     # Get positions by symbol
                     positions_by_symbol = hl.get_positions_by_symbol()
                     state["positions"] = positions_by_symbol
@@ -442,6 +449,14 @@ def main():
                                 "reason": " + ".join(reasons[:2]) if reasons else ""
                             }
                         
+                        state["market"] = {
+                            "macro": external_data.get("macro", {}),
+                            "btc_dominance": external_data.get("market", {}).get("btc_dominance", 0),
+                            "fear_greed": external_data.get("fear_greed", {}).get("value", 50),
+                            "market_cap": external_data.get("market", {}).get("market_cap", 0),
+                            "top_symbols": [s for s in snapshot_symbols[:8]]
+                        }
+                        
                         state["symbol_briefs"] = symbol_briefs
                         
                         # v11.0: PROOF LOG with varied scores
@@ -592,6 +607,18 @@ def main():
                             # Get AI decision
                             decision = llm.decide(state)
                             
+                            # v13.0: Update AI thoughts in dashboard
+                            if dashboard_api:
+                                try:
+                                    from dashboard_api import add_ai_thought
+                                    add_ai_thought({
+                                        "summary": decision.get("summary", "No summary"),
+                                        "confidence": decision.get("confidence", 0),
+                                        "emoji": "🤖" if "TRADE" in decision.get("action_type", "") else "🧐"
+                                    })
+                                except:
+                                    pass
+                            
                             # Update tracking
                             last_ai_call_time = current_time
                             last_state_hash = current_hash
@@ -627,10 +654,11 @@ def main():
                     update_dashboard_state({
                         "account": {
                             "equity": state.get("equity", 0),
-                            "buying_power": state.get("available_margin", 0) * 10,
+                            "buying_power": state.get("available_margin", 0), # Real Available Margin
                             "positions_count": len(state.get("positions", {}))
                         },
-                        "positions": list(state.get("positions", {}).values())
+                        "positions": list(state.get("positions", {}).values()),
+                        "market": state.get("market", {})
                     })
                 except Exception as e:
                     print(f"[DASHBOARD][ERROR] {e}")

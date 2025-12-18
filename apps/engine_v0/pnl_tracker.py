@@ -11,6 +11,8 @@ from typing import Dict, Any, Optional, List
 _pnl_cache: Optional[Dict[str, Any]] = None
 _pnl_cache_time: float = 0
 PNL_CACHE_TTL = 120  # 2 minutes
+HISTORY_FILE = os.path.join(os.path.dirname(__file__), "pnl_history.json")
+MAX_HISTORY_POINTS = 100  # Keep last 100 points
 
 # Global hl_client reference (set by main.py)
 _hl_client_ref = None
@@ -101,11 +103,58 @@ def get_pnl_windows(hl_client=None) -> Dict[str, Any]:
     return get_pnl_from_hyperliquid(hl_client)
 
 
+def save_pnl_snapshot(equity: float):
+    """Save current equity snapshot to history file"""
+    import json
+    history = []
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, 'r') as f:
+                history = json.load(f)
+        except:
+            history = []
+            
+    # Add new point
+    history.append({
+        "time": datetime.now(timezone.utc).isoformat(),
+        "value": round(equity, 2)
+    })
+    
+    # Keep last N points
+    history = history[-MAX_HISTORY_POINTS:]
+    
+    try:
+        with open(HISTORY_FILE, 'w') as f:
+            json.dump(history, f)
+    except Exception as e:
+        print(f"[PNL] Failed to save history: {e}")
+
+
 def get_pnl_history(hl_client=None, current_equity: float = 0) -> List[Dict[str, Any]]:
     """
     Get historical equity points for the chart.
-    Currently returns a generated path from 24h PnL if no snapshots exist.
+    Reads from pnl_history.json if available, otherwise generates fallback.
     """
+    import json
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, 'r') as f:
+                history = json.load(f)
+                if history:
+                    # Format time for chart (HH:mm)
+                    for point in history:
+                        if 'time' in point and 'T' in point['time']:
+                            # Convert ISO to brief time
+                            try:
+                                dt = datetime.fromisoformat(point['time'].replace('Z', '+00:00'))
+                                point['time'] = dt.strftime("%H:%M")
+                            except:
+                                pass
+                    return history
+        except Exception as e:
+            print(f"[PNL] Error reading history file: {e}")
+
+    # Fallback to generated if no file exists yet
     pnl_data = get_pnl_windows(hl_client)
     pnl_24h = pnl_data.get("24h", {}).get("pnl", 0)
     

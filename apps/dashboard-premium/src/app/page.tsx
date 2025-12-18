@@ -112,8 +112,13 @@ const MarketBar = ({ data }: { data: any }) => {
       </div>
       <div className="h-4 w-px bg-white/10" />
       <div className="flex items-center gap-2 shrink-0">
-        <span className="text-muted-foreground/50">BTC DOM</span>
-        <span className="text-orange-400">{data.btc_dominance ? `${data.btc_dominance.toFixed(1)}%` : '---'}</span>
+        <span className="text-muted-foreground/50">F&G</span>
+        <span className={cn(
+          "px-2 py-0.5 rounded text-black",
+          Number(data.fear_greed) > 70 ? "bg-primary" : Number(data.fear_greed) < 30 ? "bg-secondary" : "bg-yellow-400"
+        )}>
+          {data.fear_greed || '---'}
+        </span>
       </div>
     </motion.div>
   );
@@ -327,16 +332,18 @@ function DashboardContent() {
                   icon={Activity}
                 />
                 <StatCard
-                  title="Buying Power"
-                  value={status?.buying_power !== undefined ? `$${Number(status.buying_power).toFixed(0)}` : "---"}
-                  sub={`Usage: ${status?.margin_usage || 0}%`}
-                  icon={Shield}
+                  title="Fear & Greed"
+                  value={(status as any)?.market_data?.fear_greed || "---"}
+                  sub={Number((status as any)?.market_data?.fear_greed) > 50 ? "Bullish" : "Bearish"}
+                  trend={Number((status as any)?.market_data?.fear_greed) > 50 ? "up" : "down"}
+                  icon={Zap}
                 />
                 <StatCard
-                  title="Active Fleet"
-                  value={status?.positions_count !== undefined ? `${status.positions_count} Symbols` : "---"}
-                  sub={positions?.length > 0 ? (positions || []).map(p => p.symbol).join(', ') : "No positions"}
-                  icon={Target}
+                  title="Market Cap"
+                  value={(status as any)?.market_data?.market_cap ? `$${((status as any).market_data.market_cap / 1e12).toFixed(2)}T` : "---"}
+                  sub="Crypto Global"
+                  trend="neutral"
+                  icon={Globe}
                 />
               </div>
 
@@ -456,19 +463,31 @@ function DashboardContent() {
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">PnL Realizado (24h)</p>
                   </div>
 
-                  {/* Visual Sparkline Placeholder */}
-                  <div className="w-full h-48 mt-12 overflow-hidden px-4 opacity-40">
-                    <svg width="100%" height="100%" viewBox="0 0 100 20" preserveAspectRatio="none">
-                      <motion.path
-                        d="M0 20 L 10 15 L 20 18 L 30 10 L 40 12 L 50 5 L 60 8 L 70 2 L 80 4 L 90 1 L 100 3"
-                        fill="none"
-                        stroke="#00ff9d"
-                        strokeWidth="0.5"
-                        initial={{ pathLength: 0 }}
-                        animate={{ pathLength: 1 }}
-                        transition={{ duration: 2 }}
-                      />
-                    </svg>
+                  {/* Real-time Dynamic Sparkline */}
+                  <div className="w-full h-48 mt-12 overflow-hidden px-4">
+                    {pnlData?.length > 0 ? (
+                      <svg width="100%" height="100%" viewBox="0 0 100 20" preserveAspectRatio="none">
+                        <motion.path
+                          d={`M ${pnlData.map((p: any, i: number) => {
+                            const x = (i / (pnlData.length - 1)) * 100;
+                            const minVal = Math.min(...pnlData.map((d: any) => d.value));
+                            const maxVal = Math.max(...pnlData.map((d: any) => d.value));
+                            const range = maxVal - minVal || 1;
+                            const y = 20 - ((p.value - minVal) / range) * 15 - 2;
+                            return `${x} ${y}`;
+                          }).join(' L ')}`}
+                          fill="none"
+                          stroke="#00ff9d"
+                          strokeWidth="0.8"
+                          initial={{ pathLength: 0 }}
+                          animate={{ pathLength: 1 }}
+                          transition={{ duration: 1.5 }}
+                          className="neon-glow"
+                        />
+                      </svg>
+                    ) : (
+                      <div className="h-full flex items-center justify-center opacity-20 italic text-sm">Waiting for history snapshots...</div>
+                    )}
                   </div>
                 </div>
 
@@ -501,25 +520,37 @@ function DashboardContent() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {((status as any)?.market_data?.top_symbols || []).map((sym: string) => (
-                    <div key={sym} className="p-6 rounded-3xl bg-white/5 border border-white/5 hover:border-primary/20 transition-all group">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center font-bold">{sym.substring(0, 2)}</div>
-                          <div>
-                            <h4 className="font-bold">{sym}</h4>
-                            <p className="text-[8px] font-bold text-muted-foreground uppercase opacity-50 tracking-tighter">Market Score</p>
+                  {((status as any)?.market_data?.top_symbols || []).map((sym: string) => {
+                    const brief = (status as any)?.market_data?.symbol_briefs?.[sym] || {};
+                    const score = brief.score || 50;
+                    const trend = brief.trend || "Neutral";
+                    return (
+                      <div key={sym} className="p-6 rounded-3xl bg-white/5 border border-white/5 hover:border-primary/20 transition-all group">
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center font-bold">{sym.substring(0, 2)}</div>
+                            <div>
+                              <h4 className="font-bold">{sym}</h4>
+                              <p className="text-[8px] font-bold text-muted-foreground uppercase opacity-50 tracking-tighter">Market Score: {score}</p>
+                            </div>
+                          </div>
+                          <div className={cn(
+                            "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                            score > 70 ? "bg-primary/10 text-primary" : score < 40 ? "bg-secondary/10 text-secondary" : "bg-yellow-400/10 text-yellow-400"
+                          )}>
+                            {trend}
                           </div>
                         </div>
-                        <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">
-                          HIGH CONFIDENCE
+                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${score}%` }}
+                            className={cn("h-full neon-glow", score > 50 ? "bg-primary" : "bg-secondary")}
+                          />
                         </div>
                       </div>
-                      <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary neon-glow w-[85%]" />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </GlassCard>
             </motion.div>
@@ -590,16 +621,18 @@ function DashboardContent() {
                   </div>
                   <h3 className="text-2xl font-bold tracking-tight">Execution Stream</h3>
                 </div>
-                <div className="space-y-3">
-                  {(status as any)?.engine_status === 'running' ? (
-                    <>
-                      <div className="text-xs text-primary/70"><span className="text-muted-foreground mr-3">[{new Date().toLocaleTimeString()}]</span> [SYSTEM] Core initialized...</div>
-                      <div className="text-xs text-primary/70"><span className="text-muted-foreground mr-3">[{new Date().toLocaleTimeString()}]</span> [NETWORK] Connected to Hyperliquid Mainnet</div>
-                      <div className="text-xs text-primary/70"><span className="text-muted-foreground mr-3">[{new Date().toLocaleTimeString()}]</span> [AI] Neural link active (GPT-4o-mini)</div>
-                      <div className="text-xs text-primary/70 animate-pulse"><span className="text-muted-foreground mr-3">[{new Date().toLocaleTimeString()}]</span> [ENGINE] Scanning universe for delta opportunities...</div>
-                    </>
+                <div className="space-y-3 h-[450px] overflow-y-auto no-scrollbar">
+                  {thoughts?.length > 0 ? (
+                    thoughts.map((thought, i) => (
+                      <div key={i} className="text-xs border-b border-white/5 pb-2">
+                        <span className="text-muted-foreground mr-3">[{new Date(thought.timestamp).toLocaleTimeString()}]</span>
+                        <span className="text-primary mr-2">[{thought.emoji || '🤖'}]</span>
+                        <span className="text-white/80">{thought.summary}</span>
+                        <span className="ml-2 px-1 rounded bg-white/5 text-[8px] text-muted-foreground">CONF {(thought.confidence * 100).toFixed(0)}%</span>
+                      </div>
+                    ))
                   ) : (
-                    <div className="text-xs text-secondary/70 italic text-center py-20">Engine sequence in standby mode...</div>
+                    <div className="text-xs text-secondary/70 italic text-center py-20">Monitoring secure neural link...</div>
                   )}
                 </div>
               </GlassCard>
