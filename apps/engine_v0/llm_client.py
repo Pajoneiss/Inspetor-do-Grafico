@@ -4,7 +4,7 @@ OpenAI integration for trading decisions
 """
 import json
 import traceback
-from .candle_formatter import format_multi_timeframe_candles
+from candle_formatter import format_multi_timeframe_candles
 from typing import Dict, Any
 from openai import OpenAI
 
