@@ -30,8 +30,8 @@ import {
   UserCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import SettingsModal from "@/components/SettingsModal";
-import { useSettingsStandalone } from "@/hooks/useSettings";
+import { SettingsModal } from "@/components/SettingsModal";
+import { useSettings } from "@/hooks/useSettings";
 
 // --- Hooks ---
 const useIsMobile = () => {
@@ -132,13 +132,17 @@ const MobileAccordionCard = ({ title, icon: Icon, children, defaultOpen = false 
   );
 };
 
-const StatCard = ({ title, value, sub, icon: Icon, trend }: { title: string; value: string; sub: string; icon: any; trend?: "up" | "down" | "neutral" }) => {
+const StatCard = ({ title, value, sub, icon: Icon, trend, sensitive }: { title: string; value: string; sub: string; icon: any; trend?: "up" | "down" | "neutral"; sensitive?: boolean }) => {
+  const { settings } = useSettings();
   const isMobile = useIsMobile();
 
   // Translate titles for beginners
-  const displayTitle = title === "Equity" ? "Seu Patrimônio" :
-    title === "Buying Power" ? "Poder de Compra" :
-      title === "Open Positions" ? "Posições Ativas" : title;
+  const isEn = settings.language === 'en';
+  const displayTitle = isEn ? title : (
+    title === "Equity" ? "Seu Patrimônio" :
+      title === "Unrealized PnL" ? "Lucro/Prejuízo" :
+        title === "Open Positions" ? "Posições Ativas" : title
+  );
 
   const content = (
     <>
@@ -160,7 +164,10 @@ const StatCard = ({ title, value, sub, icon: Icon, trend }: { title: string; val
       </div>
       <div className="mt-4">
         <p className="text-white/40 text-[10px] font-extrabold tracking-[0.2em] uppercase mb-1">{displayTitle}</p>
-        <h3 className="text-2xl font-extrabold tracking-tighter text-white drop-shadow-md">{value}</h3>
+        <h3 className={cn(
+          "text-2xl font-extrabold tracking-tighter text-white drop-shadow-md transition-all duration-500",
+          sensitive && settings.hideSensitiveData && "blur-md select-none"
+        )}>{value}</h3>
         <p className="text-white/30 text-[9px] font-medium mt-1 uppercase tracking-widest">{trend === "neutral" ? sub : "Atualizado em tempo real"}</p>
       </div>
     </>
@@ -300,7 +307,7 @@ function DashboardContent() {
   const [transfers, setTransfers] = useState<any[]>([]);
   const [cryptoPrices, setCryptoPrices] = useState<{ btc: any, eth: any } | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const { settings, updateSetting, resetSettings } = useSettingsStandalone();
+  const { settings, updateSetting, resetSettings } = useSettings();
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -557,6 +564,7 @@ function DashboardContent() {
                   subValue="Atualizado em tempo real"
                   trend="neutral"
                   icon={Wallet}
+                  sensitive={true}
                 />
                 <StatCard
                   title="Unrealized PnL"
@@ -565,6 +573,7 @@ function DashboardContent() {
                   subValue="Lucro/Prejuízo não realizado"
                   trend={status && (status.unrealized_pnl || 0) >= 0 ? "up" : "down"}
                   icon={Activity}
+                  sensitive={true}
                 />
                 <StatCard
                   title="Fear & Greed"
