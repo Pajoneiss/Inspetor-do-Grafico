@@ -219,37 +219,46 @@ def api_positions():
     # Try to fetch real positions for leverage data if needed
     try:
         user_address = os.getenv("WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
-        response = requests.post(
-            "https://api.hyperliquid.xyz/info",
-            json={"type": "clearinghouseState", "user": user_address},
-            timeout=5
-        )
-        if response.ok:
-            hl_data = response.json()
-            asset_positions = hl_data.get("assetPositions", [])
-            
-            # Create a map of symbol -> real position data
-            real_pos_map = {}
-            universe = hl_data.get("universe", [])
-            
-            for ap in asset_positions:
-                pos = ap.get("position", {})
-                coin_idx = pos.get("coin")
-                # Find symbol from universe if possible, or use index
-                symbol = universe[coin_idx]["name"] if coin_idx < len(universe) else f"COIN_{coin_idx}"
-                
-                # Extract leverage info
-                # "leverage" in clearinghouseState position object struct: 
-                # { "coin": "BTC", "szi": "...", "leverage": { "type": "isolated", "value": 10 }, ... }
-                # Note: API format varies. Often it's in the position object directly or implied.
-                # Actually, Hyperliquid clearinghouseState -> assetPositions -> position has "leverage" dict for isolated.
-                # If cross, it might just have "crossMarginSummary".
-                
-                real_pos_map[symbol] = {
-                    "leverage": pos.get("leverage", {}),
-                    "entry_price": float(pos.get("entryPx", 0)),
-                    "liquidation_price": float(pos.get("liquidationPx", 0) or 0)
-                }
+                # Cache the HL clearinghouse request to avoid rate limits
+                cache_key = f"hl_clearinghouse_{user_address}"
+                cached_hl = _get_cache(cache_key)
+                if cached_hl:
+                     hl_data = cached_hl
+                else:
+                    response = requests.post(
+                        "https://api.hyperliquid.xyz/info",
+                        json={"type": "clearinghouseState", "user": user_address},
+                        timeout=5
+                    )
+                    if response.ok:
+                        hl_data = response.json()
+                        _set_cache(cache_key, hl_data, 10) # Cache for 10s
+                    else:
+                        hl_data = {}
+
+                if hl_data:
+                    asset_positions = hl_data.get("assetPositions", [])
+                    universe = hl_data.get("universe", [])
+                    
+                    for ap in asset_positions:
+                        pos = ap.get("position", {})
+                        raw_coin = pos.get("coin")
+                        symbol = ""
+                        
+                        # Handle both index (int) and symbol (str) formats
+                        if isinstance(raw_coin, int):
+                            if raw_coin < len(universe):
+                                symbol = universe[raw_coin]["name"]
+                            else:
+                                symbol = f"COIN_{raw_coin}"
+                        else:
+                            symbol = str(raw_coin)
+                        
+                        real_pos_map[symbol] = {
+                            "leverage": pos.get("leverage", {}),
+                            "entry_price": float(pos.get("entryPx", 0)),
+                            "liquidation_price": float(pos.get("liquidationPx", 0) or 0)
+                        }
 
             # Merge into state positions
             # We trust state positions for the list, but enrich with real leverage
