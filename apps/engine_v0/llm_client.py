@@ -324,12 +324,24 @@ You are trading perpetuals on Hyperliquid. Funding rate is CRITICAL.
 - **Extreme funding (>0.05% or <-0.05%)**: HIGH PROBABILITY of squeeze against crowded side
 - Counter-trend entries CAN be profitable when funding is extreme (mean reversion)
 
+**OPEN INTEREST (OI) INTERPRETATION:**
+OI shows total money in open positions. Combined with price, it reveals TRUE market strength:
+- **OI ↑ + Price ↑** = NEW LONGS entering = STRONG bullish (trend continuation likely)
+- **OI ↓ + Price ↑** = SHORTS CLOSING = WEAKER bullish (short squeeze, may exhaust)
+- **OI ↑ + Price ↓** = NEW SHORTS entering = STRONG bearish (trend continuation likely)
+- **OI ↓ + Price ↓** = LONGS CLOSING = WEAKER bearish (long liquidation, may exhaust)
+
+**OI + BREAKOUT = CONFIRMATION:**
+- Breakout with OI RISING = real institutional participation = valid signal
+- Breakout with OI FLAT or FALLING = likely fakeout, old positions exiting
+
 **FAKEOUT DETECTION CHECKLIST:**
 Before entering on any breakout, ask:
 1. Is volume above average (relative_volume > 1.5)? If NO → likely fakeout
 2. Is funding rate supporting this direction? If opposite → higher fakeout risk
-3. Is there clear structure break on multiple timeframes? If only 1TF → suspect
-4. Did price wick above/below level and return? That's the fakeout, not the signal.
+3. Is OI rising with price move? If OI falling → weaker move, likely to exhaust
+4. Is there clear structure break on multiple timeframes? If only 1TF → suspect
+5. Did price wick above/below level and return? That's the fakeout, not the signal.
 
 **WHEN IN DOUBT:**
 - Don't chase breakouts. Wait for RETEST of broken level.
@@ -498,18 +510,31 @@ IMPORTANT
         funding_lines = []
         for symbol, finfo in funding_data.items():
             rate = finfo.get("funding_rate", 0)
-            # Color code extreme rates
+            oi = finfo.get("open_interest", 0)
+            
+            # Format funding rate warning
             if rate > 0.03:
-                warning = "⚠️ HIGH (longs paying)"
+                rate_warning = "⚠️ HIGH (longs paying)"
             elif rate < -0.03:
-                warning = "⚠️ HIGH (shorts paying)"
+                rate_warning = "⚠️ HIGH (shorts paying)"
             elif rate > 0.01:
-                warning = "↑ positive"
+                rate_warning = "↑ positive"
             elif rate < -0.01:
-                warning = "↓ negative"
+                rate_warning = "↓ negative"
             else:
-                warning = "neutral"
-            funding_lines.append(f"  {symbol}: {rate:.4f}% ({warning})")
+                rate_warning = "neutral"
+            
+            # Format OI (in millions for readability)
+            if oi > 1_000_000:
+                oi_str = f"OI=${oi/1_000_000:.1f}M"
+            elif oi > 1000:
+                oi_str = f"OI=${oi/1000:.0f}K"
+            elif oi > 0:
+                oi_str = f"OI=${oi:.0f}"
+            else:
+                oi_str = "OI=N/A"
+            
+            funding_lines.append(f"  {symbol}: Funding={rate:.4f}% ({rate_warning}) | {oi_str}")
         funding_str = "\n".join(funding_lines) if funding_lines else "(no funding data)"
         
         return f"""MARKET DATA SNAPSHOT:
