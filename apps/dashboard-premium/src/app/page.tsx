@@ -564,10 +564,10 @@ function DashboardContent() {
                 />
                 <StatCard
                   title="Fear & Greed"
-                  value={(status as any)?.market_data?.fear_greed || "---"}
-                  sub={Number((status as any)?.market_data?.fear_greed) > 50 ? "Bullish" : "Bearish"}
+                  value={(status as any)?.market_data?.fear_greed ?? "---"}
+                  sub={(status as any)?.market_data?.fear_greed ? (Number((status as any).market_data.fear_greed) > 50 ? "Bullish" : "Bearish") : "Loading..."}
                   subValue="Sentimento do mercado"
-                  trend={Number((status as any)?.market_data?.fear_greed) > 50 ? "up" : "down"}
+                  trend={(status as any)?.market_data?.fear_greed ? (Number((status as any).market_data.fear_greed) > 50 ? "up" : "down") : undefined}
                   icon={Zap}
                 />
                 <StatCard
@@ -910,11 +910,23 @@ function DashboardContent() {
 
                         {/* AI Notes - Bilingual 2-Column Layout */}
                         {tradeLog.ai_notes && (() => {
-                          // Parse bilingual notes (split by 🇺🇸 marker)
+                          // Parse bilingual notes - try multiple separators
                           const notes = tradeLog.ai_notes;
-                          const [ptNotes, enNotes] = notes.split('🇺🇸');
-                          const ptText = (ptNotes || '').replace('🇧🇷', '').trim();
-                          const enText = (enNotes || '').trim();
+                          let ptText = '';
+                          let enText = '';
+
+                          if (notes.includes('🇺🇸')) {
+                            [ptText, enText] = notes.split('🇺🇸').map((s: string) => s.replace('🇧🇷', '').trim());
+                          } else if (notes.includes('Position Analysis')) {
+                            // Fallback: split at "Position Analysis" which marks English start
+                            const idx = notes.indexOf('Position Analysis');
+                            ptText = notes.substring(0, idx).replace('🇧🇷', '').trim();
+                            enText = notes.substring(idx).trim();
+                          } else {
+                            // No clear separator - show all in PT column
+                            ptText = notes.replace('🇧🇷', '').trim();
+                            enText = '';
+                          }
 
                           return (
                             <div className="p-4 rounded-xl bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-purple-500/20">
