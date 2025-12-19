@@ -1917,8 +1917,7 @@ function DashboardContent() {
                         </div>
                       </GlassCard>
                     </motion.div>
-                  )
-                  }
+                  )}
 
                   {activeTab === 'logs' && (
                     <motion.div key="logs" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
@@ -1945,9 +1944,8 @@ function DashboardContent() {
                         </div>
                       </GlassCard>
                     </motion.div>
-                  )
-                  }
-                </AnimatePresence >
+                  )}
+                </AnimatePresence>
 
                 <footer className="mt-12 pt-8 border-t border-white/5 flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   <div className="flex gap-8">
