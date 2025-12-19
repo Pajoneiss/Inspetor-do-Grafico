@@ -686,7 +686,7 @@ function DashboardContent() {
                             </div>
                           ))}
                         </div>
-                      )}
+              )}
                     </div>
                   </CollapsibleSection>
                 </GlassCard>
@@ -704,14 +704,14 @@ function DashboardContent() {
                       <div className="hidden lg:flex gap-1.5 bg-white/5 p-1 rounded-xl border border-white/5">
                         {(['24H', '7D', '30D', 'ALL'] as const).map((period) => (
                           <button
-                            key={period}
+                    key={period}
                             onClick={() => setPnlPeriod(period)}
                             className={cn(
                               "px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all",
                               pnlPeriod === period
                                 ? "bg-primary text-black"
                                 : "bg-white/5 text-muted-foreground hover:bg-white/10"
-                            )}
+                    )}
                           >
                             {period}
                           </button>
@@ -731,14 +731,14 @@ function DashboardContent() {
                         <div className="flex gap-1">
                           {(['24H', '7D', '30D', 'ALL'] as const).map(period => (
                             <button
-                              key={period}
+                      key={period}
                               onClick={() => setPnlPeriod(period)}
                               className={cn(
                                 "px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all",
                                 pnlPeriod === period
                                   ? "bg-primary text-black"
                                   : "bg-white/5 text-muted-foreground hover:bg-white/10"
-                              )}
+                      )}
                             >
                               {period}
                             </button>
@@ -787,9 +787,9 @@ function DashboardContent() {
                               fill="none"
                               stroke="#00ff9d"
                               strokeWidth="0.8"
-                              initial={{ pathLength: 0 }}
-                              animate={{ pathLength: 1 }}
-                              transition={{ duration: 1.5 }}
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      transition={{ duration: 1.5 }}
                               className="neon-glow"
                             />
                           </svg>
@@ -797,7 +797,7 @@ function DashboardContent() {
                           <div className="h-full flex items-center justify-center opacity-20 italic text-sm">
                             Waiting for history data...
                           </div>
-                        )}
+                )}
                       </div>
 
                       {/* Stats Row */}
@@ -862,7 +862,7 @@ function DashboardContent() {
                                 </div>
                               </div>
                             ))
-                          )}
+                  )}
                         </div>
                       </CollapsibleSection>
                     </GlassCard>
@@ -903,9 +903,9 @@ function DashboardContent() {
                                   <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Setup Quality</p>
                                   <div className="flex items-center gap-2 mt-1">
                                     <div className="h-2 w-24 bg-white/10 rounded-full overflow-hidden">
-                                      <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${(tradeLog.strategy?.setup_quality || 0) * 10}%` }}
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${(tradeLog.strategy?.setup_quality || 0) * 10}%` }}
                                         className="h-full bg-gradient-to-r from-primary to-purple-500 neon-glow"
                                       />
                                     </div>
@@ -936,29 +936,29 @@ function DashboardContent() {
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                     {tradeLog.strategy.confluence_factors.map((factor: any, i: number) => (
                                       <div
-                                        key={i}
+                                key={i}
                                         className={cn(
                                           "flex items-start gap-2 p-2.5 rounded-xl border transition-all duration-300 hover:scale-[1.02]",
                                           i === 0
                                             ? "bg-gradient-to-r from-primary/20 to-purple-500/10 border-primary/30 shadow-lg shadow-primary/5"
                                             : "bg-white/5 border-white/5 hover:bg-white/10"
-                                        )}
+                                )}
                                       >
                                         <div className={cn(
                                           "p-1 rounded-full",
                                           i === 0 ? "bg-primary/20 text-primary" : "bg-white/10 text-primary"
-                                        )}>
+                                )}>
                                           <CheckCircle className="w-3 h-3" />
                                         </div>
                                         <span className={cn(
                                           "text-[11px] font-medium leading-tight",
                                           i === 0 ? "text-white" : "text-white/70"
-                                        )}>{factor}</span>
+                                )}>{factor}</span>
                                       </div>
                                     ))}
                                   </div>
                                 </div>
-                              )}
+                      )}
                             </div>
 
                             <div className="space-y-6">
@@ -1064,9 +1064,9 @@ function DashboardContent() {
                                         strokeWidth="5"
                                         fill="none"
                                         strokeDasharray="100 100"
-                                        initial={{ strokeDashoffset: 100 }}
-                                        animate={{ strokeDashoffset: 100 - (tradeLog.confidence || 0.75) * 100 }}
-                                        transition={{ duration: 1.5, ease: "easeOut" }}
+                                initial={{ strokeDashoffset: 100 }}
+                                animate={{ strokeDashoffset: 100 - (tradeLog.confidence || 0.75) * 100 }}
+                                transition={{ duration: 1.5, ease: "easeOut" }}
                                         className="text-primary"
                                         strokeLinecap="round"
                                       />
@@ -1097,9 +1097,9 @@ function DashboardContent() {
                           <div className="h-64 flex flex-col items-center justify-center opacity-40">
                             <div className="relative mb-6">
                               <BrainCircuit className="w-16 h-16 text-purple-500 animate-pulse" />
-                              <motion.div
-                                animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-                                transition={{ duration: 2, repeat: Infinity }}
+                      <motion.div
+                        animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                        transition={{ duration: 2, repeat: Infinity }}
                                 className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full"
                               />
                             </div>
@@ -1108,19 +1108,19 @@ function DashboardContent() {
                               Detailed strategy breakdown will appear here <br /> once the AI initiates its next trade.
                             </p>
                           </div>
-                        )}
+                )}
                       </GlassCard>
                     </div>
                   </motion.div>
           )}
 
-                  {activeTab === 'all' && (
-                    <motion.div
-                      key="all"
-                      initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
-                      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                      exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
-                      transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+          {activeTab === 'all' && (
+            <motion.div
+              key="all"
+              initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
+              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                     >
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {/* Account Card */}
@@ -1198,7 +1198,7 @@ function DashboardContent() {
                                     </span>
                                   </div>
                                 ))
-                              )}
+                      )}
                             </div>
                           </CollapsibleSection>
                         </GlassCard>
@@ -1232,9 +1232,9 @@ function DashboardContent() {
                                 <span className="text-xs font-black text-warning">{status?.margin_usage || 0}%</span>
                               </div>
                               <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                                <motion.div
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${status?.margin_usage || 0}%` }}
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${status?.margin_usage || 0}%` }}
                                   className="h-full bg-warning"
                                 />
                               </div>
@@ -1274,16 +1274,16 @@ function DashboardContent() {
                         </div>
                       </div>
                     </motion.div>
-                  )}
+          )}
 
                   {/* CHARTS Tab - Live Candlestick Charts for Each Position */}
-                  {activeTab === 'charts' && (
-                    <motion.div
-                      key="charts"
-                      initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
-                      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                      exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
-                      transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+          {activeTab === 'charts' && (
+            <motion.div
+              key="charts"
+              initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
+              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                     >
                       {/* Charts Header */}
                       <div className="flex items-center justify-between mb-6">
@@ -1294,7 +1294,7 @@ function DashboardContent() {
                         <div className="flex gap-1 bg-white/5 p-1 rounded-xl border border-white/10">
                           {['1m', '5m', '15m', '1h', '4h'].map((tf) => (
                             <button
-                              key={tf}
+                      key={tf}
                               className="px-3 py-1.5 text-xs font-bold rounded-lg transition-all hover:bg-white/10 text-white/60 hover:text-white"
                             >
                               {tf}
@@ -1314,7 +1314,7 @@ function DashboardContent() {
                                   <div className={cn(
                                     "w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold",
                                     pos.side === 'LONG' ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
-                                  )}>
+                          )}>
                                     {pos.symbol.slice(0, 2)}
                                   </div>
                                   <div>
@@ -1323,7 +1323,7 @@ function DashboardContent() {
                                       <span className={cn(
                                         "text-[10px] font-bold px-1.5 py-0.5 rounded",
                                         pos.side === 'LONG' ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
-                                      )}>
+                              )}>
                                         {pos.side} {pos.leverage}x
                                       </span>
                                       <span className="text-xs text-muted-foreground">
@@ -1336,13 +1336,13 @@ function DashboardContent() {
                                   <p className={cn(
                                     "text-lg font-bold",
                                     pos.unrealized_pnl >= 0 ? "text-primary" : "text-secondary"
-                                  )}>
+                          )}>
                                     {pos.unrealized_pnl >= 0 ? '+' : ''}${pos.unrealized_pnl.toFixed(2)}
                                   </p>
                                   <p className={cn(
                                     "text-xs font-bold",
                                     pos.pnl_pct >= 0 ? "text-primary/70" : "text-secondary/70"
-                                  )}>
+                          )}>
                                     {pos.pnl_pct >= 0 ? '+' : ''}{pos.pnl_pct.toFixed(2)}%
                                   </p>
                                 </div>
@@ -1410,18 +1410,18 @@ function DashboardContent() {
                             Charts will appear here once you have active trading positions. The AI is analyzing the market...
                           </p>
                         </GlassCard>
-                      )}
+              )}
                     </motion.div>
-                  )}
+          )}
 
 
-                  {activeTab === 'analytics' && (
-                    <motion.div
-                      key="analytics"
-                      initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
-                      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                      exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
-                      transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+          {activeTab === 'analytics' && (
+            <motion.div
+              key="analytics"
+              initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
+              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                     >
                       <GlassCard className="mb-10 min-h-[600px] flex flex-col border border-white/5 bg-[#0b0c10]">
                         {/* HyperDash Header */}
@@ -1434,9 +1434,9 @@ function DashboardContent() {
                             <div className="flex items-baseline gap-3">
                               <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter text-white drop-shadow-2xl">
                                 <motion.span
-                                  key={fullAnalytics?.history?.[fullAnalytics.history.length - 1]?.value}
-                                  initial={{ opacity: 0, y: -10 }}
-                                  animate={{ opacity: 1, y: 0 }}
+                          key={fullAnalytics?.history?.[fullAnalytics.history.length - 1]?.value}
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
                                   className="inline-block"
                                 >
                                   ${fullAnalytics?.history ? fullAnalytics.history[fullAnalytics.history.length - 1].value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "---"}
@@ -1449,7 +1449,7 @@ function DashboardContent() {
                                     {fullAnalytics.pnl_24h >= 0 ? '▲' : '▼'} {Math.abs(fullAnalytics.pnl_24h).toFixed(2)} (24h)
                                   </span>
                                 </div>
-                              )}
+                      )}
                             </div>
                             <div className="flex items-center gap-6 mt-4 text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
                               <div>
@@ -1474,14 +1474,14 @@ function DashboardContent() {
                             <div className="bg-white/5 p-1 rounded-lg flex items-center">
                               {(['24H', '7D', '30D', 'ALL'] as const).map((range) => (
                                 <button
-                                  key={range}
+                          key={range}
                                   onClick={() => setPnlPeriod(range as any)}
                                   className={cn(
                                     "px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all",
                                     pnlPeriod === range
                                       ? "bg-[#1c1d25] text-white shadow-sm"
                                       : "text-muted-foreground hover:text-white"
-                                  )}
+                          )}
                                 >
                                   {range}
                                 </button>
@@ -1560,9 +1560,9 @@ function DashboardContent() {
                                     <motion.path
                                       d={`M ${areaPath} Z`}
                                       fill="url(#areaGradient)"
-                                      initial={{ opacity: 0 }}
-                                      animate={{ opacity: 1 }}
-                                      transition={{ duration: 1 }}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ duration: 1 }}
                                     />
 
                                     {/* Stroke Line with Glow */}
@@ -1574,14 +1574,14 @@ function DashboardContent() {
                                       strokeLinecap="round"
                                       strokeLinejoin="round"
                                       filter="url(#glow)"
-                                      initial={{ pathLength: 0 }}
-                                      animate={{ pathLength: 1 }}
-                                      transition={{ duration: 1.2, ease: [0.23, 1, 0.32, 1] }}
+                              initial={{ pathLength: 0 }}
+                              animate={{ pathLength: 1 }}
+                              transition={{ duration: 1.2, ease: [0.23, 1, 0.32, 1] }}
                                     />
                                   </svg>
 
                                   {/* Live Indicator Dot at the end of the line */}
-                                  <motion.div
+                          <motion.div
                                     className="absolute rounded-full w-2 h-2 shadow-[0_0_10px_currentColor]"
                                     style={{
                                       color,
@@ -1590,8 +1590,8 @@ function DashboardContent() {
                                       top: `${height - ((values[values.length - 1] - minVal) / range) * (height * 0.8) - (height * 0.1)}px`,
                                       transform: 'translate(-50%, -50%)'
                                     }}
-                                    animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
-                                    transition={{ duration: 2, repeat: Infinity }}
+                            animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+                            transition={{ duration: 2, repeat: Infinity }}
                                   />
                                 </div>
                               );
@@ -1601,7 +1601,7 @@ function DashboardContent() {
                               <Activity className={cn("w-16 h-16 animate-pulse mb-4", (fullAnalytics?.pnl_total || 0) >= 0 ? "text-[#00ff9d]" : "text-red-500")} />
                               <p className="text-xs font-bold uppercase tracking-widest">Syncing Blockchain History...</p>
                             </div>
-                          )}
+                  )}
                         </div>
 
                         {/* Footer Stats similar to HyperDash bottom bar */}
@@ -1621,14 +1621,14 @@ function DashboardContent() {
                             </div>
                           </div>
                           <div className="h-2.5 w-full bg-black/40 rounded-full overflow-hidden flex ring-1 ring-white/5">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${(positions?.filter((p: any) => p.side === 'LONG').length / (positions?.length || 1) * 100)}%` }}
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(positions?.filter((p: any) => p.side === 'LONG').length / (positions?.length || 1) * 100)}%` }}
                               className="h-full bg-gradient-to-r from-green-500 to-[#00ff9d] transition-all duration-1000 ease-out"
                             />
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${(positions?.filter((p: any) => p.side === 'SHORT').length / (positions?.length || 1) * 100)}%` }}
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(positions?.filter((p: any) => p.side === 'SHORT').length / (positions?.length || 1) * 100)}%` }}
                               className="h-full bg-gradient-to-r from-red-600 to-[#ff3b30] transition-all duration-1000 ease-out"
                             />
                           </div>
@@ -1640,14 +1640,14 @@ function DashboardContent() {
                           <div className="flex items-center gap-1 mb-4 overflow-x-auto no-scrollbar border-b border-white/5 pb-2">
                             {(['Asset Positions', 'Open Orders', 'Recent Fills', 'Completed Trades', 'TWAP', 'Deposits & Withdrawals'] as const).map((tab) => (
                               <button
-                                key={tab}
+                        key={tab}
                                 onClick={() => setActiveFleetTab(tab)}
                                 className={cn(
                                   "px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all",
                                   activeFleetTab === tab
                                     ? "bg-[#1c1d25] text-[#00ff9d] shadow-sm ring-1 ring-[#00ff9d]/20"
                                     : "text-muted-foreground hover:text-white"
-                                )}
+                        )}
                               >
                                 {tab}
                               </button>
@@ -1686,11 +1686,11 @@ function DashboardContent() {
                                           <span className={cn(
                                             "relative px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider overflow-hidden inline-flex items-center gap-1",
                                             pos.side === 'LONG' ? "bg-green-500/20 text-[#00ff9d]" : "bg-red-500/20 text-red-400"
-                                          )}>
+                                  )}>
                                             <span className={cn(
                                               "w-1 h-1 rounded-full animate-pulse",
                                               pos.side === 'LONG' ? "bg-[#00ff9d]" : "bg-red-400"
-                                            )} />
+                                    )} />
                                             {pos.side}
                                           </span>
                                         </td>
@@ -1717,10 +1717,10 @@ function DashboardContent() {
                                         No active positions found in fleet
                                       </td>
                                     </tr>
-                                  )}
+                          )}
                                 </tbody>
                               </table>
-                            )}
+                    )}
 
                             {activeFleetTab === 'Open Orders' && (
                               <table className="w-full text-left border-collapse">
@@ -1756,10 +1756,10 @@ function DashboardContent() {
                                         No open orders
                                       </td>
                                     </tr>
-                                  )}
+                          )}
                                 </tbody>
                               </table>
-                            )}
+                    )}
 
                             {activeFleetTab === 'Recent Fills' && (
                               <table className="w-full text-left border-collapse">
@@ -1799,10 +1799,10 @@ function DashboardContent() {
                                         No recent fills
                                       </td>
                                     </tr>
-                                  )}
+                          )}
                                 </tbody>
                               </table>
-                            )}
+                    )}
 
                             {activeFleetTab === 'Deposits & Withdrawals' && (
                               <table className="w-full text-left border-collapse">
@@ -1836,10 +1836,10 @@ function DashboardContent() {
                                         No deposits or withdrawals
                                       </td>
                                     </tr>
-                                  )}
+                          )}
                                 </tbody>
                               </table>
-                            )}
+                    )}
 
                             {/* Generic handler for other tabs */}
                             {['Completed Trades', 'TWAP'].includes(activeFleetTab) && (
@@ -1847,16 +1847,16 @@ function DashboardContent() {
                                 <span className="text-xs uppercase tracking-widest font-bold mb-2">No data for {activeFleetTab}</span>
                                 <span className="text-[10px]">Feature coming soon...</span>
                               </div>
-                            )}
+                    )}
                           </div>
                         </div>
 
                       </GlassCard>
                     </motion.div>
-                  )}
+          )}
 
-                  {activeTab === 'chat' && (
-                    <motion.div key="chat" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+          {activeTab === 'chat' && (
+            <motion.div key="chat" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
                       <GlassCard className="h-[700px] flex flex-col">
                         <div className="flex items-center gap-4 mb-8">
                           <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400">
@@ -1876,12 +1876,12 @@ function DashboardContent() {
                             </div>
                           ) : (
                             chatMessages.map((msg, i) => (
-                              <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={cn("flex gap-3", msg.role === 'user' ? "justify-end" : "justify-start")}>
+                      <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={cn("flex gap-3", msg.role === 'user' ? "justify-end" : "justify-start")}>
                                 {msg.role === 'assistant' && (
                                   <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
                                     <BrainCircuit className="w-4 h-4 text-purple-400" />
                                   </div>
-                                )}
+                        )}
                                 <div className={cn("max-w-[80%] px-4 py-3 rounded-2xl", msg.role === 'user' ? "bg-primary/20 text-white border border-primary/30" : "bg-white/5 text-white/90 border border-white/10")}>
                                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                                 </div>
@@ -1889,12 +1889,12 @@ function DashboardContent() {
                                   <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
                                     <span className="text-xs font-bold">YOU</span>
                                   </div>
-                                )}
+                        )}
                               </motion.div>
                             ))
-                          )}
+                  )}
                           {chatLoading && (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
                               <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center">
                                 <BrainCircuit className="w-4 h-4 text-purple-400 animate-pulse" />
                               </div>
@@ -1906,7 +1906,7 @@ function DashboardContent() {
                                 </div>
                               </div>
                             </motion.div>
-                          )}
+                  )}
                         </div>
 
                         <div className="flex gap-3 pt-4 border-t border-white/5">
@@ -1917,10 +1917,10 @@ function DashboardContent() {
                         </div>
                       </GlassCard>
                     </motion.div>
-                  )}
+          )}
 
-                  {activeTab === 'logs' && (
-                    <motion.div key="logs" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+          {activeTab === 'logs' && (
+            <motion.div key="logs" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
                       <GlassCard className="min-h-[600px] bg-black/60 border border-white/5 font-mono">
                         <div className="flex items-center gap-4 mb-10">
                           <div className="p-3 rounded-2xl bg-white/10 text-white">
@@ -1940,11 +1940,11 @@ function DashboardContent() {
                             ))
                           ) : (
                             <div className="text-xs text-secondary/70 italic text-center py-20">Monitoring secure neural link...</div>
-                          )}
+                  )}
                         </div>
                       </GlassCard>
                     </motion.div>
-                  )}
+          )}
                 </AnimatePresence>
 
                 <footer className="mt-12 pt-8 border-t border-white/5 flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
