@@ -9,6 +9,7 @@ import {
   Target,
   Terminal,
   ChevronRight,
+  ChevronDown,
   Wallet,
   Cpu,
   Globe,
@@ -22,9 +23,23 @@ import {
   MessageSquare,
   Send,
   Menu,
-  X
+  X,
+  CheckCircle,
+  LineChart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// --- Hooks ---
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+};
 
 // --- Types ---
 interface DashboardData {
@@ -59,72 +74,163 @@ const GlassCard = ({ children, className, delay = 0 }: { children: React.ReactNo
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.6, delay, ease: [0.23, 1, 0.32, 1] }}
-    className={cn("glass-card rounded-[32px] p-6 overflow-hidden relative group", className)}
+    transition={{ duration: 0.8, delay, ease: [0.23, 1, 0.32, 1] }}
+    whileHover={{ y: -4, transition: { duration: 0.2 } }}
+    className={cn(
+      "glass-card rounded-[32px] p-6 overflow-hidden relative group transition-all duration-500",
+      "hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] hover:border-white/20",
+      className
+    )}
   >
-    {children}
+    {/* Animated Gradient Border on Hover */}
+    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+    <div className="relative z-10">{children}</div>
   </motion.div>
 );
 
-const StatCard = ({ title, value, sub, icon: Icon, trend }: { title: string; value: string; sub: string; icon: any; trend?: "up" | "down" | "neutral" }) => (
-  <GlassCard className="flex flex-col gap-1.5">
-    <div className="flex justify-between items-start">
-      <div className="p-1.5 rounded-lg bg-white/5 border border-white/10">
-        <Icon className="w-4 h-4 text-primary" />
+// Mobile Accordion Card - iPhone folder style
+const MobileAccordionCard = ({ title, icon: Icon, children, defaultOpen = false }: { title: string; icon: any; children: React.ReactNode; defaultOpen?: boolean }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <motion.div
+      className="glass-card rounded-2xl overflow-hidden border border-white/10"
+      layout
+    >
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-white/5 to-transparent active:bg-white/10 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-primary/20">
+            <Icon className="w-5 h-5 text-primary" />
+          </div>
+          <span className="text-sm font-bold text-white">{title}</span>
+        </div>
+        <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <ChevronDown className="w-5 h-5 text-white/40" />
+        </motion.div>
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="p-4 pt-0">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
+
+const StatCard = ({ title, value, sub, icon: Icon, trend }: { title: string; value: string; sub: string; icon: any; trend?: "up" | "down" | "neutral" }) => {
+  const isMobile = useIsMobile();
+
+  // Translate titles for beginners
+  const displayTitle = title === "Equity" ? "Seu Patrimônio" :
+    title === "Buying Power" ? "Poder de Compra" :
+      title === "Open Positions" ? "Posições Ativas" : title;
+
+  const content = (
+    <>
+      <div className="flex justify-between items-start">
+        <div className="p-2 rounded-xl bg-white/5 border border-white/10 shadow-inner group-hover:bg-primary/10 transition-colors duration-500">
+          <Icon className="w-4 h-4 text-primary group-hover:scale-110 transition-transform duration-500" />
+        </div>
+        {trend && trend !== "neutral" && (
+          <div className="flex items-center gap-2">
+            <Sparkline data={trend === "up" ? [10, 15, 12, 18, 20] : [20, 15, 18, 12, 10]} color={trend === "up" ? "#00ff9d" : "#ff3b30"} />
+            <span className={cn(
+              "px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase",
+              trend === "up" ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
+            )}>
+              {sub}
+            </span>
+          </div>
+        )}
       </div>
-      {trend && trend !== "neutral" && (
-        <span className={cn(
-          "px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider",
-          trend === "up" ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
-        )}>
-          {sub}
-        </span>
-      )}
-    </div>
-    <div className="mt-2">
-      <p className="text-muted-foreground text-[10px] font-semibold tracking-widest uppercase">{title}</p>
-      <h3 className="text-xl font-bold tracking-tight mt-0.5">{value}</h3>
-      <p className="text-muted-foreground text-[9px] mt-0.5">{trend === "neutral" ? sub : "Current Metric"}</p>
-    </div>
-  </GlassCard>
-);
+      <div className="mt-4">
+        <p className="text-white/40 text-[10px] font-extrabold tracking-[0.2em] uppercase mb-1">{displayTitle}</p>
+        <h3 className="text-2xl font-extrabold tracking-tighter text-white drop-shadow-md">{value}</h3>
+        <p className="text-white/30 text-[9px] font-medium mt-1 uppercase tracking-widest">{trend === "neutral" ? sub : "Atualizado em tempo real"}</p>
+      </div>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <MobileAccordionCard title={displayTitle} icon={Icon} defaultOpen={title === "Equity"}>
+        {content}
+      </MobileAccordionCard>
+    );
+  }
+
+  return (
+    <GlassCard className="flex flex-col gap-1.5">
+      {content}
+    </GlassCard>
+  );
+};
+
+
+const Sparkline = ({ data, color = "#00ff9d" }: { data: number[]; color?: string }) => {
+  if (!data || data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const points = data.map((d, i) => {
+    const x = (i / (data.length - 1)) * 60;
+    const y = 20 - ((d - min) / range) * 16 - 2;
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <svg width="60" height="20" viewBox="0 0 60 20" className="opacity-50">
+      <polyline
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={points}
+      />
+    </svg>
+  );
+};
 
 const MarketBar = ({ data }: { data: any }) => {
   if (!data || !data.macro) return null;
   const { macro } = data;
+
+  const items = [
+    { label: "S&P 500", value: macro.sp500 && macro.sp500 !== "N/A" ? Number(macro.sp500).toLocaleString() : '---', color: "text-[#00ff9d]" },
+    { label: "NASDAQ", value: macro.nasdaq && macro.nasdaq !== "N/A" ? Number(macro.nasdaq).toLocaleString() : '---', color: "text-[#00ff9d]" },
+    { label: "DXY", value: macro.dxy || '---', color: "text-blue-400" },
+    { label: "USD/BRL", value: macro.usd_brl ? `R$ ${Number(macro.usd_brl).toFixed(2)}` : '---', color: "text-green-400" },
+    { label: "BTC", value: macro.btc || '---', color: "text-orange-400" },
+    { label: "ETH", value: macro.eth || '---', color: "text-purple-400" },
+  ];
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex flex-wrap items-center gap-6 mb-8 px-6 py-3.5 rounded-2xl bg-white/[0.03] border border-white/5 text-[10px] font-bold uppercase tracking-widest overflow-x-auto no-scrollbar"
-    >
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="text-muted-foreground/50">S&P 500</span>
-        <span className="text-primary">{macro.sp500 && macro.sp500 !== "N/A" ? Number(macro.sp500).toLocaleString() : '---'}</span>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="text-muted-foreground/50">NASDAQ</span>
-        <span className="text-primary">{macro.nasdaq && macro.nasdaq !== "N/A" ? Number(macro.nasdaq).toLocaleString() : '---'}</span>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="text-muted-foreground/50">DXY</span>
-        <span className="text-blue-400">{macro.dxy || '---'}</span>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="text-muted-foreground/50">USD/BRL</span>
-        <span className="text-green-400">{macro.usd_brl ? `R$ ${Number(macro.usd_brl).toFixed(2)}` : '---'}</span>
-      </div>
-      <div className="h-4 w-px bg-white/10" />
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="text-muted-foreground/50">F&G</span>
-        <span className={cn(
-          "px-2 py-0.5 rounded text-black",
-          Number(data.fear_greed) > 70 ? "bg-primary" : Number(data.fear_greed) < 30 ? "bg-secondary" : "bg-yellow-400"
-        )}>
-          {data.fear_greed || '---'}
-        </span>
-      </div>
-    </motion.div>
+    <div className="relative mb-8 overflow-hidden w-full py-4 border-y border-white/5 bg-gradient-to-r from-transparent via-white/5 to-transparent">
+      <motion.div
+        animate={{ x: [0, -1000] }}
+        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+        className="flex items-center gap-12 whitespace-nowrap"
+      >
+        {items.concat(items).concat(items).map((item, i) => (
+          <div key={i} className="flex items-center gap-2.5">
+            <span className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.2em]">{item.label}</span>
+            <span className={cn("text-[11px] font-bold tracking-tight", item.color)}>{item.value}</span>
+          </div>
+        ))}
+      </motion.div>
+    </div>
   );
 };
 
@@ -417,9 +523,10 @@ function DashboardContent() {
               {/* Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                 <StatCard
-                  title="Total Equity"
+                  title="Equity"
                   value={status?.equity !== undefined ? `$${Number(status.equity).toFixed(2)}` : "---"}
                   sub="Update Live"
+                  subValue="Atualizado em tempo real"
                   trend="neutral"
                   icon={Wallet}
                 />
@@ -427,6 +534,7 @@ function DashboardContent() {
                   title="Unrealized PnL"
                   value={status?.unrealized_pnl !== undefined ? `${status.unrealized_pnl >= 0 ? '+' : ''}$${Number(status.unrealized_pnl).toFixed(2)}` : "---"}
                   sub={status?.equity ? `${((Number(status.unrealized_pnl || 0) / Number(status.equity)) * 100).toFixed(2)}%` : "---"}
+                  subValue="Lucro/Prejuízo não realizado"
                   trend={status && (status.unrealized_pnl || 0) >= 0 ? "up" : "down"}
                   icon={Activity}
                 />
@@ -434,6 +542,7 @@ function DashboardContent() {
                   title="Fear & Greed"
                   value={(status as any)?.market_data?.fear_greed || "---"}
                   sub={Number((status as any)?.market_data?.fear_greed) > 50 ? "Bullish" : "Bearish"}
+                  subValue="Sentimento do mercado"
                   trend={Number((status as any)?.market_data?.fear_greed) > 50 ? "up" : "down"}
                   icon={Zap}
                 />
@@ -441,6 +550,7 @@ function DashboardContent() {
                   title="Market Cap"
                   value={(status as any)?.market_data?.market_cap ? `$${((status as any).market_data.market_cap / 1e12).toFixed(2)}T` : "---"}
                   sub="Crypto Global"
+                  subValue="Capitalização de mercado global"
                   trend="neutral"
                   icon={Globe}
                 />
@@ -702,9 +812,25 @@ function DashboardContent() {
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                               {tradeLog.strategy.confluence_factors.map((factor: any, i: number) => (
-                                <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-white/5">
-                                  <span className="text-primary text-xs mt-0.5">✓</span>
-                                  <span className="text-xs text-white/70">{factor}</span>
+                                <div
+                                  key={i}
+                                  className={cn(
+                                    "flex items-start gap-2 p-2.5 rounded-xl border transition-all duration-300 hover:scale-[1.02]",
+                                    i === 0
+                                      ? "bg-gradient-to-r from-primary/20 to-purple-500/10 border-primary/30 shadow-lg shadow-primary/5"
+                                      : "bg-white/5 border-white/5 hover:bg-white/10"
+                                  )}
+                                >
+                                  <div className={cn(
+                                    "p-1 rounded-full",
+                                    i === 0 ? "bg-primary/20 text-primary" : "bg-white/10 text-primary"
+                                  )}>
+                                    <CheckCircle className="w-3 h-3" />
+                                  </div>
+                                  <span className={cn(
+                                    "text-[11px] font-medium leading-tight",
+                                    i === 0 ? "text-white" : "text-white/70"
+                                  )}>{factor}</span>
                                 </div>
                               ))}
                             </div>
@@ -721,31 +847,39 @@ function DashboardContent() {
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {/* Stop Loss */}
-                            <div className="p-3 rounded-xl bg-secondary/10 border border-secondary/20">
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Stop Loss</p>
-                              <p className="text-lg font-bold text-secondary">${tradeLog.risk_management?.stop_loss?.toLocaleString() || '0'}</p>
-                              <p className="text-xs text-white/60 mt-1">{tradeLog.risk_management?.stop_loss_reason || 'N/A'}</p>
+                            <div className="p-3.5 rounded-2xl bg-secondary/10 border border-secondary/20 flex flex-col justify-between min-h-[100px] transition-all hover:bg-secondary/15">
+                              <div>
+                                <p className="text-[10px] font-extrabold text-secondary/70 uppercase tracking-[0.15em] mb-1">Stop Loss</p>
+                                <p className="text-xl font-bold text-secondary tracking-tight">${tradeLog.risk_management?.stop_loss?.toLocaleString() || '0'}</p>
+                              </div>
+                              <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.stop_loss_reason || 'N/A'}</p>
                             </div>
 
                             {/* Take Profit 1 */}
-                            <div className="p-3 rounded-xl bg-primary/10 border border-primary/20">
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Take Profit 1 ({tradeLog.risk_management?.tp1_size_pct || 0}%)</p>
-                              <p className="text-lg font-bold text-primary">${tradeLog.risk_management?.take_profit_1?.toLocaleString() || '0'}</p>
-                              <p className="text-xs text-white/60 mt-1">{tradeLog.risk_management?.tp1_reason || 'N/A'}</p>
+                            <div className="p-3.5 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col justify-between min-h-[100px] transition-all hover:bg-primary/15">
+                              <div>
+                                <p className="text-[10px] font-extrabold text-primary/70 uppercase tracking-[0.15em] mb-1">Take Profit 1 ({tradeLog.risk_management?.tp1_size_pct || 0}%)</p>
+                                <p className="text-xl font-bold text-primary tracking-tight">${tradeLog.risk_management?.take_profit_1?.toLocaleString() || '0'}</p>
+                              </div>
+                              <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.tp1_reason || 'N/A'}</p>
                             </div>
 
                             {/* TP2 */}
-                            <div className="p-3 rounded-xl bg-primary/10 border border-primary/20">
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Take Profit 2 ({tradeLog.risk_management?.tp2_size_pct || 0}%)</p>
-                              <p className="text-lg font-bold text-primary">${tradeLog.risk_management?.take_profit_2?.toLocaleString() || '0'}</p>
-                              <p className="text-xs text-white/60 mt-1">{tradeLog.risk_management?.tp2_reason || 'N/A'}</p>
+                            <div className="p-3.5 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col justify-between min-h-[100px] transition-all hover:bg-primary/15">
+                              <div>
+                                <p className="text-[10px] font-extrabold text-primary/70 uppercase tracking-[0.15em] mb-1">Take Profit 2 ({tradeLog.risk_management?.tp2_size_pct || 0}%)</p>
+                                <p className="text-xl font-bold text-primary tracking-tight">${tradeLog.risk_management?.take_profit_2?.toLocaleString() || '0'}</p>
+                              </div>
+                              <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.tp2_reason || 'N/A'}</p>
                             </div>
 
                             {/* Risk */}
-                            <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Risk</p>
-                              <p className="text-lg font-bold">${tradeLog.risk_management?.risk_usd?.toFixed(2) || '0'}</p>
-                              <p className="text-xs text-white/60 mt-1">{tradeLog.risk_management?.risk_pct?.toFixed(2) || '0'}% of equity</p>
+                            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex flex-col justify-between min-h-[100px] transition-all hover:bg-white/10">
+                              <div>
+                                <p className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.15em] mb-1">Risk</p>
+                                <p className="text-xl font-bold text-white tracking-tight">${tradeLog.risk_management?.risk_usd?.toFixed(2) || '0'}</p>
+                              </div>
+                              <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.risk_pct?.toFixed(2) || '0'}% of equity</p>
                             </div>
                           </div>
                         </div>
@@ -792,14 +926,53 @@ function DashboardContent() {
                           );
                         })()}
 
-                        {/* Confidence */}
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-white/5 to-primary/5 border border-white/10">
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">AI Confidence</p>
-                            <p className="text-2xl font-bold text-primary">{((tradeLog.confidence || 0) * 100).toFixed(0)}%</p>
+                        {/* Confidence - Circular Gauge */}
+                        <div className="flex items-center justify-between p-5 rounded-2xl bg-gradient-to-br from-white/5 to-primary/5 border border-white/10 shadow-lg group hover:bg-white/[0.07] transition-all duration-500">
+                          <div className="flex items-center gap-6">
+                            <div className="relative w-24 h-24 flex items-center justify-center">
+                              <svg className="w-full h-full transform -rotate-90 filter drop-shadow-[0_0_8px_rgba(0,255,157,0.3)]">
+                                <circle
+                                  cx="48"
+                                  cy="48"
+                                  r="40"
+                                  stroke="currentColor"
+                                  strokeWidth="6"
+                                  fill="none"
+                                  className="text-white/5"
+                                />
+                                <motion.circle
+                                  cx="48"
+                                  cy="48"
+                                  r="40"
+                                  stroke="currentColor"
+                                  strokeWidth="6"
+                                  fill="none"
+                                  strokeDasharray="251.2"
+                                  initial={{ strokeDashoffset: 251.2 }}
+                                  animate={{ strokeDashoffset: 251.2 - (251.2 * (tradeLog.confidence || 0.75)) }}
+                                  transition={{ duration: 1.5, ease: "easeOut" }}
+                                  className="text-primary"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-3xl font-extrabold tracking-tighter text-white drop-shadow-md">
+                                  {((tradeLog.confidence || 0) * 100).toFixed(0)}
+                                  <span className="text-xs text-primary ml-0.5">%</span>
+                                </span>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-[0.2em] mb-1 tooltip-trigger">AI Confidence</p>
+                              <div className="h-1 w-20 bg-white/10 rounded-full overflow-hidden">
+                                <div className="h-full bg-primary/40 w-full animate-shimmer" />
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-right max-w-sm">
-                            <p className="text-xs text-white/60 leading-tight">{tradeLog.expected_outcome || 'Awaiting trade resolution...'}</p>
+                          <div className="text-right max-w-[200px]">
+                            <p className="text-[11px] font-bold text-white/90 leading-relaxed italic border-l-2 border-primary/30 pl-3">
+                              "{tradeLog.expected_outcome || 'AI is monitoring and will adjust targets based on market structure.'}"
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -826,7 +999,13 @@ function DashboardContent() {
           )}
 
           {activeTab === 'analytics' && (
-            <motion.div key="analytics" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+            <motion.div
+              key="analytics"
+              initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
+              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+            >
               <GlassCard className="mb-10 min-h-[600px] flex flex-col border border-white/5 bg-[#0b0c10]">
                 {/* HyperDash Header */}
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 mb-8">
@@ -836,14 +1015,23 @@ function DashboardContent() {
                       <span className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] font-bold text-white/50">Combined</span>
                     </div>
                     <div className="flex items-baseline gap-3">
-                      <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
-                        ${fullAnalytics?.history ? fullAnalytics.history[fullAnalytics.history.length - 1].value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "---"}
+                      <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter text-white drop-shadow-2xl">
+                        <motion.span
+                          key={fullAnalytics?.history?.[fullAnalytics.history.length - 1]?.value}
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="inline-block"
+                        >
+                          ${fullAnalytics?.history ? fullAnalytics.history[fullAnalytics.history.length - 1].value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "---"}
+                        </motion.span>
                       </h2>
                       {/* Live PnL Indicator */}
                       {fullAnalytics?.pnl_24h !== undefined && (
-                        <span className={cn("text-sm font-bold", fullAnalytics.pnl_24h >= 0 ? "text-[#00ff9d]" : "text-red-500")}>
-                          {fullAnalytics.pnl_24h >= 0 ? '+' : ''}{fullAnalytics.pnl_24h.toFixed(2)} (24h)
-                        </span>
+                        <div className={cn("flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-white/5", fullAnalytics.pnl_24h >= 0 ? "text-[#00ff9d]" : "text-red-500")}>
+                          <span className="text-xs font-black">
+                            {fullAnalytics.pnl_24h >= 0 ? '▲' : '▼'} {Math.abs(fullAnalytics.pnl_24h).toFixed(2)} (24h)
+                          </span>
+                        </div>
                       )}
                     </div>
                     <div className="flex items-center gap-6 mt-4 text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
@@ -932,18 +1120,24 @@ function DashboardContent() {
                       const areaPath = `${points} ${width},${height} 0,${height}`;
 
                       return (
-                        <div className="w-full h-full">
+                        <div className="w-full h-full relative group/chart">
                           <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
                             <defs>
                               <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+                                <stop offset="0%" stopColor={color} stopOpacity="0.4" />
+                                <stop offset="60%" stopColor={color} stopOpacity="0.1" />
                                 <stop offset="100%" stopColor={color} stopOpacity="0" />
                               </linearGradient>
+                              <filter id="glow">
+                                <feGaussianBlur stdDeviation="2" result="blur" />
+                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                              </filter>
                             </defs>
 
-                            {/* Grid Lines (Optional) */}
-                            <line x1="0" y1={height} x2={width} y2={height} stroke="white" strokeOpacity="0.05" />
-                            <line x1="0" y1="0" x2={width} y2="0" stroke="white" strokeOpacity="0.05" />
+                            {/* Grid Lines */}
+                            <line x1="0" y1={height} x2={width} y2={height} stroke="white" strokeOpacity="0.03" />
+                            <line x1="0" y1={0} x2={width} y2="0" stroke="white" strokeOpacity="0.03" />
+                            <line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke="white" strokeOpacity="0.02" strokeDasharray="4,4" />
 
                             {/* Area Fill */}
                             <motion.path
@@ -951,22 +1145,37 @@ function DashboardContent() {
                               fill="url(#areaGradient)"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
-                              transition={{ duration: 0.5 }}
+                              transition={{ duration: 1 }}
                             />
 
-                            {/* Stroke Line */}
+                            {/* Stroke Line with Glow */}
                             <motion.polyline
                               points={points}
                               fill="none"
                               stroke={color}
-                              strokeWidth="2"
+                              strokeWidth="3"
                               strokeLinecap="round"
                               strokeLinejoin="round"
+                              filter="url(#glow)"
                               initial={{ pathLength: 0 }}
                               animate={{ pathLength: 1 }}
-                              transition={{ duration: 0.8, ease: "easeInOut" }}
+                              transition={{ duration: 1.2, ease: [0.23, 1, 0.32, 1] }}
                             />
                           </svg>
+
+                          {/* Live Indicator Dot at the end of the line */}
+                          <motion.div
+                            className="absolute rounded-full w-2 h-2 shadow-[0_0_10px_currentColor]"
+                            style={{
+                              color,
+                              backgroundColor: color,
+                              left: '100%',
+                              top: `${height - ((values[values.length - 1] - minVal) / range) * (height * 0.8) - (height * 0.1)}px`,
+                              transform: 'translate(-50%, -50%)'
+                            }}
+                            animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          />
                         </div>
                       );
                     })()
@@ -980,23 +1189,31 @@ function DashboardContent() {
 
                 {/* Footer Stats similar to HyperDash bottom bar */}
                 {/* Position Distribution Bar */}
-                <div className="mb-8 p-4 rounded-xl bg-white/5 border border-white/5">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Position Distribution <span className="text-[#00ff9d]">● {(positions?.filter((p: any) => p.side === 'LONG').length / (positions?.length || 1) * 100).toFixed(0)}%</span> <span className="text-red-500">● {(positions?.filter((p: any) => p.side === 'SHORT').length / (positions?.length || 1) * 100).toFixed(0)}%</span></p>
+                <div className="mb-8 p-5 rounded-2xl bg-black/20 border border-white/5 shadow-inner">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Live Position Distribution</p>
+                    <div className="flex gap-4">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#00ff9d]" />
+                        <span className="text-[10px] font-bold text-[#00ff9d]">LONG {(positions?.filter((p: any) => p.side === 'LONG').length / (positions?.length || 1) * 100).toFixed(0)}%</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#ff3b30]" />
+                        <span className="text-[10px] font-bold text-[#ff3b30]">SHORT {(positions?.filter((p: any) => p.side === 'SHORT').length / (positions?.length || 1) * 100).toFixed(0)}%</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="h-2 w-full bg-black/50 rounded-full overflow-hidden flex mb-2">
-                    <div
-                      className="h-full bg-[#00ff9d] transition-all duration-500"
-                      style={{ width: `${(positions?.filter((p: any) => p.side === 'LONG').length / (positions?.length || 1) * 100)}%` }}
+                  <div className="h-2.5 w-full bg-black/40 rounded-full overflow-hidden flex ring-1 ring-white/5">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(positions?.filter((p: any) => p.side === 'LONG').length / (positions?.length || 1) * 100)}%` }}
+                      className="h-full bg-gradient-to-r from-green-500 to-[#00ff9d] transition-all duration-1000 ease-out"
                     />
-                    <div
-                      className="h-full bg-[#ff3b30] transition-all duration-500"
-                      style={{ width: `${(positions?.filter((p: any) => p.side === 'SHORT').length / (positions?.length || 1) * 100)}%` }}
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(positions?.filter((p: any) => p.side === 'SHORT').length / (positions?.length || 1) * 100)}%` }}
+                      className="h-full bg-gradient-to-r from-red-600 to-[#ff3b30] transition-all duration-1000 ease-out"
                     />
-                  </div>
-                  <div className="flex justify-between text-[10px] font-mono text-muted-foreground">
-                    <span>LONG: {positions?.filter((p: any) => p.side === 'LONG').length || 0}</span>
-                    <span>SHORT: {positions?.filter((p: any) => p.side === 'SHORT').length || 0}</span>
                   </div>
                 </div>
 
@@ -1029,29 +1246,34 @@ function DashboardContent() {
                   <div className="overflow-x-auto min-h-[200px]">
                     {activeFleetTab === 'Asset Positions' && (
                       <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="text-[9px] text-muted-foreground uppercase tracking-widest border-b border-white/5">
-                            <th className="pb-3 pl-2 font-bold">Asset</th>
-                            <th className="pb-3 font-bold">Type</th>
-                            <th className="pb-3 font-bold">Position Value / Size <span className="text-[#00ff9d]">↓</span></th>
-                            <th className="pb-3 font-bold">Unrealized PnL</th>
-                            <th className="pb-3 font-bold">Entry Price</th>
-                            <th className="pb-3 font-bold">Current Price</th>
-                            <th className="pb-3 font-bold">Liq. Price</th>
-                            <th className="pb-3 font-bold">Margin Used</th>
-                            <th className="pb-3 pr-2 font-bold text-right">Funding</th>
+                        <thead className="bg-black/40">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Moeda</th>
+                            <th className="px-4 py-3 text-left text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Lado</th>
+                            <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Investimento</th>
+                            <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Preço Entrada</th>
+                            <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Preço Atual</th>
+                            <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Lucro/Prejuízo</th>
+                            <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Status</th>
                           </tr>
                         </thead>
                         <tbody className="text-sm">
                           {positions?.length > 0 ? (
                             positions.map((pos: any, idx: number) => (
-                              <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
+                              <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.05] transition-all duration-300 group cursor-default">
                                 <td className="py-3 pl-2">
                                   <div className="font-bold text-white">{pos.symbol}</div>
                                   <div className="text-[10px] text-muted-foreground">10x</div>
                                 </td>
                                 <td className="py-3">
-                                  <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase", pos.side === 'LONG' ? "bg-[#00ff9d]/10 text-[#00ff9d]" : "bg-[#ff3b30]/10 text-[#ff3b30]")}>
+                                  <span className={cn(
+                                    "relative px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider overflow-hidden inline-flex items-center gap-1",
+                                    pos.side === 'LONG' ? "bg-green-500/20 text-[#00ff9d]" : "bg-red-500/20 text-red-400"
+                                  )}>
+                                    <span className={cn(
+                                      "w-1 h-1 rounded-full animate-pulse",
+                                      pos.side === 'LONG' ? "bg-[#00ff9d]" : "bg-red-400"
+                                    )} />
                                     {pos.side}
                                   </span>
                                 </td>

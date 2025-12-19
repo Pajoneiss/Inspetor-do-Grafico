@@ -137,6 +137,24 @@ class LLMClient:
                             prices = state.get("prices", {})
                             entry_price = prices.get(symbol, 0)
                         
+                        # Calculate risk values if possible
+                        stop_price = action.get('stop_price', 0)
+                        risk_usd = 0
+                        risk_pct = 0
+                        
+                        if entry_price and stop_price and stop_price != entry_price:
+                            size_usd = action.get('size', 0)
+                            # Risk per share
+                            risk_per_unit = abs(entry_price - stop_price)
+                            # Total risk in USD
+                            num_units = size_usd / entry_price if entry_price > 0 else 0
+                            risk_usd = num_units * risk_per_unit
+                            
+                            # Risk % of equity
+                            equity = state.get("equity", 0)
+                            if equity > 0:
+                                risk_pct = (risk_usd / equity) * 100
+
                         trade_log = {
                             'symbol': symbol,
                             'action': 'ENTRY',
@@ -152,15 +170,15 @@ class LLMClient:
                             },
                             'entry_rationale': action.get('reason', summary),
                             'risk_management': {
-                                'stop_loss': action.get('stop_price', 0),
+                                'stop_loss': stop_price,
                                 'stop_loss_reason': state_snapshot.get('invalidation', 'Structure-based stop'),
-                                'risk_usd': 0,  # Will be calculated by dashboard
-                                'risk_pct': 0,
+                                'risk_usd': round(risk_usd, 2),
+                                'risk_pct': round(risk_pct, 2),
                                 'take_profit_1': action.get('tp_price', 0),
                                 'tp1_reason': 'AI target level',
                                 'tp1_size_pct': 50,
-                                'take_profit_2': 0,
-                                'tp2_reason': 'Trailing',
+                                'take_profit_2': action.get('tp2_price', action.get('tp_price', 0) * (1.05 if action.get('side') == 'LONG' else 0.95)),
+                                'tp2_reason': 'Secondary target / Trailing',
                                 'tp2_size_pct': 50
                             },
                             'confidence': confidence,
@@ -432,8 +450,10 @@ IMPORTANT
 
 ACCOUNT STATUS:
 - Equity: ${state.get('equity', 0):.2f} (Total Portfolio Value)
-- Spendable Margin: ${state.get('available_margin', 0):.2f} (Actual USD available for new trades)
-- Leveraged Buying Power: ${state.get('buying_power', 0):.2f} (Theoretical limit including leverage)
+- Withdrawable Cash: ${state.get('available_margin', 0):.2f}
+- Total Buying Power: ${state.get('buying_power', 0):.2f} (with {state.get('leverage', 1)}x leverage)
+- Active Positions: {len(state.get('positions', {}))}
+- Open Orders: {state.get('open_orders_count', 0)}
 
 ⚠️ CRITICAL TRADING RULES:
 - Minimum trade size is $10.00 notional.

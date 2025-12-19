@@ -3,6 +3,8 @@ Hyperliquid Client for Engine V0
 Read-only integration with Hyperliquid API
 """
 import traceback
+import threading
+import time
 from typing import Optional, Dict, Any, List
 from hyperliquid.info import Info
 from hyperliquid.exchange import Exchange
@@ -71,6 +73,10 @@ class HLClient:
         
         self.info_client: Optional[Info] = None
         self.exchange_client: Optional[Exchange] = None
+        
+        # Throttling Semaphore (Limit parallel API calls)
+        self._api_semaphore = threading.Semaphore(3)
+        self._last_429_time = 0
         
         # Meta cache for symbol constraints
         self._meta_cache = None
@@ -164,8 +170,13 @@ class HLClient:
                     "positions_count": 0
                 }
             
-            # Get user state from Hyperliquid
-            user_state = self.info_client.user_state(self.wallet_address)
+            # Backoff if we recently had a 429
+            if time.time() - self._last_429_time < 5:
+                time.sleep(1)
+
+            with self._api_semaphore:
+                # Get user state from Hyperliquid
+                user_state = self.info_client.user_state(self.wallet_address)
             
             if not user_state:
                 return {
@@ -215,7 +226,8 @@ class HLClient:
             if not self.info_client or not self.wallet_address:
                 return []
             
-            user_state = self.info_client.user_state(self.wallet_address)
+            with self._api_semaphore:
+                user_state = self.info_client.user_state(self.wallet_address)
             
             if not user_state:
                 return []
@@ -263,8 +275,13 @@ class HLClient:
             if not self.info_client:
                 return None
             
-            # Get all mid prices
-            all_mids = self.info_client.all_mids()
+            # Backoff if recently limited
+            if time.time() - self._last_429_time < 5:
+                time.sleep(0.5)
+
+            with self._api_semaphore:
+                # Get all mid prices
+                all_mids = self.info_client.all_mids()
             
             if not all_mids:
                 return None
@@ -278,6 +295,8 @@ class HLClient:
             return None
             
         except Exception as e:
+            if "429" in str(e):
+                self._last_429_time = time.time()
             print(f"[HL][ERROR] get_last_price({symbol}) failed: {e}")
             traceback.print_exc()
             return None
@@ -602,7 +621,8 @@ class HLClient:
             
             # Try positional args first (most common)
             try:
-                candles = self.info_client.candles_snapshot(symbol, interval, start_ms, now_ms)
+                with self._api_semaphore:
+                    candles = self.info_client.candles_snapshot(symbol, interval, start_ms, now_ms)
                 if candles:
                     # Cache the result
                     self._candles_cache[cache_key] = (candles, current_time)
@@ -610,6 +630,10 @@ class HLClient:
                     return candles
             except TypeError:
                 pass  # Try fallback
+            except Exception as e:
+                if "429" in str(e):
+                    self._last_429_time = time.time()
+                raise e
             
             # Fallback: try with named params
             try:
@@ -660,7 +684,8 @@ class HLClient:
                     return cached_data
             
             # Use MCP info_client.l2_snapshot
-            snapshot = self.info_client.l2_snapshot(symbol)
+            with self._api_semaphore:
+                snapshot = self.info_client.l2_snapshot(symbol)
             
             if not snapshot:
                 return {}
@@ -727,6 +752,8 @@ class HLClient:
                 return {}
             
         except Exception as e:
+            if "429" in str(e):
+                self._last_429_time = time.time()
             print(f"[HL][ERROR] get_orderbook({symbol}) failed: {e}")
             traceback.print_exc()
             return {}
