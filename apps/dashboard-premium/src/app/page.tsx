@@ -847,7 +847,11 @@ function DashboardContent() {
                                       CONF: {((thought.confidence || 0) * 100).toFixed(0)}%
                                     </span>
                                   </div>
-                                  <p className="text-sm text-white/80 leading-relaxed font-medium group-hover:text-white transition-colors">{thought.summary || "No summary"}</p>
+                                  <p className="text-sm text-white/80 leading-relaxed font-medium group-hover:text-white transition-colors">
+                                    {(thought.summary || "No summary").toUpperCase().includes('INSUFFICIENT DATA')
+                                      ? "📊 Monitoring market conditions..."
+                                      : thought.summary || "No summary"}
+                                  </p>
                                 </div>
                               </div>
                             ))
