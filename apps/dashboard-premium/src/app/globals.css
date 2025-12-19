@@ -144,3 +144,26 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #2a2a2a;
 }
+/* --- Mobile Scaling Fix --- */
+@media (max-width: 768px) {
+  :root {
+    font-size: 0.75rem; /* Shorthand scaling */
+  }
+  
+  body {
+    zoom: 0.7; /* Scale everything to fit 20% more on screen */
+  }
+
+  /* Specific mobile overrides for high-density fit */
+  .text-2xl { font-size: 1.25rem !important; }
+  .text-3xl { font-size: 1.5rem !important; }
+  .tracking-[0.2em] { letter-spacing: 0.1em !important; }
+  
+  .glass-card {
+    padding: 0.75rem !important;
+  }
+}
+
+::selection {
+  background: rgba(0, 255, 136, 0.3);
+}

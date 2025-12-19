@@ -296,6 +296,23 @@ def fetch_cmc_gainers_losers() -> Dict[str, List[Dict[str, Any]]]:
     return {"gainers": [], "losers": []}
 
 
+def fetch_hl_prices() -> Dict[str, float]:
+    """Fetch live BTC and ETH prices from Hyperliquid"""
+    try:
+        import httpx
+        with httpx.Client(timeout=4.0) as client:
+            resp = client.post("https://api.hyperliquid.xyz/info", json={"type": "allMids"})
+            if resp.status_code == 200:
+                data = resp.json()
+                return {
+                    "btc": float(data.get("BTC", 0)),
+                    "eth": float(data.get("ETH", 0))
+                }
+    except Exception as e:
+        print(f"[HL_PRICE][WARN] Failed to fetch prices: {e}")
+    return {"btc": 0, "eth": 0}
+
+
 def fetch_macro() -> Dict[str, Any]:
     """
     Fetch macro indicators: USD/BRL, DXY, S&P500, Nasdaq
@@ -332,14 +349,21 @@ def fetch_macro() -> Dict[str, Any]:
                     resp = client.get(url)
                     if resp.status_code == 200:
                         # Format: Symbol,Date,Time,Open,High,Low,Close
-                        parts = resp.text.strip().split(",")
-                        if len(parts) >= 7 and parts[6] != "N/D":
-                            result[key] = float(parts[6])
+                        content = resp.text.strip().split("\n")
+                        if len(content) > 1:
+                            parts = content[1].split(",") # Row 0 is header
+                            if len(parts) >= 7 and parts[6] != "N/D":
+                                result[key] = float(parts[6])
                 except Exception:
                     pass
         
+        # Add BTC/ETH as well for dashboard fallback
+        crypto = fetch_hl_prices()
+        result["btc"] = crypto["btc"]
+        result["eth"] = crypto["eth"]
+        
         _set_cache(cache_key, result, TTL_MACRO)
-        print(f"[MACRO] Fetched: USD/BRL={result['usd_brl']} DXY={result['dxy']}")
+        print(f"[MACRO] Fetched: BTC={result['btc']} DXY={result['dxy']}")
     except Exception as e:
         print(f"[MACRO][WARN] Macro fetch failed: {e}")
     

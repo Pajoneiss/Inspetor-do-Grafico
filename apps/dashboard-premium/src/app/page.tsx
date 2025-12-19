@@ -245,6 +245,53 @@ const MarketBar = ({ data }: { data: any }) => {
   );
 };
 
+const TradingViewChart = ({ symbol, theme = 'dark' }: { symbol: string, theme?: 'dark' | 'light' }) => {
+  const containerId = React.useId().replace(/:/g, '');
+
+  useEffect(() => {
+    const scriptId = 'tradingview-widget-script';
+    let script = document.getElementById(scriptId) as HTMLScriptElement;
+
+    const initWidget = () => {
+      if ((window as any).TradingView) {
+        new (window as any).TradingView.widget({
+          "autosize": true,
+          "symbol": symbol.includes(':') ? symbol : `BINANCE:${symbol}USDT`,
+          "interval": "15",
+          "timezone": "Etc/UTC",
+          "theme": theme,
+          "style": "1",
+          "locale": "en",
+          "enable_publishing": false,
+          "hide_top_toolbar": false,
+          "hide_legend": false,
+          "save_image": false,
+          "container_id": containerId,
+          "backgroundColor": theme === 'dark' ? "rgba(10, 10, 10, 1)" : "rgba(255, 255, 255, 1)",
+          "gridColor": theme === 'dark' ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)",
+        });
+      }
+    };
+
+    if (!script) {
+      script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://s3.tradingview.com/tv.js';
+      script.async = true;
+      script.onload = initWidget;
+      document.head.appendChild(script);
+    } else {
+      initWidget();
+    }
+  }, [symbol, theme, containerId]);
+
+  return (
+    <div className="w-full h-full min-h-[400px] rounded-2xl overflow-hidden border border-white/10 bg-black/20 shadow-2xl">
+      <div id={containerId} className="w-full h-full" />
+    </div>
+  );
+};
+
 // --- Error Boundary ---
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
   constructor(props: any) {
@@ -292,7 +339,7 @@ function DashboardContent() {
   const [thoughts, setThoughts] = useState<AIThought[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'chat' | 'logs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'charts' | 'analytics' | 'chat' | 'logs'>('overview');
   const [activeFleetTab, setActiveFleetTab] = useState<'Asset Positions' | 'Open Orders' | 'Recent Fills' | 'Completed Trades' | 'TWAP' | 'Deposits & Withdrawals'>('Asset Positions');
   const [pnlData, setPnlData] = useState<any>(null);
   const [pnlHistory, setPnlHistory] = useState<any[]>([]);
@@ -464,6 +511,7 @@ function DashboardContent() {
         <nav className="flex-1 w-full space-y-2">
           {[
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+            { id: 'charts', label: 'Charts', icon: LineChart },
             { id: 'analytics', label: 'Analytics', icon: BarChart3 },
             { id: 'chat', label: 'AI Chat', icon: MessageSquare },
             { id: 'logs', label: 'Execution Logs', icon: Terminal },
@@ -553,7 +601,14 @@ function DashboardContent() {
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <MarketBar data={(status as any)?.market_data} />
+              <MarketBar data={{
+                ...((status as any)?.market_data || {}),
+                macro: {
+                  ...((status as any)?.market_data?.macro || {}),
+                  btc: cryptoPrices?.btc?.price || (status as any)?.market_data?.macro?.btc,
+                  eth: cryptoPrices?.eth?.price || (status as any)?.market_data?.macro?.eth,
+                }
+              }} />
 
               {/* Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
@@ -978,34 +1033,34 @@ function DashboardContent() {
                         {/* Confidence - Circular Gauge */}
                         <div className="flex items-center justify-between p-5 rounded-2xl bg-gradient-to-br from-white/5 to-primary/5 border border-white/10 shadow-lg group hover:bg-white/[0.07] transition-all duration-500">
                           <div className="flex items-center gap-6">
-                            <div className="relative w-24 h-24 flex items-center justify-center">
-                              <svg className="w-full h-full transform -rotate-90 filter drop-shadow-[0_0_8px_rgba(0,255,157,0.3)]">
+                            <div className="relative w-20 h-20 flex items-center justify-center">
+                              <svg className="w-full h-full transform -rotate-90 filter drop-shadow-[0_0_8px_rgba(0,255,157,0.3)]" viewBox="0 0 100 100">
                                 <circle
-                                  cx="48"
-                                  cy="48"
-                                  r="40"
+                                  cx="50"
+                                  cy="50"
+                                  r="38"
                                   stroke="currentColor"
-                                  strokeWidth="6"
+                                  strokeWidth="8"
                                   fill="none"
                                   className="text-white/5"
                                 />
                                 <motion.circle
-                                  cx="48"
-                                  cy="48"
-                                  r="40"
+                                  cx="50"
+                                  cy="50"
+                                  r="38"
                                   stroke="currentColor"
-                                  strokeWidth="6"
+                                  strokeWidth="8"
                                   fill="none"
-                                  strokeDasharray="251.2"
-                                  initial={{ strokeDashoffset: 251.2 }}
-                                  animate={{ strokeDashoffset: 251.2 - (251.2 * (tradeLog.confidence || 0.75)) }}
+                                  strokeDasharray="238.76"
+                                  initial={{ strokeDashoffset: 238.76 }}
+                                  animate={{ strokeDashoffset: 238.76 - (238.76 * (tradeLog.confidence || 0.75)) }}
                                   transition={{ duration: 1.5, ease: "easeOut" }}
                                   className="text-primary"
                                   strokeLinecap="round"
                                 />
                               </svg>
                               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-3xl font-extrabold tracking-tighter text-white drop-shadow-md">
+                                <span className="text-2xl font-extrabold tracking-tighter text-white drop-shadow-md">
                                   {((tradeLog.confidence || 0) * 100).toFixed(0)}
                                   <span className="text-xs text-primary ml-0.5">%</span>
                                 </span>
@@ -1044,6 +1099,76 @@ function DashboardContent() {
                   )}
                 </GlassCard>
               </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'charts' && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-8"
+            >
+              <div className="flex flex-col gap-2">
+                <h2 className="text-3xl font-bold tracking-tight">Active Market Charts</h2>
+                <p className="text-muted-foreground">Real-time analysis for current fleet positions</p>
+              </div>
+
+              {positions.length > 0 ? (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  {positions.map((pos, i) => (
+                    <GlassCard key={pos.symbol} delay={i * 0.1} className="!p-0 border-none bg-transparent">
+                      <div className="p-4 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <Activity className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-white uppercase">{pos.symbol}</span>
+                              <span className={cn(
+                                "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase",
+                                pos.side === 'Long' ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+                              )}>
+                                {pos.side} {pos.leverage}x
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Entry: ${Number(pos.entry_price).toLocaleString()}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={cn(
+                            "text-lg font-bold tracking-tighter",
+                            pos.unrealized_pnl >= 0 ? "text-primary" : "text-red-400"
+                          )}>
+                            {pos.unrealized_pnl >= 0 ? '+' : ''}${Number(pos.unrealized_pnl).toFixed(2)}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Unrealized PnL</p>
+                        </div>
+                      </div>
+                      <div className="h-[500px]">
+                        <TradingViewChart symbol={pos.symbol} theme={settings.theme} />
+                      </div>
+                    </GlassCard>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-[60vh] flex flex-col items-center justify-center rounded-[32px] border-2 border-dashed border-white/5 bg-white/[0.01]">
+                  <div className="relative mb-6">
+                    <LineChart className="w-16 h-16 text-muted-foreground/20" />
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.3, 0.1] }}
+                      transition={{ duration: 4, repeat: Infinity }}
+                      className="absolute inset-0 bg-primary blur-3xl rounded-full"
+                    />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">No Active Positions</h3>
+                  <p className="text-muted-foreground text-center max-w-sm px-8">
+                    Open positions will automatically appear here with real-time TradingView charts.
+                  </p>
+                </div>
+              )}
             </motion.div>
           )}
 
