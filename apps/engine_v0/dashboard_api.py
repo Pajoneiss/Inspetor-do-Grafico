@@ -241,6 +241,46 @@ def api_market():
         })
 
 
+@app.route('/api/crypto-prices')
+def api_crypto_prices():
+    """Get real-time BTC and ETH prices"""
+    with _state_lock:
+        market_data = _dashboard_state.get("market", {})
+        macro = market_data.get("macro", {})
+        
+        # Extract BTC and ETH prices from market data
+        btc_price = macro.get("btc") or "0"
+        eth_price = macro.get("eth") or "0"
+        
+        # Clean and convert to float
+        try:
+            btc_val = float(str(btc_price).replace(",", "").replace("$", ""))
+        except:
+            btc_val = 0
+            
+        try:
+            eth_val = float(str(eth_price).replace(",", "").replace("$", ""))
+        except:
+            eth_val = 0
+        
+        return jsonify({
+            "ok": True,
+            "data": {
+                "btc": {
+                    "price": btc_val,
+                    "symbol": "BTC",
+                    "formatted": f"${btc_val:,.2f}" if btc_val > 0 else "---"
+                },
+                "eth": {
+                    "price": eth_val,
+                    "symbol": "ETH",
+                    "formatted": f"${eth_val:,.2f}" if eth_val > 0 else "---"
+                }
+            },
+            "server_time_ms": int(time.time() * 1000)
+        })
+
+
 @app.route('/api/cmc/trending')
 def api_cmc_trending():
     """Get trending coins from CoinMarketCap"""

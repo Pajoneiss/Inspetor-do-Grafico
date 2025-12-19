@@ -25,7 +25,9 @@ import {
   Menu,
   X,
   CheckCircle,
-  LineChart
+  LineChart,
+  History,
+  UserCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -294,6 +296,7 @@ function DashboardContent() {
   const [openOrders, setOpenOrders] = useState<any[]>([]);
   const [recentFills, setRecentFills] = useState<any[]>([]);
   const [transfers, setTransfers] = useState<any[]>([]);
+  const [cryptoPrices, setCryptoPrices] = useState<{ btc: any, eth: any } | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -472,7 +475,7 @@ function DashboardContent() {
               <Menu className="w-6 h-6" />
             </button>
             <div>
-              <h2 className="text-2xl lg:text-3xl font-bold tracking-tight mb-1">Operational Dashboard</h2>
+              <h2 className="text-2xl lg:text-3xl font-bold tracking-tight mb-1">O Inspetor Do Gráfico</h2>
               <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest">
                 <span className={cn("flex items-center gap-2", error ? "text-secondary" : "text-primary")}>
                   <span className={cn("w-2 h-2 rounded-full", error ? "bg-secondary" : "bg-primary animate-pulse neon-glow")} />
@@ -492,13 +495,17 @@ function DashboardContent() {
               <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Local Time</span>
               <span className="text-sm font-mono tracking-tighter text-white/80">{time.toLocaleTimeString()}</span>
             </div>
-            <button className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all">
-              <Bell className="w-5 h-5" />
-            </button>
+            <motion.button
+              className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <History className="w-5 h-5" />
+            </motion.button>
             <div className="h-10 w-px bg-white/10 mx-2" />
             <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl pl-1.5 pr-4 py-1.5 hover:border-primary/50 transition-all cursor-pointer">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center font-bold text-xs text-black">
-                LB
+                <UserCircle className="w-5 h-5" />
               </div>
               <div className="hidden lg:block">
                 <p className="text-[10px] font-bold tracking-widest uppercase opacity-50 leading-none mb-1">Commander</p>
