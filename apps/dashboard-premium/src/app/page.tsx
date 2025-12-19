@@ -354,6 +354,7 @@ function DashboardContent() {
   const [status, setStatus] = useState<DashboardData | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
   const [thoughts, setThoughts] = useState<AIThought[]>([]);
+  const [allThoughts, setAllThoughts] = useState<AIThought[]>([]); // Full logs including HOLDs
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'charts' | 'analytics' | 'chat' | 'logs'>('overview');
@@ -381,10 +382,11 @@ function DashboardContent() {
     if (!API_URL) return;
 
     try {
-      const [statusRes, posRes, thoughtRes, pnlRes, historyRes, tradeLogsRes, fullAnalyticsRes, ordersRes, fillsRes, transfersRes] = await Promise.all([
+      const [statusRes, posRes, thoughtRes, allThoughtRes, pnlRes, historyRes, tradeLogsRes, fullAnalyticsRes, ordersRes, fillsRes, transfersRes] = await Promise.all([
         fetch(`${API_URL}/api/status`).then(r => r.json()),
         fetch(`${API_URL}/api/positions`).then(r => r.json()),
-        fetch(`${API_URL}/api/ai/thoughts`).then(r => r.json()),
+        fetch(`${API_URL}/api/ai/thoughts`).then(r => r.json()), // Filtered for overview
+        fetch(`${API_URL}/api/ai/thoughts?include_all=true`).then(r => r.json()), // Full for logs
         fetch(`${API_URL}/api/pnl`).then(r => r.json()),
         fetch(`${API_URL}/api/pnl/history`).then(r => r.json()),
         fetch(`${API_URL}/api/ai/trade-logs`).then(r => r.json()),
@@ -396,6 +398,7 @@ function DashboardContent() {
 
       if (statusRes.ok) setStatus(statusRes.data);
       if (posRes.ok) setPositions(posRes.data);
+      if (allThoughtRes.ok) setAllThoughts(allThoughtRes.data); // Full logs for Execution tab
       if (thoughtRes.ok) setThoughts(thoughtRes.data);
       if (pnlRes.ok) setPnlData(pnlRes.data);
       if (historyRes.ok && Array.isArray(historyRes.data)) setPnlHistory(historyRes.data);
@@ -2001,8 +2004,8 @@ function DashboardContent() {
                     <h3 className="text-2xl font-bold tracking-tight">Execution Stream</h3>
                   </div>
                   <div className="space-y-3 h-[450px] overflow-y-auto no-scrollbar">
-                    {thoughts?.length > 0 ? (
-                      thoughts.map((thought, i) => (
+                    {allThoughts?.length > 0 ? (
+                      allThoughts.map((thought, i) => (
                         <div key={i} className="text-xs border-b border-white/5 pb-2">
                           <span className="text-muted-foreground mr-3">[{new Date(thought.timestamp).toLocaleTimeString()}]</span>
                           <span className="text-primary mr-2">[{thought.emoji || '🤖'}]</span>
