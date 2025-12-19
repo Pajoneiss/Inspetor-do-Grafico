@@ -379,11 +379,28 @@ function DashboardContent() {
   useEffect(() => {
     setMounted(true);
     fetchData();
+
+    // Fetch crypto prices separately
+    const fetchCryptoPrices = async () => {
+      if (!API_URL) return;
+      try {
+        const res = await fetch(`${API_URL}/api/crypto-prices`);
+        const data = await res.json();
+        if (data.ok) setCryptoPrices(data.data);
+      } catch (err) {
+        console.error("Crypto prices fetch error:", err);
+      }
+    };
+    fetchCryptoPrices();
+
     const timer = setInterval(() => setTime(new Date()), 1000);
     const apiTimer = setInterval(fetchData, 5000); // UI Refresh 5s
+    const cryptoTimer = setInterval(fetchCryptoPrices, 10000); // Crypto prices every 10s
+
     return () => {
       clearInterval(timer);
       clearInterval(apiTimer);
+      clearInterval(cryptoTimer);
     };
   }, []);
 
