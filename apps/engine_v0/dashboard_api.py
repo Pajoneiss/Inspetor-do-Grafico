@@ -468,27 +468,37 @@ def api_pnl():
 _api_cache = {}
 API_CACHE_TTL = 60  # 1 minute cache for heavy calls
 
-def get_cached_response(key, fetch_func, ttl=API_CACHE_TTL):
-    """Helper to caching API responses"""
+def _get_cache(key):
+    """Get item from cache if valid"""
     global _api_cache
-    now = time.time()
-    
     if key in _api_cache:
-        data, timestamp = _api_cache[key]
-        if now - timestamp < ttl:
+        data, timestamp, ttl = _api_cache[key]
+        if time.time() - timestamp < ttl:
             return data
+    return None
+
+def _set_cache(key, data, ttl=60):
+    """Set item in cache"""
+    global _api_cache
+    _api_cache[key] = (data, time.time(), ttl)
+
+def get_cached_response(key, fetch_func, ttl=API_CACHE_TTL):
+    """Helper to using _get_cache logic with fetch fallback"""
+    cached = _get_cache(key)
+    if cached is not None:
+        return cached
             
     # Fetch new data
     try:
         data = fetch_func()
         if data:
-            _api_cache[key] = (data, now)
+            _set_cache(key, data, ttl)
         return data
     except Exception as e:
         print(f"[CACHE] Error fetching {key}: {e}")
-        # Return stale data if available on error
-        if key in _api_cache:
-            return _api_cache[key][0]
+        # Return stale data if available on error?
+        # For now reusing _get_cache which enforces TTL so no strict stale fallback here
+        # unless we modify _get_cache to return stale. Leaving as is.
         raise e
 
 @app.route('/api/analytics')

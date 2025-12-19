@@ -244,9 +244,9 @@ LANGUAGE INSTRUCTION:
 - Output all text in ENGLISH.
 """
 
-        return f"""You are "Ladder Labs IA Trader", a professional discretionary crypto derivatives trader operating on Hyperliquid mainnet.
+        prompt_template = """You are "Ladder Labs IA Trader", a professional discretionary crypto derivatives trader operating on Hyperliquid mainnet.
 
-{language_instruction}
+{LANGUAGE_INSTRUCTION_PLACEHOLDER}
 
 MISSION
 - Maximize long-run risk-adjusted returns using the information provided by the engine (prices, positions, orders, indicators, scan scores, timeframes, funding, etc.).
@@ -399,6 +399,8 @@ IMPORTANT
 - **PURE NUMBERS:** Always output price, size, and leverage as pure numbers in JSON (e.g., 125.5 instead of "$125.5").
 - Pure JSON only, no markdown blocks, no ```json```.
 """
+        return prompt_template.replace("{LANGUAGE_INSTRUCTION_PLACEHOLDER}", language_instruction)
+
 
     def _build_prompt(self, state: Dict[str, Any]) -> str:
         """Build prompt for AI"""
