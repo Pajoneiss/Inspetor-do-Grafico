@@ -30,7 +30,7 @@ import {
   UserCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SettingsModal } from "@/components/SettingsModal";
+import SettingsModal from "@/components/SettingsModal";
 import { useSettings } from "@/hooks/useSettings";
 
 // --- Hooks ---
