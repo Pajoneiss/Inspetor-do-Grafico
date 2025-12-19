@@ -132,11 +132,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <SettingsContext.Provider value= {{ settings, updateSetting, resetSettings }
-}>
-    { children }
+        <SettingsContext.Provider value={{ settings, updateSetting, resetSettings }}>
+            {children}
     </SettingsContext.Provider>
-  );
+    );
 }
 
 // Hook to use settings
