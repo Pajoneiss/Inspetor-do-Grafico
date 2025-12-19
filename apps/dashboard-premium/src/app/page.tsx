@@ -474,8 +474,8 @@ function DashboardContent() {
     fetchCryptoPrices();
 
     const timer = setInterval(() => setTime(new Date()), 1000);
-    const apiTimer = setInterval(fetchData, 5000); // UI Refresh 5s
-    const cryptoTimer = setInterval(fetchCryptoPrices, 10000); // Crypto prices every 10s
+    const apiTimer = setInterval(fetchData, 15000); // UI Refresh 15s
+    const cryptoTimer = setInterval(fetchCryptoPrices, 15000); // Crypto prices every 15s
 
     return () => {
       clearInterval(timer);
