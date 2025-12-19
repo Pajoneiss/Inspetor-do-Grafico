@@ -79,6 +79,13 @@ def update_dashboard_state(state_data: dict):
 def add_ai_action(action: dict):
     """Add AI action to history (keep last 50)"""
     global _dashboard_state
+    
+    # Suppress "NO_TRADE" actions from the dashboard to prevent log pollution
+    # Check if 'actions' list exists and contains only NO_TRADE
+    actions_list = action.get("actions", [])
+    if actions_list and all(a.get("type") in ("NO_TRADE", "WAIT", "HOLD") for a in actions_list):
+        return
+
     with _state_lock:
         # Deduplicate: Don't add if identical to the last one
         if _dashboard_state["ai_actions"] and _dashboard_state["ai_actions"][0]["reason"] == action["reason"]:
@@ -240,6 +247,7 @@ def api_positions():
             else:
                 hl_data = {}
 
+        real_pos_map = {}
         if hl_data:
             asset_positions = hl_data.get("assetPositions", [])
             universe = hl_data.get("universe", [])
