@@ -1112,7 +1112,7 @@ function DashboardContent() {
                       </GlassCard>
                     </div>
                   </motion.div>
-          )}
+                )}
 
                   {activeTab === 'all' && (
                     <motion.div
