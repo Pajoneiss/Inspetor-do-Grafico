@@ -219,9 +219,19 @@ const MarketBar = ({ data }: { data: any }) => {
   if (!data || !data.macro) return null;
   const { macro } = data;
 
-  const formatValue = (val: any) => {
-    if (val === null || val === undefined || val === "N/A") return '---';
-    if (typeof val === 'number') return val.toLocaleString();
+  const formatValue = (val: any, prefix = '', suffix = '') => {
+    if (val === null || val === undefined || val === "N/A" || val === "---") return '---';
+    // Try to parse string numbers
+    let numVal = val;
+    if (typeof val === 'string') {
+      const parsed = parseFloat(val);
+      if (!isNaN(parsed)) numVal = parsed;
+    }
+
+    if (typeof numVal === 'number') {
+      const formatted = numVal.toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+      return `${prefix}${formatted}${suffix}`;
+    }
     return String(val);
   };
 
@@ -229,9 +239,9 @@ const MarketBar = ({ data }: { data: any }) => {
     { label: "S&P 500", value: formatValue(macro.sp500), color: "text-[#00ff9d]" },
     { label: "NASDAQ", value: formatValue(macro.nasdaq), color: "text-[#00ff9d]" },
     { label: "DXY", value: formatValue(macro.dxy), color: "text-blue-400" },
-    { label: "USD/BRL", value: macro.usd_brl && macro.usd_brl !== "N/A" ? `R$ ${Number(macro.usd_brl).toFixed(2)}` : '---', color: "text-green-400" },
-    { label: "BTC", value: macro.btc && macro.btc !== 0 ? `$${Number(macro.btc).toLocaleString()}` : '---', color: "text-orange-400" },
-    { label: "ETH", value: macro.eth && macro.eth !== 0 ? `$${Number(macro.eth).toLocaleString()}` : '---', color: "text-purple-400" },
+    { label: "USD/BRL", value: macro.usd_brl && macro.usd_brl !== "N/A" ? `R$ ${parseFloat(String(macro.usd_brl)).toFixed(2)}` : '---', color: "text-green-400" },
+    { label: "BTC", value: formatValue(macro.btc, '$'), color: "text-orange-400" },
+    { label: "ETH", value: formatValue(macro.eth, '$'), color: "text-purple-400" },
   ];
 
   return (
@@ -578,19 +588,66 @@ function DashboardContent() {
             </div>
           </div>
 
+
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex flex-col items-end mr-4">
               <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Local Time</span>
               <span className="text-sm font-mono tracking-tighter text-white/80">{time.toLocaleTimeString()}</span>
             </div>
-            <motion.button
-              className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setViewAllModalOpen(true)}
-            >
-              <History className="w-5 h-5" />
-            </motion.button>
+
+            {/* Simple History Dropdown */}
+            <div className="relative">
+              <motion.button
+                className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setViewAllModalOpen(!viewAllModalOpen)}
+              >
+                <History className="w-5 h-5" />
+              </motion.button>
+
+              <AnimatePresence>
+                {viewAllModalOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 top-full mt-2 w-64 p-4 rounded-xl glass-card border border-white/10 shadow-2xl z-50 origin-top-right"
+                  >
+                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/5">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Recent History</h4>
+                    </div>
+
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {status?.data?.pnl_history_recent && status.data.pnl_history_recent.length > 0 ? (
+                        status.data.pnl_history_recent.map((item: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between text-xs">
+                            <span className="font-mono text-white/60">{new Date(item.timestamp).toLocaleDateString()} {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span className={cn("font-bold", item.pnl >= 0 ? "text-primary" : "text-red-400")}>
+                              {item.pnl >= 0 ? "WIN" : "LOSS"}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        // Fallback mock data if real history is empty/loading
+                        fullAnalytics?.history?.slice(-5).reverse().map((h: any, i: number) => {
+                          const isWin = (h.value - (fullAnalytics?.history?.[fullAnalytics.history.length - i - 2]?.value || h.value)) >= 0;
+                          return (
+                            <div key={i} className="flex items-center justify-between text-xs">
+                              <span className="font-mono text-white/60">{new Date(h.time).toLocaleDateString()}</span>
+                              <span className={cn("font-bold", isWin ? "text-primary" : "text-red-400")}>
+                                {isWin ? "WIN" : "LOSS"}
+                              </span>
+                            </div>
+                          )
+                        }) || <p className="text-xs text-center text-white/30 py-2">No recent history</p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             <div className="h-10 w-px bg-white/10 mx-2" />
             <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl pl-1.5 pr-4 py-1.5 hover:border-primary/50 transition-all cursor-pointer">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center font-bold text-xs text-black">

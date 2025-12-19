@@ -350,10 +350,22 @@ def fetch_macro() -> Dict[str, Any]:
                     if resp.status_code == 200:
                         # Format: Symbol,Date,Time,Open,High,Low,Close
                         content = resp.text.strip().split("\n")
-                        if len(content) > 1:
-                            parts = content[1].split(",") # Row 0 is header
-                            if len(parts) >= 7 and parts[6] != "N/D":
-                                result[key] = float(parts[6])
+                        
+                        # Find the data line (skipping header if present)
+                        data_parts = None
+                        for line in content:
+                            parts = line.split(",")
+                            # Data line usually starts with Symbol name or has numeric date/time
+                            # Header line starts with "Symbol" or "Date"
+                            if len(parts) >= 7 and "Symbol" not in parts[0] and "Date" not in parts[1]:
+                                data_parts = parts
+                                break
+                        
+                        if data_parts and len(data_parts) >= 7 and data_parts[6] != "N/D":
+                            try:
+                                result[key] = float(data_parts[6])
+                            except ValueError:
+                                pass
                 except Exception:
                     pass
         
