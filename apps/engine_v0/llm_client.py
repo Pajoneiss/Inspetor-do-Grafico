@@ -307,6 +307,35 @@ ORDER/EXECUTION HYGIENE
 - **Change of Character:** When market behavior shifts (e.g., lower highs after uptrend), anticipate reversal.
 - **Better to be early with tight stop than late with wide stop.**
 
+🚨 FAKEOUT PREVENTION (CRITICAL - AVOID FALSE BREAKOUTS)
+This is ESSENTIAL for profitable trading. Most losses come from fakeouts.
+
+**VOLUME CONFIRMATION (MANDATORY FOR BREAKOUTS):**
+- Breakout WITHOUT high volume = likely FAKEOUT. DO NOT ENTER.
+- Look for relative_volume > 1.5 (150% of average) on breakout candle.
+- If breaking key level with low volume: WAIT for retest/confirmation.
+- Volume spike BEFORE price move = institutional accumulation = valid signal.
+- Volume dies during breakout = trap, expect reversal back.
+
+**FUNDING RATE AWARENESS (PERPETUAL SPECIFIC):**
+You are trading perpetuals on Hyperliquid. Funding rate is CRITICAL.
+- **funding_rate > 0.03%**: Market is over-leveraged LONG → dangerous for new longs
+- **funding_rate < -0.03%**: Market is over-leveraged SHORT → dangerous for new shorts  
+- **Extreme funding (>0.05% or <-0.05%)**: HIGH PROBABILITY of squeeze against crowded side
+- Counter-trend entries CAN be profitable when funding is extreme (mean reversion)
+
+**FAKEOUT DETECTION CHECKLIST:**
+Before entering on any breakout, ask:
+1. Is volume above average (relative_volume > 1.5)? If NO → likely fakeout
+2. Is funding rate supporting this direction? If opposite → higher fakeout risk
+3. Is there clear structure break on multiple timeframes? If only 1TF → suspect
+4. Did price wick above/below level and return? That's the fakeout, not the signal.
+
+**WHEN IN DOUBT:**
+- Don't chase breakouts. Wait for RETEST of broken level.
+- If you miss the move, don't FOMO. Wait for next setup.
+- A missed trade costs $0. A fakeout trade costs money.
+
 💪 TRUST YOUR EDGE
 - If you see clear structural shift + divergence + timeframe alignment, that IS sufficient edge even if confidence feels "only" 0.65
 - Don't second-guess strong setups waiting for 0.9 confidence
@@ -464,6 +493,25 @@ IMPORTANT
         
         structure_str = "\n".join(structure_lines) if structure_lines else "(no structure data)"
         
+        # Format funding rates (CRITICAL for identifying over-leveraged markets)
+        funding_data = state.get("funding_by_symbol", {})
+        funding_lines = []
+        for symbol, finfo in funding_data.items():
+            rate = finfo.get("funding_rate", 0)
+            # Color code extreme rates
+            if rate > 0.03:
+                warning = "⚠️ HIGH (longs paying)"
+            elif rate < -0.03:
+                warning = "⚠️ HIGH (shorts paying)"
+            elif rate > 0.01:
+                warning = "↑ positive"
+            elif rate < -0.01:
+                warning = "↓ negative"
+            else:
+                warning = "neutral"
+            funding_lines.append(f"  {symbol}: {rate:.4f}% ({warning})")
+        funding_str = "\n".join(funding_lines) if funding_lines else "(no funding data)"
+        
         return f"""MARKET DATA SNAPSHOT:
 
 ACCOUNT STATUS:
@@ -487,6 +535,9 @@ MARKET SCAN (TOP INDICATOR SCORES):
 
 MARKET STRUCTURE (SMC):
 {structure_str}
+
+💰 FUNDING RATES (CRITICAL FOR FAKEOUT DETECTION):
+{funding_str}
 
 DETAILED CHART ANALYSIS (Top 8 Symbols):
 {candles_str}
