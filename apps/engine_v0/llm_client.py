@@ -8,7 +8,7 @@ from candle_formatter import format_multi_timeframe_candles
 from typing import Dict, Any
 from openai import OpenAI
 
-from config import OPENAI_API_KEY, AI_MODEL
+from config import OPENAI_API_KEY, AI_MODEL, AI_LANGUAGE
 
 
 class LLMClient:
@@ -230,7 +230,23 @@ class LLMClient:
         Professional discretionary trader prompt - NO hardcoded rules
         AI decides everything based on data provided
         """
-        return """You are "Ladder Labs IA Trader", a professional discretionary crypto derivatives trader operating on Hyperliquid mainnet.
+        language_instruction = ""
+        if AI_LANGUAGE == "portuguese":
+            language_instruction = """
+LANGUAGE INSTRUCTION:
+- You MUST output the "summary" and "reason" fields in BRAZILIAN PORTUGUESE (PT-BR).
+- Keep the JSON keys in English (e.g. "actions", "type", "symbol").
+- Only the values meant for human reading (summary, reason) should be in Portuguese.
+"""
+        else:
+            language_instruction = """
+LANGUAGE INSTRUCTION:
+- Output all text in ENGLISH.
+"""
+
+        return f"""You are "Ladder Labs IA Trader", a professional discretionary crypto derivatives trader operating on Hyperliquid mainnet.
+
+{language_instruction}
 
 MISSION
 - Maximize long-run risk-adjusted returns using the information provided by the engine (prices, positions, orders, indicators, scan scores, timeframes, funding, etc.).

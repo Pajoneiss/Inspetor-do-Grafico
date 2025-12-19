@@ -80,6 +80,10 @@ def add_ai_action(action: dict):
     """Add AI action to history (keep last 50)"""
     global _dashboard_state
     with _state_lock:
+        # Deduplicate: Don't add if identical to the last one
+        if _dashboard_state["ai_actions"] and _dashboard_state["ai_actions"][0]["reason"] == action["reason"]:
+            return
+
         action["timestamp"] = datetime.now(timezone.utc).isoformat()
         _dashboard_state["ai_actions"].insert(0, action)
         _dashboard_state["ai_actions"] = _dashboard_state["ai_actions"][:50]

@@ -12,6 +12,7 @@ AI_ENABLED = os.getenv("AI_ENABLED", "true").lower() == "true"
 
 # AI Configuration
 AI_MODEL = os.getenv("AI_MODEL") or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+AI_LANGUAGE = os.getenv("AI_LANGUAGE", "english").lower() # 'english' or 'portuguese'
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 # External APIs

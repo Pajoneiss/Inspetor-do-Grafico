@@ -126,6 +126,7 @@ def main():
     rotate_offset = 0  # For ROTATE mode
     last_external_fetch = 0  # For data_sources throttle
     external_data = {}
+    last_ai_price = 0.0 # Track price for volatility trigger
 
     
     try:
@@ -620,10 +621,18 @@ def main():
                     # Calculate total unrealized PnL for sensitivity
                     total_unpnl = sum(p.get("unrealized_pnl", 0) for p in state.get("positions", {}).values())
                     
-                    # Build sensitive state hash (positions + equity + unpnl with 1 decimal)
-                    current_hash = f"{len(state.get('positions', {}))}_{current_equity:.1f}_{total_unpnl:.1f}"
+                    # v15.0: Price Volatility Trigger (Wake up on big moves even if no position)
+                    current_price = state.get("prices", {}).get(SYMBOL, 0)
+                    price_change_pct = 0
+                    if last_ai_price > 0 and current_price > 0:
+                        price_change_pct = abs((current_price - last_ai_price) / last_ai_price * 100)
+                    
+                    # Build sensitive state hash (positions + equity + unpnl + price_tier)
+                    current_hash = f"{len(state.get('positions', {}))}_{current_equity:.1f}_{total_unpnl:.1f}_{int(current_price/100)}"
                     state_changed = current_hash != last_state_hash
-                    material_change = equity_change_pct >= LLM_STATE_CHANGE_THRESHOLD or state_changed
+                    
+                    # Wake up if: Equity changed OR State changed OR Price moved > 0.5%
+                    material_change = equity_change_pct >= LLM_STATE_CHANGE_THRESHOLD or state_changed or price_change_pct >= 0.5
                     
                     min_time_passed = time_since_last_call >= LLM_MIN_SECONDS
                     full_cooldown_passed = time_since_last_call >= AI_CALL_INTERVAL_SECONDS
@@ -652,6 +661,7 @@ def main():
                             last_ai_call_time = current_time
                             last_state_hash = current_hash
                             last_equity = current_equity
+                            last_ai_price = current_price
                             
                             # Execute actions from LLM
                             actions = decision.get("actions", [])
