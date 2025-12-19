@@ -218,13 +218,19 @@ const MarketBar = ({ data }: { data: any }) => {
   if (!data || !data.macro) return null;
   const { macro } = data;
 
+  const formatValue = (val: any) => {
+    if (val === null || val === undefined || val === "N/A") return '---';
+    if (typeof val === 'number') return val.toLocaleString();
+    return String(val);
+  };
+
   const items = [
-    { label: "S&P 500", value: macro.sp500 && macro.sp500 !== "N/A" ? Number(macro.sp500).toLocaleString() : '---', color: "text-[#00ff9d]" },
-    { label: "NASDAQ", value: macro.nasdaq && macro.nasdaq !== "N/A" ? Number(macro.nasdaq).toLocaleString() : '---', color: "text-[#00ff9d]" },
-    { label: "DXY", value: macro.dxy || '---', color: "text-blue-400" },
-    { label: "USD/BRL", value: macro.usd_brl ? `R$ ${Number(macro.usd_brl).toFixed(2)}` : '---', color: "text-green-400" },
-    { label: "BTC", value: macro.btc || '---', color: "text-orange-400" },
-    { label: "ETH", value: macro.eth || '---', color: "text-purple-400" },
+    { label: "S&P 500", value: formatValue(macro.sp500), color: "text-[#00ff9d]" },
+    { label: "NASDAQ", value: formatValue(macro.nasdaq), color: "text-[#00ff9d]" },
+    { label: "DXY", value: formatValue(macro.dxy), color: "text-blue-400" },
+    { label: "USD/BRL", value: macro.usd_brl && macro.usd_brl !== "N/A" ? `R$ ${Number(macro.usd_brl).toFixed(2)}` : '---', color: "text-green-400" },
+    { label: "BTC", value: macro.btc && macro.btc !== 0 ? `$${Number(macro.btc).toLocaleString()}` : '---', color: "text-orange-400" },
+    { label: "ETH", value: macro.eth && macro.eth !== 0 ? `$${Number(macro.eth).toLocaleString()}` : '---', color: "text-purple-400" },
   ];
 
   return (
@@ -348,6 +354,8 @@ function DashboardContent() {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [tradeLog, setTradeLog] = useState<any>(null);
+  const [_trade_logs, _setTradeLogs] = useState<any[]>([]);
+  const [viewAllModalOpen, setViewAllModalOpen] = useState(false);
   const [fullAnalytics, setFullAnalytics] = useState<any>(null);
   const [openOrders, setOpenOrders] = useState<any[]>([]);
   const [recentFills, setRecentFills] = useState<any[]>([]);
@@ -380,7 +388,10 @@ function DashboardContent() {
       if (thoughtRes.ok) setThoughts(thoughtRes.data);
       if (pnlRes.ok) setPnlData(pnlRes.data);
       if (historyRes.ok && Array.isArray(historyRes.data)) setPnlHistory(historyRes.data);
-      if (tradeLogsRes.ok && tradeLogsRes.data && tradeLogsRes.data.length > 0) setTradeLog(tradeLogsRes.data[0]);
+      if (tradeLogsRes.ok && tradeLogsRes.data && tradeLogsRes.data.length > 0) {
+        setTradeLog(tradeLogsRes.data[0]);
+        _setTradeLogs(tradeLogsRes.data); // Save ALL logs for chart headers and multi-card display
+      }
       if (fullAnalyticsRes.ok) setFullAnalytics(fullAnalyticsRes.data);
       if (ordersRes.ok && Array.isArray(ordersRes.data)) setOpenOrders(ordersRes.data);
       if (fillsRes.ok && Array.isArray(fillsRes.data)) setRecentFills(fillsRes.data);
@@ -836,7 +847,7 @@ function DashboardContent() {
                 </GlassCard>
               </div>
 
-              {/* Latest AI Trade Analysis - Full Width WOW Feature */}
+              {/* Latest AI Trade Analysis - Multi-Position Grid */}
               <div className="mt-10">
                 <GlassCard className="border border-purple-500/20" delay={0.35}>
                   <div className="flex items-center justify-between mb-6">
@@ -846,240 +857,69 @@ function DashboardContent() {
                       </div>
                       <div>
                         <h3 className="text-xl font-bold tracking-tight">Latest AI Trade Analysis</h3>
-                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">Detailed Strategy Breakdown</p>
+                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">All Active Positions</p>
                       </div>
                     </div>
-                    <button className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-all text-xs font-bold uppercase tracking-wider">
+                    <button
+                      onClick={() => setViewAllModalOpen(true)}
+                      className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-all text-xs font-bold uppercase tracking-wider"
+                    >
                       View All
                     </button>
                   </div>
 
-                  {tradeLog ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      <div className="space-y-6">
-                        {/* Trade Header */}
-                        <div className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 to-primary/10 border border-white/10">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center font-bold text-lg">
-                              {tradeLog.symbol?.substring(0, 2) || 'BTC'}
-                            </div>
-                            <div>
-                              <h4 className="text-lg font-bold">{tradeLog.symbol} {tradeLog.side}</h4>
-                              <p className="text-xs text-muted-foreground font-bold">@ ${tradeLog.entry_price?.toLocaleString() || '0'}</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Setup Quality</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <div className="h-2 w-24 bg-white/10 rounded-full overflow-hidden">
-                                <motion.div
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${(tradeLog.strategy?.setup_quality || 0) * 10}%` }}
-                                  className="h-full bg-gradient-to-r from-primary to-purple-500 neon-glow"
-                                />
+                  {_trade_logs && _trade_logs.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {_trade_logs.slice(0, 6).map((log: any, idx: number) => (
+                        <motion.div
+                          key={log.id || idx}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: idx * 0.05 }}
+                          className="p-3 rounded-xl bg-gradient-to-br from-white/5 to-purple-500/5 border border-white/10 hover:border-purple-500/30 transition-all scale-75 origin-top-left"
+                        >
+                          {/* Compact Header */}
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-[10px] font-bold">
+                                {log.symbol?.substring(0, 2) || 'BTC'}
                               </div>
-                              <span className="text-sm font-bold text-primary">{tradeLog.strategy?.setup_quality || 0}/10</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Strategy */}
-                        <div>
-                          <div className="flex items-center gap-2 mb-3">
-                            <Target className="w-4 h-4 text-primary" />
-                            <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Strategy</h5>
-                          </div>
-                          <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                            <p className="text-xs font-bold text-primary mb-1">{tradeLog.strategy?.name || 'N/A'} • {tradeLog.strategy?.timeframe || 'N/A'}</p>
-                            <p className="text-sm text-white/80 leading-relaxed">{tradeLog.entry_rationale || 'No rationale provided'}</p>
-                          </div>
-                        </div>
-
-                        {/* Confluence Factors */}
-                        {tradeLog.strategy?.confluence_factors && (
-                          <div>
-                            <div className="flex items-center gap-2 mb-3">
-                              <Shield className="w-4 h-4 text-primary" />
-                              <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Confluence ({tradeLog.strategy.confluence_factors.length} factors)</h5>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                              {tradeLog.strategy.confluence_factors.map((factor: any, i: number) => (
-                                <div
-                                  key={i}
-                                  className={cn(
-                                    "flex items-start gap-2 p-2.5 rounded-xl border transition-all duration-300 hover:scale-[1.02]",
-                                    i === 0
-                                      ? "bg-gradient-to-r from-primary/20 to-purple-500/10 border-primary/30 shadow-lg shadow-primary/5"
-                                      : "bg-white/5 border-white/5 hover:bg-white/10"
-                                  )}
-                                >
-                                  <div className={cn(
-                                    "p-1 rounded-full",
-                                    i === 0 ? "bg-primary/20 text-primary" : "bg-white/10 text-primary"
-                                  )}>
-                                    <CheckCircle className="w-3 h-3" />
-                                  </div>
-                                  <span className={cn(
-                                    "text-[11px] font-medium leading-tight",
-                                    i === 0 ? "text-white" : "text-white/70"
-                                  )}>{factor}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-6">
-                        {/* Risk Management */}
-                        <div>
-                          <div className="flex items-center gap-2 mb-3">
-                            <Activity className="w-4 h-4 text-secondary" />
-                            <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Risk Management</h5>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {/* Stop Loss */}
-                            <div className="p-3.5 rounded-2xl bg-secondary/10 border border-secondary/20 flex flex-col justify-between min-h-[100px] transition-all hover:bg-secondary/15">
                               <div>
-                                <p className="text-[10px] font-extrabold text-secondary/70 uppercase tracking-[0.15em] mb-1">Stop Loss</p>
-                                <p className="text-xl font-bold text-secondary tracking-tight">${tradeLog.risk_management?.stop_loss?.toLocaleString() || '0'}</p>
-                              </div>
-                              <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.stop_loss_reason || 'N/A'}</p>
-                            </div>
-
-                            {/* Take Profit 1 */}
-                            <div className="p-3.5 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col justify-between min-h-[100px] transition-all hover:bg-primary/15">
-                              <div>
-                                <p className="text-[10px] font-extrabold text-primary/70 uppercase tracking-[0.15em] mb-1">Take Profit 1 ({tradeLog.risk_management?.tp1_size_pct || 0}%)</p>
-                                <p className="text-xl font-bold text-primary tracking-tight">${tradeLog.risk_management?.take_profit_1?.toLocaleString() || '0'}</p>
-                              </div>
-                              <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.tp1_reason || 'N/A'}</p>
-                            </div>
-
-                            {/* TP2 */}
-                            <div className="p-3.5 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col justify-between min-h-[100px] transition-all hover:bg-primary/15">
-                              <div>
-                                <p className="text-[10px] font-extrabold text-primary/70 uppercase tracking-[0.15em] mb-1">Take Profit 2 ({tradeLog.risk_management?.tp2_size_pct || 0}%)</p>
-                                <p className="text-xl font-bold text-primary tracking-tight">${tradeLog.risk_management?.take_profit_2?.toLocaleString() || '0'}</p>
-                              </div>
-                              <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.tp2_reason || 'N/A'}</p>
-                            </div>
-
-                            {/* Risk */}
-                            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex flex-col justify-between min-h-[100px] transition-all hover:bg-white/10">
-                              <div>
-                                <p className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.15em] mb-1">Risk</p>
-                                <p className="text-xl font-bold text-white tracking-tight">${tradeLog.risk_management?.risk_usd?.toFixed(2) || '0'}</p>
-                              </div>
-                              <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.risk_pct?.toFixed(2) || '0'}% of equity</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* AI Notes - Bilingual 2-Column Layout */}
-                        {tradeLog.ai_notes && (() => {
-                          // Parse bilingual notes - try multiple separators
-                          const notes = tradeLog.ai_notes;
-                          let ptText = '';
-                          let enText = '';
-
-                          if (notes.includes('🇺🇸')) {
-                            [ptText, enText] = notes.split('🇺🇸').map((s: string) => s.replace('🇧🇷', '').trim());
-                          } else if (notes.includes('Position Analysis')) {
-                            // Fallback: split at "Position Analysis" which marks English start
-                            const idx = notes.indexOf('Position Analysis');
-                            ptText = notes.substring(0, idx).replace('🇧🇷', '').trim();
-                            enText = notes.substring(idx).trim();
-                          } else {
-                            // No clear separator - show all in PT column
-                            ptText = notes.replace('🇧🇷', '').trim();
-                            enText = '';
-                          }
-
-                          return (
-                            <div className="p-4 rounded-xl bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-purple-500/20">
-                              <div className="flex items-center gap-2 mb-3">
-                                <BrainCircuit className="w-4 h-4 text-purple-400" />
-                                <p className="text-xs font-bold uppercase tracking-widest text-purple-300">AI Notes</p>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Coluna PT-BR */}
-                                <div className="space-y-2 p-3 bg-black/20 rounded-lg border border-white/5">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <span className="text-lg">🇧🇷</span>
-                                    <span className="text-[9px] font-bold uppercase tracking-widest text-green-400">Português</span>
-                                  </div>
-                                  <div className="space-y-1.5 text-[11px] font-medium leading-relaxed text-white/90">
-                                    {ptText}
-                                  </div>
-                                </div>
-
-                                {/* Coluna EN */}
-                                <div className="space-y-2 p-3 bg-black/20 rounded-lg border border-white/5">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <span className="text-lg">🇺🇸</span>
-                                    <span className="text-[9px] font-bold uppercase tracking-widest text-blue-400">English</span>
-                                  </div>
-                                  <div className="space-y-1.5 text-[11px] font-medium leading-relaxed text-white/90">
-                                    {enText}
-                                  </div>
-                                </div>
+                                <h4 className="text-sm font-bold">{log.symbol} {log.side}</h4>
+                                <p className="text-[9px] text-muted-foreground">@ ${log.entry_price?.toLocaleString() || '0'}</p>
                               </div>
                             </div>
-                          );
-                        })()}
-
-                        {/* Confidence - Circular Gauge */}
-                        <div className="flex items-center justify-between p-5 rounded-2xl bg-gradient-to-br from-white/5 to-primary/5 border border-white/10 shadow-lg group hover:bg-white/[0.07] transition-all duration-500">
-                          <div className="flex items-center gap-6">
-                            <div className="relative w-20 h-20 flex items-center justify-center">
-                              <svg className="w-full h-full transform -rotate-90 filter drop-shadow-[0_0_8px_rgba(0,255,157,0.3)]" viewBox="0 0 100 100">
-                                <circle
-                                  cx="50"
-                                  cy="50"
-                                  r="38"
-                                  stroke="currentColor"
-                                  strokeWidth="8"
-                                  fill="none"
-                                  className="text-white/5"
-                                />
-                                <motion.circle
-                                  cx="50"
-                                  cy="50"
-                                  r="38"
-                                  stroke="currentColor"
-                                  strokeWidth="8"
-                                  fill="none"
-                                  strokeDasharray="238.76"
-                                  initial={{ strokeDashoffset: 238.76 }}
-                                  animate={{ strokeDashoffset: 238.76 - (238.76 * (tradeLog.confidence || 0.75)) }}
-                                  transition={{ duration: 1.5, ease: "easeOut" }}
-                                  className="text-primary"
-                                  strokeLinecap="round"
-                                />
-                              </svg>
-                              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-2xl font-extrabold tracking-tighter text-white drop-shadow-md">
-                                  {((tradeLog.confidence || 0) * 100).toFixed(0)}
-                                  <span className="text-xs text-primary ml-0.5">%</span>
-                                </span>
-                              </div>
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-[0.2em] mb-1 tooltip-trigger">AI Confidence</p>
-                              <div className="h-1 w-20 bg-white/10 rounded-full overflow-hidden">
-                                <div className="h-full bg-primary/40 w-full animate-shimmer" />
+                            {/* Confidence mini gauge */}
+                            <div className="flex flex-col items-end">
+                              <span className="text-xs font-bold text-primary">{((log.confidence || 0) * 100).toFixed(0)}%</span>
+                              <div className="h-1 w-12 bg-white/10 rounded-full overflow-hidden mt-0.5">
+                                <div className="h-full bg-primary" style={{ width: `${(log.confidence || 0) * 100}%` }} />
                               </div>
                             </div>
                           </div>
-                          <div className="text-right max-w-[200px]">
-                            <p className="text-[11px] font-bold text-white/90 leading-relaxed italic border-l-2 border-primary/30 pl-3">
-                              "{tradeLog.expected_outcome || 'AI is monitoring and will adjust targets based on market structure.'}"
+
+                          {/* TP/SL Mini Grid */}
+                          {log.risk_management && (
+                            <div className="grid grid-cols-2 gap-1.5 mb-2">
+                              <div className="p-1.5 rounded bg-red-500/10 border border-red-500/20">
+                                <p className="text-[8px] font-bold text-red-300 uppercase mb-0.5">SL</p>
+                                <p className="text-[10px] font-bold text-red-400">${log.risk_management.stop_loss?.toLocaleString() || '0'}</p>
+                              </div>
+                              <div className="p-1.5 rounded bg-primary/10 border border-primary/20">
+                                <p className="text-[8px] font-bold text-primary uppercase mb-0.5">TP1</p>
+                                <p className="text-[10px] font-bold text-primary">${log.risk_management.take_profit_1?.toLocaleString() || '0'}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Entry Rationale (truncated) */}
+                          {log.entry_rationale && (
+                            <p className="text-[9px] text-white/60 leading-tight line-clamp-2">
+                              {log.entry_rationale}
                             </p>
-                          </div>
-                        </div>
-                      </div>
+                          )}
+                        </motion.div>
+                      ))}
                     </div>
                   ) : (
                     <div className="h-64 flex flex-col items-center justify-center opacity-40">
@@ -1099,6 +939,62 @@ function DashboardContent() {
                   )}
                 </GlassCard>
               </div>
+
+              {/* View All Modal */}
+              <AnimatePresence>
+                {viewAllModalOpen && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                    onClick={() => setViewAllModalOpen(false)}
+                  >
+                    <motion.div
+                      initial={{ scale: 0.9, y: 20 }}
+                      animate={{ scale: 1, y: 0 }}
+                      exit={{ scale: 0.9, y: 20 }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="max-w-6xl w-full max-h-[90vh] overflow-y-auto glass-card p-6 rounded-3xl"
+                    >
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-2xl font-bold">All AI Trade Analysis</h2>
+                        <button
+                          onClick={() => setViewAllModalOpen(false)}
+                          className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-all"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {_trade_logs.map((log: any, idx: number) => (
+                          <div
+                            key={log.id || idx}
+                            className="p-4 rounded-xl bg-white/5 border border-white/10"
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="text-lg font-bold">{log.symbol} {log.side}</h4>
+                              <span className="text-sm font-bold text-primary">{((log.confidence || 0) * 100).toFixed(0)}%</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-2">Entry: ${log.entry_price?.toLocaleString()}</p>
+                            {log.risk_management && (
+                              <div className="grid grid-cols-2 gap-2 mb-3">
+                                <div className="p-2 rounded bg-red-500/10">
+                                  <p className="text-[9px] font-bold text-red-300">SL: ${log.risk_management.stop_loss?.toLocaleString()}</p>
+                                </div>
+                                <div className="p-2 rounded bg-primary/10">
+                                  <p className="text-[9px] font-bold text-primary">TP: ${log.risk_management.take_profit_1?.toLocaleString()}</p>
+                                </div>
+                              </div>
+                            )}
+                            <p className="text-xs text-white/70 leading-relaxed">{log.entry_rationale}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
 
@@ -1117,41 +1013,75 @@ function DashboardContent() {
 
               {positions.length > 0 ? (
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                  {positions.map((pos, i) => (
-                    <GlassCard key={pos.symbol} delay={i * 0.1} className="!p-0 border-none bg-transparent">
-                      <div className="p-4 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                            <Activity className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-white uppercase">{pos.symbol}</span>
-                              <span className={cn(
-                                "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase",
-                                pos.side === 'Long' ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
-                              )}>
-                                {pos.side} {pos.leverage}x
-                              </span>
+                  {positions.map((pos, i) => {
+                    // Find matching trade log for this position
+                    const posTradeLog = _trade_logs?.find((log: any) => log.symbol === pos.symbol) || tradeLog;
+
+                    return (
+                      <GlassCard key={pos.symbol} delay={i * 0.1} className="!p-0 border-none bg-transparent">
+                        <div className="p-4 space-y-3 border-b border-white/5 bg-white/[0.02]">
+                          {/* Header Row */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                <Activity className="w-5 h-5 text-primary" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-white uppercase">{pos.symbol}</span>
+                                  <span className={cn(
+                                    "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase",
+                                    pos.side === 'Long' ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+                                  )}>
+                                    {pos.side} {pos.leverage}x
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Entry: ${Number(pos.entry_price).toLocaleString()}</p>
+                              </div>
                             </div>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Entry: ${Number(pos.entry_price).toLocaleString()}</p>
+                            <div className="text-right">
+                              <p className={cn(
+                                "text-lg font-bold tracking-tighter",
+                                pos.unrealized_pnl >= 0 ? "text-primary" : "text-red-400"
+                              )}>
+                                {pos.unrealized_pnl >= 0 ? '+' : ''}${Number(pos.unrealized_pnl).toFixed(2)}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Unrealized PnL</p>
+                            </div>
                           </div>
+
+                          {/* TP/SL Row */}
+                          {(pos.stop_loss || pos.take_profit || posTradeLog?.risk_management) && (
+                            <div className="grid grid-cols-2 gap-2">
+                              {(pos.stop_loss || posTradeLog?.risk_management?.stop_loss) && (
+                                <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20">
+                                  <p className="text-[9px] font-bold text-red-300 uppercase tracking-wider mb-0.5">Stop Loss</p>
+                                  <p className="text-sm font-bold text-red-400">${Number(pos.stop_loss || posTradeLog?.risk_management?.stop_loss).toLocaleString()}</p>
+                                </div>
+                              )}
+                              {(pos.take_profit || posTradeLog?.risk_management?.take_profit_1) && (
+                                <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
+                                  <p className="text-[9px] font-bold text-primary uppercase tracking-wider mb-0.5">Take Profit</p>
+                                  <p className="text-sm font-bold text-primary">${Number(pos.take_profit || posTradeLog?.risk_management?.take_profit_1).toLocaleString()}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* AI Entry Rationale */}
+                          {posTradeLog?.entry_rationale && (
+                            <div className="p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                              <p className="text-[9px] font-bold text-purple-300 uppercase tracking-wider mb-1">AI Entry Reason</p>
+                              <p className="text-[10px] text-white/80 leading-relaxed line-clamp-2">{posTradeLog.entry_rationale}</p>
+                            </div>
+                          )}
                         </div>
-                        <div className="text-right">
-                          <p className={cn(
-                            "text-lg font-bold tracking-tighter",
-                            pos.unrealized_pnl >= 0 ? "text-primary" : "text-red-400"
-                          )}>
-                            {pos.unrealized_pnl >= 0 ? '+' : ''}${Number(pos.unrealized_pnl).toFixed(2)}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Unrealized PnL</p>
+                        <div className="h-[500px]">
+                          <TradingViewChart symbol={pos.symbol} theme={settings.theme} />
                         </div>
-                      </div>
-                      <div className="h-[500px]">
-                        <TradingViewChart symbol={pos.symbol} theme={settings.theme} />
-                      </div>
-                    </GlassCard>
-                  ))}
+                      </GlassCard>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="h-[60vh] flex flex-col items-center justify-center rounded-[32px] border-2 border-dashed border-white/5 bg-white/[0.01]">
