@@ -9,6 +9,7 @@ import {
   Target,
   Terminal,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   Wallet,
   Cpu,
@@ -586,6 +587,7 @@ function DashboardContent() {
               className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => setViewAllModalOpen(true)}
             >
               <History className="w-5 h-5" />
             </motion.button>
@@ -687,7 +689,7 @@ function DashboardContent() {
                               </div>
                               <div>
                                 <p className="text-sm font-bold tracking-tight">{pos.symbol || "Unknown"}</p>
-                                <p className={cn("text-[10px] font-bold uppercase tracking-widest", pos.side === 'LONG' ? "text-primary" : "text-secondary")}>{(pos.side || "").toUpperCase()} {pos.size || 0}x</p>
+                                <p className={cn("text-[10px] font-bold uppercase tracking-widest", pos.side === 'LONG' ? "text-primary" : "text-secondary")}>{(pos.side || "").toUpperCase()} {pos.leverage || 1}x</p>
                               </div>
                             </div>
                             <div className="text-right">
@@ -847,7 +849,7 @@ function DashboardContent() {
                 </GlassCard>
               </div>
 
-              {/* Latest AI Trade Analysis - Multi-Position Grid */}
+              {/* Latest AI Trade Analysis - Full Featured with Carousel */}
               <div className="mt-10">
                 <GlassCard className="border border-purple-500/20" delay={0.35}>
                   <div className="flex items-center justify-between mb-6">
@@ -857,69 +859,274 @@ function DashboardContent() {
                       </div>
                       <div>
                         <h3 className="text-xl font-bold tracking-tight">Latest AI Trade Analysis</h3>
-                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">All Active Positions</p>
+                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">
+                          {_trade_logs && _trade_logs.length > 1
+                            ? `${_trade_logs.findIndex((log: any) => log === tradeLog) + 1} of ${_trade_logs.length} Active Positions`
+                            : 'Detailed Strategy Breakdown'
+                          }
+                        </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => setViewAllModalOpen(true)}
-                      className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-all text-xs font-bold uppercase tracking-wider"
-                    >
-                      View All
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {_trade_logs && _trade_logs.length > 1 && (
+                        <>
+                          <button
+                            onClick={() => {
+                              const currentIndex = _trade_logs.findIndex((log: any) => log === tradeLog);
+                              const prevIndex = currentIndex > 0 ? currentIndex - 1 : _trade_logs.length - 1;
+                              setTradeLog(_trade_logs[prevIndex]);
+                            }}
+                            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              const currentIndex = _trade_logs.findIndex((log: any) => log === tradeLog);
+                              const nextIndex = currentIndex < _trade_logs.length - 1 ? currentIndex + 1 : 0;
+                              setTradeLog(_trade_logs[nextIndex]);
+                            }}
+                            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => setViewAllModalOpen(true)}
+                        className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-all text-xs font-bold uppercase tracking-wider"
+                      >
+                        View All
+                      </button>
+                    </div>
                   </div>
 
-                  {_trade_logs && _trade_logs.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                      {_trade_logs.slice(0, 6).map((log: any, idx: number) => (
-                        <motion.div
-                          key={log.id || idx}
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: idx * 0.05 }}
-                          className="p-3 rounded-xl bg-gradient-to-br from-white/5 to-purple-500/5 border border-white/10 hover:border-purple-500/30 transition-all scale-75 origin-top-left"
-                        >
-                          {/* Compact Header */}
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-[10px] font-bold">
-                                {log.symbol?.substring(0, 2) || 'BTC'}
+                  {tradeLog ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      <div className="space-y-6">
+                        {/* Trade Header */}
+                        <div className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 to-primary/10 border border-white/10">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center font-bold text-lg">
+                              {tradeLog.symbol?.substring(0, 2) || 'BTC'}
+                            </div>
+                            <div>
+                              <h4 className="text-lg font-bold">{tradeLog.symbol} {tradeLog.side}</h4>
+                              <p className="text-xs text-muted-foreground font-bold">@ ${tradeLog.entry_price?.toLocaleString() || '0'}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Setup Quality</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="h-2 w-24 bg-white/10 rounded-full overflow-hidden">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${(tradeLog.strategy?.setup_quality || 0) * 10}%` }}
+                                  className="h-full bg-gradient-to-r from-primary to-purple-500 neon-glow"
+                                />
                               </div>
+                              <span className="text-sm font-bold text-primary">{tradeLog.strategy?.setup_quality || 0}/10</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Strategy */}
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Target className="w-4 h-4 text-primary" />
+                            <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Strategy</h5>
+                          </div>
+                          <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                            <p className="text-xs font-bold text-primary mb-1">{tradeLog.strategy?.name || 'N/A'} • {tradeLog.strategy?.timeframe || 'N/A'}</p>
+                            <p className="text-sm text-white/80 leading-relaxed">{tradeLog.entry_rationale || 'No rationale provided'}</p>
+                          </div>
+                        </div>
+
+                        {/* Confluence Factors */}
+                        {tradeLog.strategy?.confluence_factors && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <Shield className="w-4 h-4 text-primary" />
+                              <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Confluence ({tradeLog.strategy.confluence_factors.length} factors)</h5>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {tradeLog.strategy.confluence_factors.map((factor: any, i: number) => (
+                                <div
+                                  key={i}
+                                  className={cn(
+                                    "flex items-start gap-2 p-2.5 rounded-xl border transition-all duration-300 hover:scale-[1.02]",
+                                    i === 0
+                                      ? "bg-gradient-to-r from-primary/20 to-purple-500/10 border-primary/30 shadow-lg shadow-primary/5"
+                                      : "bg-white/5 border-white/5 hover:bg-white/10"
+                                  )}
+                                >
+                                  <div className={cn(
+                                    "p-1 rounded-full",
+                                    i === 0 ? "bg-primary/20 text-primary" : "bg-white/10 text-primary"
+                                  )}>
+                                    <CheckCircle className="w-3 h-3" />
+                                  </div>
+                                  <span className={cn(
+                                    "text-[11px] font-medium leading-tight",
+                                    i === 0 ? "text-white" : "text-white/70"
+                                  )}>{factor}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-6">
+                        {/* Risk Management */}
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Activity className="w-4 h-4 text-secondary" />
+                            <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Risk Management</h5>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {/* Stop Loss */}
+                            <div className="p-3.5 rounded-2xl bg-secondary/10 border border-secondary/20 flex flex-col justify-between min-h-[100px] transition-all hover:bg-secondary/15">
                               <div>
-                                <h4 className="text-sm font-bold">{log.symbol} {log.side}</h4>
-                                <p className="text-[9px] text-muted-foreground">@ ${log.entry_price?.toLocaleString() || '0'}</p>
+                                <p className="text-[10px] font-extrabold text-secondary/70 uppercase tracking-[0.15em] mb-1">Stop Loss</p>
+                                <p className="text-xl font-bold text-secondary tracking-tight">${tradeLog.risk_management?.stop_loss?.toLocaleString() || '0'}</p>
+                              </div>
+                              <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.stop_loss_reason || 'N/A'}</p>
+                            </div>
+
+                            {/* Take Profit 1 */}
+                            <div className="p-3.5 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col justify-between min-h-[100px] transition-all hover:bg-primary/15">
+                              <div>
+                                <p className="text-[10px] font-extrabold text-primary/70 uppercase tracking-[0.15em] mb-1">Take Profit 1 ({tradeLog.risk_management?.tp1_size_pct || 0}%)</p>
+                                <p className="text-xl font-bold text-primary tracking-tight">${tradeLog.risk_management?.take_profit_1?.toLocaleString() || '0'}</p>
+                              </div>
+                              <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.tp1_reason || 'N/A'}</p>
+                            </div>
+
+                            {/* TP2 */}
+                            <div className="p-3.5 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col justify-between min-h-[100px] transition-all hover:bg-primary/15">
+                              <div>
+                                <p className="text-[10px] font-extrabold text-primary/70 uppercase tracking-[0.15em] mb-1">Take Profit 2 ({tradeLog.risk_management?.tp2_size_pct || 0}%)</p>
+                                <p className="text-xl font-bold text-primary tracking-tight">${tradeLog.risk_management?.take_profit_2?.toLocaleString() || '0'}</p>
+                              </div>
+                              <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.tp2_reason || 'N/A'}</p>
+                            </div>
+
+                            {/* Risk */}
+                            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex flex-col justify-between min-h-[100px] transition-all hover:bg-white/10">
+                              <div>
+                                <p className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.15em] mb-1">Risk</p>
+                                <p className="text-xl font-bold text-white tracking-tight">${tradeLog.risk_management?.risk_usd?.toFixed(2) || '0'}</p>
+                              </div>
+                              <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.risk_pct?.toFixed(2) || '0'}% of equity</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* AI Notes - Bilingual 2-Column Layout */}
+                        {tradeLog.ai_notes && (() => {
+                          // Parse bilingual notes - try multiple separators
+                          const notes = tradeLog.ai_notes;
+                          let ptText = '';
+                          let enText = '';
+
+                          if (notes.includes('🇺🇸')) {
+                            [ptText, enText] = notes.split('🇺🇸').map((s: string) => s.replace('🇧🇷', '').trim());
+                          } else if (notes.includes('Position Analysis')) {
+                            // Fallback: split at "Position Analysis" which marks English start
+                            const idx = notes.indexOf('Position Analysis');
+                            ptText = notes.substring(0, idx).replace('🇧🇷', '').trim();
+                            enText = notes.substring(idx).trim();
+                          } else {
+                            // No clear separator - show all in PT column
+                            ptText = notes.replace('🇧🇷', '').trim();
+                            enText = '';
+                          }
+
+                          return (
+                            <div className="p-4 rounded-xl bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-purple-500/20">
+                              <div className="flex items-center gap-2 mb-3">
+                                <BrainCircuit className="w-4 h-4 text-purple-400" />
+                                <p className="text-xs font-bold uppercase tracking-widest text-purple-300">AI Notes</p>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Coluna PT-BR */}
+                                <div className="space-y-2 p-3 bg-black/20 rounded-lg border border-white/5">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-lg">🇧🇷</span>
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-green-400">Português</span>
+                                  </div>
+                                  <div className="space-y-1.5 text-[11px] font-medium leading-relaxed text-white/90">
+                                    {ptText}
+                                  </div>
+                                </div>
+
+                                {/* Coluna EN */}
+                                <div className="space-y-2 p-3 bg-black/20 rounded-lg border border-white/5">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-lg">🇺🇸</span>
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-blue-400">English</span>
+                                  </div>
+                                  <div className="space-y-1.5 text-[11px] font-medium leading-relaxed text-white/90">
+                                    {enText}
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                            {/* Confidence mini gauge */}
-                            <div className="flex flex-col items-end">
-                              <span className="text-xs font-bold text-primary">{((log.confidence || 0) * 100).toFixed(0)}%</span>
-                              <div className="h-1 w-12 bg-white/10 rounded-full overflow-hidden mt-0.5">
-                                <div className="h-full bg-primary" style={{ width: `${(log.confidence || 0) * 100}%` }} />
+                          );
+                        })()}
+
+                        {/* Confidence - Circular Gauge */}
+                        <div className="flex items-center justify-between p-5 rounded-2xl bg-gradient-to-br from-white/5 to-primary/5 border border-white/10 shadow-lg group hover:bg-white/[0.07] transition-all duration-500">
+                          <div className="flex items-center gap-6">
+                            <div className="relative w-20 h-20 flex items-center justify-center">
+                              <svg className="w-full h-full transform -rotate-90 filter drop-shadow-[0_0_8px_rgba(0,255,157,0.3)]" viewBox="0 0 100 100">
+                                <circle
+                                  cx="50"
+                                  cy="50"
+                                  r="38"
+                                  stroke="currentColor"
+                                  strokeWidth="8"
+                                  fill="none"
+                                  className="text-white/5"
+                                />
+                                <motion.circle
+                                  cx="50"
+                                  cy="50"
+                                  r="38"
+                                  stroke="currentColor"
+                                  strokeWidth="8"
+                                  fill="none"
+                                  strokeDasharray="238.76"
+                                  initial={{ strokeDashoffset: 238.76 }}
+                                  animate={{ strokeDashoffset: 238.76 - (238.76 * (tradeLog.confidence || 0.75)) }}
+                                  transition={{ duration: 1.5, ease: "easeOut" }}
+                                  className="text-primary"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-2xl font-extrabold tracking-tighter text-white drop-shadow-md">
+                                  {((tradeLog.confidence || 0) * 100).toFixed(0)}
+                                  <span className="text-xs text-primary ml-0.5">%</span>
+                                </span>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-[0.2em] mb-1 tooltip-trigger">AI Confidence</p>
+                              <div className="h-1 w-20 bg-white/10 rounded-full overflow-hidden">
+                                <div className="h-full bg-primary/40 w-full animate-shimmer" />
                               </div>
                             </div>
                           </div>
-
-                          {/* TP/SL Mini Grid */}
-                          {log.risk_management && (
-                            <div className="grid grid-cols-2 gap-1.5 mb-2">
-                              <div className="p-1.5 rounded bg-red-500/10 border border-red-500/20">
-                                <p className="text-[8px] font-bold text-red-300 uppercase mb-0.5">SL</p>
-                                <p className="text-[10px] font-bold text-red-400">${log.risk_management.stop_loss?.toLocaleString() || '0'}</p>
-                              </div>
-                              <div className="p-1.5 rounded bg-primary/10 border border-primary/20">
-                                <p className="text-[8px] font-bold text-primary uppercase mb-0.5">TP1</p>
-                                <p className="text-[10px] font-bold text-primary">${log.risk_management.take_profit_1?.toLocaleString() || '0'}</p>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Entry Rationale (truncated) */}
-                          {log.entry_rationale && (
-                            <p className="text-[9px] text-white/60 leading-tight line-clamp-2">
-                              {log.entry_rationale}
+                          <div className="text-right max-w-[200px]">
+                            <p className="text-[11px] font-bold text-white/90 leading-relaxed italic border-l-2 border-primary/30 pl-3">
+                              "{tradeLog.expected_outcome || 'AI is monitoring and will adjust targets based on market structure.'}"
                             </p>
-                          )}
-                        </motion.div>
-                      ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="h-64 flex flex-col items-center justify-center opacity-40">
@@ -940,55 +1147,172 @@ function DashboardContent() {
                 </GlassCard>
               </div>
 
-              {/* View All Modal */}
+              {/* View All Modal - Full Information */}
               <AnimatePresence>
                 {viewAllModalOpen && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
                     onClick={() => setViewAllModalOpen(false)}
                   >
                     <motion.div
-                      initial={{ scale: 0.9, y: 20 }}
+                      initial={{ scale: 0.95, y: 20 }}
                       animate={{ scale: 1, y: 0 }}
-                      exit={{ scale: 0.9, y: 20 }}
+                      exit={{ scale: 0.95, y: 20 }}
                       onClick={(e) => e.stopPropagation()}
-                      className="max-w-6xl w-full max-h-[90vh] overflow-y-auto glass-card p-6 rounded-3xl"
+                      className="max-w-7xl w-full max-h-[90vh] overflow-y-auto glass-card p-8 rounded-3xl border-2 border-primary/20"
                     >
-                      <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold">All AI Trade Analysis</h2>
+                      <div className="flex items-center justify-between mb-8 sticky top-0 bg-black/60 backdrop-blur-md pb-4 border-b border-white/10 -mt-8 pt-8 -mx-8 px-8">
+                        <div>
+                          <h2 className="text-3xl font-bold">All AI Trade Analysis</h2>
+                          <p className="text-sm text-muted-foreground mt-1">{_trade_logs.length} Active Positions</p>
+                        </div>
                         <button
                           onClick={() => setViewAllModalOpen(false)}
-                          className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-all"
+                          className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all"
                         >
-                          <X className="w-5 h-5" />
+                          <X className="w-6 h-6" />
                         </button>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                      <div className="space-y-6">
                         {_trade_logs.map((log: any, idx: number) => (
-                          <div
+                          <motion.div
                             key={log.id || idx}
-                            className="p-4 rounded-xl bg-white/5 border border-white/10"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.1 }}
+                            className="p-6 rounded-2xl bg-gradient-to-br from-white/5 to-purple-500/5 border border-white/10 hover:border-purple-500/30 transition-all"
                           >
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="text-lg font-bold">{log.symbol} {log.side}</h4>
-                              <span className="text-sm font-bold text-primary">{((log.confidence || 0) * 100).toFixed(0)}%</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground mb-2">Entry: ${log.entry_price?.toLocaleString()}</p>
-                            {log.risk_management && (
-                              <div className="grid grid-cols-2 gap-2 mb-3">
-                                <div className="p-2 rounded bg-red-500/10">
-                                  <p className="text-[9px] font-bold text-red-300">SL: ${log.risk_management.stop_loss?.toLocaleString()}</p>
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+                              <div className="flex items-center gap-4">
+                                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center font-bold text-xl border border-primary/30">
+                                  {log.symbol?.substring(0, 2) || 'BTC'}
                                 </div>
-                                <div className="p-2 rounded bg-primary/10">
-                                  <p className="text-[9px] font-bold text-primary">TP: ${log.risk_management.take_profit_1?.toLocaleString()}</p>
+                                <div>
+                                  <h3 className="text-2xl font-bold">{log.symbol} {log.side}</h3>
+                                  <p className="text-sm text-muted-foreground">Entry @ ${log.entry_price?.toLocaleString() || '0'}</p>
                                 </div>
                               </div>
-                            )}
-                            <p className="text-xs text-white/70 leading-relaxed">{log.entry_rationale}</p>
-                          </div>
+                              <div className="text-right">
+                                <p className="text-sm text-muted-foreground uppercase tracking-wider mb-1">AI Confidence</p>
+                                <p className="text-4xl font-bold text-primary">{((log.confidence || 0) * 100).toFixed(0)}%</p>
+                              </div>
+                            </div>
+
+                            {/* Content Grid */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                              {/* Left Column */}
+                              <div className="space-y-4">
+                                {/* Strategy */}
+                                <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Target className="w-4 h-4 text-primary" />
+                                    <h5 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Strategy</h5>
+                                  </div>
+                                  <p className="text-xs font-bold text-primary mb-2">{log.strategy?.name || 'N/A'} • {log.strategy?.timeframe || 'N/A'}</p>
+                                  <p className="text-sm text-white/80 leading-relaxed">{log.entry_rationale || 'No rationale provided'}</p>
+                                </div>
+
+                                {/* Confluence */}
+                                {log.strategy?.confluence_factors && (
+                                  <div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Shield className="w-4 h-4 text-primary" />
+                                      <h5 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Confluence ({log.strategy.confluence_factors.length} factors)</h5>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-2">
+                                      {log.strategy.confluence_factors.map((factor: any, i: number) => (
+                                        <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-white/5 border border-white/5">
+                                          <CheckCircle className="w-3 h-3 text-primary mt-0.5 flex-shrink-0" />
+                                          <span className="text-xs text-white/80">{factor}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Right Column */}
+                              <div className="space-y-4">
+                                {/* Risk Management */}
+                                <div>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Activity className="w-4 h-4 text-secondary" />
+                                    <h5 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Risk Management</h5>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                                      <p className="text-[10px] font-bold text-red-300 uppercase mb-1">Stop Loss</p>
+                                      <p className="text-lg font-bold text-red-400">${log.risk_management?.stop_loss?.toLocaleString() || '0'}</p>
+                                    </div>
+                                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                                      <p className="text-[10px] font-bold text-primary uppercase mb-1">TP1 ({log.risk_management?.tp1_size_pct || 0}%)</p>
+                                      <p className="text-lg font-bold text-primary">${log.risk_management?.take_profit_1?.toLocaleString() || '0'}</p>
+                                    </div>
+                                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                                      <p className="text-[10px] font-bold text-primary uppercase mb-1">TP2 ({log.risk_management?.tp2_size_pct || 0}%)</p>
+                                      <p className="text-lg font-bold text-primary">${log.risk_management?.take_profit_2?.toLocaleString() || '0'}</p>
+                                    </div>
+                                    <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                                      <p className="text-[10px] font-bold text-white/40 uppercase mb-1">Risk</p>
+                                      <p className="text-lg font-bold text-white">${log.risk_management?.risk_usd?.toFixed(2) || '0'}</p>
+                                      <p className="text-[9px] text-white/40">{log.risk_management?.risk_pct?.toFixed(2) || '0'}% equity</p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* AI Notes */}
+                                {log.ai_notes && (() => {
+                                  const notes = log.ai_notes;
+                                  let ptText = '';
+                                  let enText = '';
+
+                                  if (notes.includes('🇺🇸')) {
+                                    [ptText, enText] = notes.split('🇺🇸').map((s: string) => s.replace('🇧🇷', '').trim());
+                                  } else if (notes.includes('Position Analysis')) {
+                                    const idx = notes.indexOf('Position Analysis');
+                                    ptText = notes.substring(0, idx).replace('🇧🇷', '').trim();
+                                    enText = notes.substring(idx).trim();
+                                  } else {
+                                    ptText = notes.replace('🇧🇷', '').trim();
+                                  }
+
+                                  return (
+                                    <div className="p-3 rounded-xl bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-purple-500/20">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <BrainCircuit className="w-3 h-3 text-purple-400" />
+                                        <p className="text-xs font-bold uppercase tracking-wider text-purple-300">AI Notes</p>
+                                      </div>
+                                      <div className="space-y-2">
+                                        {ptText && (
+                                          <div className="p-2 bg-black/20 rounded-lg">
+                                            <div className="flex items-center gap-1 mb-1">
+                                              <span className="text-sm">🇧🇷</span>
+                                              <span className="text-[8px] font-bold uppercase text-green-400">PT-BR</span>
+                                            </div>
+                                            <p className="text-[10px] text-white/80 leading-relaxed">{ptText}</p>
+                                          </div>
+                                        )}
+                                        {enText && (
+                                          <div className="p-2 bg-black/20 rounded-lg">
+                                            <div className="flex items-center gap-1 mb-1">
+                                              <span className="text-sm">🇺🇸</span>
+                                              <span className="text-[8px] font-bold uppercase text-blue-400">EN-US</span>
+                                            </div>
+                                            <p className="text-[10px] text-white/80 leading-relaxed">{enText}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            </div>
+                          </motion.div>
                         ))}
                       </div>
                     </motion.div>

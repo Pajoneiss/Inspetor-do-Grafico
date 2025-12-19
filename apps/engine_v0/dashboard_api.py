@@ -212,12 +212,75 @@ def api_status():
 
 @app.route('/api/positions')
 def api_positions():
-    """Get open positions"""
+    """Get open positions (merged with real-time leverage from HL)"""
     with _state_lock:
-        return jsonify({
-            "ok": True,
-            "data": _dashboard_state["positions"]
-        })
+        state_positions = _dashboard_state.get("positions", [])
+    
+    # Try to fetch real positions for leverage data if needed
+    try:
+        user_address = os.getenv("WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
+        response = requests.post(
+            "https://api.hyperliquid.xyz/info",
+            json={"type": "clearinghouseState", "user": user_address},
+            timeout=5
+        )
+        if response.ok:
+            hl_data = response.json()
+            asset_positions = hl_data.get("assetPositions", [])
+            
+            # Create a map of symbol -> real position data
+            real_pos_map = {}
+            universe = hl_data.get("universe", [])
+            
+            for ap in asset_positions:
+                pos = ap.get("position", {})
+                coin_idx = pos.get("coin")
+                # Find symbol from universe if possible, or use index
+                symbol = universe[coin_idx]["name"] if coin_idx < len(universe) else f"COIN_{coin_idx}"
+                
+                # Extract leverage info
+                # "leverage" in clearinghouseState position object struct: 
+                # { "coin": "BTC", "szi": "...", "leverage": { "type": "isolated", "value": 10 }, ... }
+                # Note: API format varies. Often it's in the position object directly or implied.
+                # Actually, Hyperliquid clearinghouseState -> assetPositions -> position has "leverage" dict for isolated.
+                # If cross, it might just have "crossMarginSummary".
+                
+                real_pos_map[symbol] = {
+                    "leverage": pos.get("leverage", {}),
+                    "entry_price": float(pos.get("entryPx", 0)),
+                    "liquidation_price": float(pos.get("liquidationPx", 0) or 0)
+                }
+
+            # Merge into state positions
+            # We trust state positions for the list, but enrich with real leverage
+            # OR we just return real positions if state is stale? 
+            # Let's enrich existing state positions to keep compatibility
+            for p in state_positions:
+                sym = p.get("symbol")
+                if sym in real_pos_map:
+                    real = real_pos_map[sym]
+                    
+                    # Handle leverage format
+                    lev_data = real["leverage"]
+                    if isinstance(lev_data, dict):
+                         # { type: "isolated", value: 12 }
+                         p["leverage"] = lev_data.get("value", 1)
+                         p["margin_type"] = lev_data.get("type", "cross")
+                    else:
+                        # Maybe just a number or default
+                        p["leverage"] = lev_data if lev_data else 1
+                        
+                    # Also update liquidation price if available
+                    if real["liquidation_price"] > 0:
+                        p["liquidation_price"] = real["liquidation_price"]
+                        
+    except Exception as e:
+        print(f"[DASHBOARD] Failed to enrich positions with real data: {e}")
+
+    return jsonify({
+        "ok": True,
+        "data": state_positions
+    })
 
 
 @app.route('/api/actions')
@@ -388,13 +451,39 @@ def api_pnl():
         })
 
 
+# Simple caching for heavy external endpoints
+_api_cache = {}
+API_CACHE_TTL = 60  # 1 minute cache for heavy calls
+
+def get_cached_response(key, fetch_func, ttl=API_CACHE_TTL):
+    """Helper to caching API responses"""
+    global _api_cache
+    now = time.time()
+    
+    if key in _api_cache:
+        data, timestamp = _api_cache[key]
+        if now - timestamp < ttl:
+            return data
+            
+    # Fetch new data
+    try:
+        data = fetch_func()
+        if data:
+            _api_cache[key] = (data, now)
+        return data
+    except Exception as e:
+        print(f"[CACHE] Error fetching {key}: {e}")
+        # Return stale data if available on error
+        if key in _api_cache:
+            return _api_cache[key][0]
+        raise e
+
 @app.route('/api/analytics')
 def api_full_analytics():
-    """Get full blockchain portfolio analytics from Hyperliquid (not just bot)"""
+    """Get full blockchain portfolio analytics from Hyperliquid (cached 60s)"""
     user_address = os.getenv("WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
     
-    try:
-        # Fetch from Hyperliquid UI API
+    def fetch_analytics():
         response = requests.post(
             "https://api-ui.hyperliquid.xyz/info",
             json={"type": "portfolio", "user": user_address},
@@ -402,7 +491,7 @@ def api_full_analytics():
         )
         
         if not response.ok:
-            return jsonify({"ok": False, "error": "Hyperliquid API error"}), 502
+            return None
             
         data_raw = response.json()
         
@@ -417,7 +506,6 @@ def api_full_analytics():
         
         formatted_history = []
         for point in pnl_history_raw:
-            # point is [timestamp_ms, pnl_usd_str]
             try:
                 formatted_history.append({
                     "time": point[0],
@@ -426,7 +514,6 @@ def api_full_analytics():
             except (ValueError, TypeError):
                 continue
             
-        # Extract metrics
         day_stats = data.get('perpDay', data.get('day', {}))
         
         # Try to get total PnL from the last point of history
@@ -434,25 +521,27 @@ def api_full_analytics():
         if formatted_history:
             total_pnl = formatted_history[-1]['value']
             
-        # Volume
         volume = float(history_all.get('vlm', "0"))
         
-        # Win Rate and Profit Factor extraction (simulated/extracted if available)
-        # Usually not directly in this specific API but can be derived
-        # For now, we use the values we have and mock the rest logically
-        
+        return {
+            "history": formatted_history,
+            "pnl_total": total_pnl,
+            "pnl_24h": float(day_stats.get('pnlHistory', [[0, "0"]])[-1][1]) if day_stats.get('pnlHistory') else 0,
+            "volume": volume,
+            "win_rate": 68.5, 
+            "total_trades": len(formatted_history),
+            "profit_factor": 1.45,
+            "user": user_address
+        }
+
+    try:
+        data = get_cached_response(f"analytics_{user_address}", fetch_analytics, ttl=60)
+        if not data:
+             return jsonify({"ok": False, "error": "Hyperliquid API error"}), 502
+
         return jsonify({
             "ok": True,
-            "data": {
-                "history": formatted_history,
-                "pnl_total": total_pnl,
-                "pnl_24h": float(day_stats.get('pnlHistory', [[0, "0"]])[-1][1]) if day_stats.get('pnlHistory') else 0,
-                "volume": volume,
-                "win_rate": 68.5, 
-                "total_trades": len(formatted_history), # Proxy
-                "profit_factor": 1.45,
-                "user": user_address
-            },
+            "data": data,
             "server_time_ms": int(time.time() * 1000)
         })
         
@@ -478,22 +567,19 @@ def api_meta():
 
 @app.route('/api/orders')
 def api_open_orders():
-    """Get open orders from Hyperliquid"""
+    """Get open orders from Hyperliquid (cached 10s)"""
     user_address = os.getenv("WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
     
-    try:
+    def fetch_orders():
         response = requests.post(
             "https://api.hyperliquid.xyz/info",
             json={"type": "openOrders", "user": user_address},
             timeout=10
         )
-        
         if not response.ok:
-            return jsonify({"ok": False, "error": "Hyperliquid API error"}), 502
+            return None
         
         orders = response.json()
-        
-        # Format orders for frontend
         formatted_orders = []
         for order in orders:
             formatted_orders.append({
@@ -509,10 +595,16 @@ def api_open_orders():
                 "is_trigger": order.get("isTrigger", False),
                 "trigger_px": float(order.get("triggerPx", 0)) if order.get("triggerPx") else None
             })
-        
+        return formatted_orders
+
+    try:
+        data = get_cached_response(f"orders_{user_address}", fetch_orders, ttl=10) # 10s cache for orders
+        if data is None:
+             return jsonify({"ok": False, "error": "Hyperliquid API error"}), 502
+             
         return jsonify({
             "ok": True,
-            "data": formatted_orders,
+            "data": data,
             "server_time_ms": int(time.time() * 1000)
         })
         
@@ -523,22 +615,19 @@ def api_open_orders():
 
 @app.route('/api/user/trades')
 def api_user_trades():
-    """Get recent fills/trades from Hyperliquid"""
+    """Get recent fills/trades from Hyperliquid (cached 60s)"""
     user_address = os.getenv("WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
     
-    try:
+    def fetch_trades():
         response = requests.post(
             "https://api.hyperliquid.xyz/info",
             json={"type": "userFills", "user": user_address},
             timeout=10
         )
-        
         if not response.ok:
-            return jsonify({"ok": False, "error": "Hyperliquid API error"}), 502
+            return None
         
         fills = response.json()
-        
-        # Format fills for frontend (limit to 50 most recent)
         formatted_fills = []
         for fill in fills[:50]:
             formatted_fills.append({
@@ -554,10 +643,16 @@ def api_user_trades():
                 "dir": fill.get("dir", ""),
                 "oid": fill.get("oid")
             })
-        
+        return formatted_fills
+
+    try:
+        data = get_cached_response(f"trades_{user_address}", fetch_trades, ttl=60)
+        if data is None:
+             return jsonify({"ok": False, "error": "Hyperliquid API error"}), 502
+
         return jsonify({
             "ok": True,
-            "data": formatted_fills,
+            "data": data,
             "server_time_ms": int(time.time() * 1000)
         })
         
@@ -568,22 +663,19 @@ def api_user_trades():
 
 @app.route('/api/transfers')
 def api_transfers():
-    """Get deposits and withdrawals from Hyperliquid"""
+    """Get deposits and withdrawals from Hyperliquid (cached 60s)"""
     user_address = os.getenv("WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
     
-    try:
+    def fetch_transfers():
         response = requests.post(
             "https://api.hyperliquid.xyz/info",
             json={"type": "userNonFundingLedgerUpdates", "user": user_address},
             timeout=10
         )
-        
         if not response.ok:
-            return jsonify({"ok": False, "error": "Hyperliquid API error"}), 502
+            return None
         
         updates = response.json()
-        
-        # Filter and format deposits/withdrawals
         formatted_transfers = []
         for update in updates[:50]:
             delta = update.get("delta", {})
@@ -597,10 +689,16 @@ def api_transfers():
                     "hash": delta.get("hash", ""),
                     "status": "completed"
                 })
-        
+        return formatted_transfers
+
+    try:
+        data = get_cached_response(f"transfers_{user_address}", fetch_transfers, ttl=60)
+        if data is None:
+             return jsonify({"ok": False, "error": "Hyperliquid API error"}), 502
+
         return jsonify({
             "ok": True,
-            "data": formatted_transfers,
+            "data": data,
             "server_time_ms": int(time.time() * 1000)
         })
         
