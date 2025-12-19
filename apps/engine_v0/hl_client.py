@@ -91,11 +91,11 @@ class HLClient:
         self._candle_ttl = {
             "1w": 300,   # 5 min - weekly data changes slowly
             "1d": 300,   # 5 min - daily data changes slowly  
-            "4h": 120,   # 2 min - 4h candles stable
-            "1h": 120,   # 2 min - hourly moderate
-            "15m": 30,   # 30 sec - 15m needs freshness
-            "5m": 30,    # 30 sec - 5m active
-            "1m": 10     # 10 sec - 1m most active
+            "4h": 300,   # 5 min - very stable
+            "1h": 180,   # 3 min - hourly stable
+            "15m": 120,  # 2 min - was 30s, still fresh
+            "5m": 60,    # 1 min - was 30s, good balance
+            "1m": 30     # 30 sec - was 10s, reduces API calls 3x
         }
         
         # Orderbook cache: {symbol: (data, timestamp)}

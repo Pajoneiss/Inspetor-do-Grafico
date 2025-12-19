@@ -317,13 +317,32 @@ def main():
                             "1w": 52    # 1 year - macro context
                         }
                         
-                        # Collect candles for top 8 symbols (v13.0 expansion)
-                        for symbol in snapshot_symbols[:8]:
+                        # v14.0: Optimized scan (Limit 4 symbols, priority to active positions, request spacing)
+                        active_symbols = list(positions_by_symbol.keys())
+                        scan_candidates = []
+                        
+                        # Add active positions first
+                        for s in active_symbols:
+                            if s in snapshot_symbols and s not in scan_candidates:
+                                scan_candidates.append(s)
+                        
+                        # Fill remaining slots with top snapshot symbols
+                        for s in snapshot_symbols:
+                            if len(scan_candidates) >= 4:
+                                break
+                            if s not in scan_candidates:
+                                scan_candidates.append(s)
+                                
+                        print(f"[VISION] Scanning {len(scan_candidates)} symbols: {scan_candidates}")
+
+                        for symbol in scan_candidates:
                             candles_by_symbol[symbol] = {}
                             
                             # Fetch all timeframes
                             for tf, limit in TIMEFRAMES_CONFIG.items():
                                 try:
+                                    # Request spacing to prevent 429
+                                    time.sleep(0.1) 
                                     candles = hl.get_candles(symbol, tf, limit=limit)
                                     candles_by_symbol[symbol][tf] = candles if candles else []
                                 except Exception as e:
@@ -344,15 +363,17 @@ def main():
                         state["candles_by_symbol"] = candles_by_symbol
                         state["indicators_by_symbol"] = indicators_by_symbol
                         
-                        # Orderbook for top 5 symbols
+                        # Orderbook for scan candidates
                         orderbook_by_symbol = {}
-                        for symbol in snapshot_symbols[:5]:
+                        for symbol in scan_candidates:
+                            time.sleep(0.1)
                             orderbook_by_symbol[symbol] = hl.get_orderbook(symbol, depth=5)
                         state["orderbook_by_symbol"] = orderbook_by_symbol
                         
-                        # Funding info for top 5
+                        # Funding info for scan candidates
                         funding_by_symbol = {}
-                        for symbol in snapshot_symbols[:5]:
+                        for symbol in scan_candidates:
+                            time.sleep(0.1)
                             funding_by_symbol[symbol] = hl.get_funding_info(symbol)
                         state["funding_by_symbol"] = funding_by_symbol
                         
