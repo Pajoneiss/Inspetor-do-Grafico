@@ -374,6 +374,7 @@ function DashboardContent() {
   const [transfers, setTransfers] = useState<any[]>([]);
   const [cryptoPrices, setCryptoPrices] = useState<{ btc: any, eth: any } | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [aiNotesLang, setAiNotesLang] = useState<'pt' | 'en'>('pt'); // Language toggle for AI Strategy Core
   const { settings, updateSetting, resetSettings } = useSettings();
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -871,20 +872,43 @@ function DashboardContent() {
 
                 {/* AI Thinking Feed */}
                 <GlassCard className="lg:col-span-1 flex flex-col" delay={0.3}>
-                  <div className="flex items-center gap-4 mb-8">
-                    <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400">
-                      <BrainCircuit className="w-5 h-5" />
+                  <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400">
+                        <BrainCircuit className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-xl font-bold tracking-tight">AI Strategy Core</h3>
                     </div>
-                    <h3 className="text-xl font-bold tracking-tight">AI Strategy Core</h3>
+                    {/* Language Toggle */}
+                    <div className="flex items-center gap-1 bg-white/5 p-1 rounded-lg border border-white/10">
+                      <button
+                        onClick={() => setAiNotesLang('pt')}
+                        className={cn(
+                          "px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all",
+                          aiNotesLang === 'pt'
+                            ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                            : "text-muted-foreground hover:text-white"
+                        )}
+                      >
+                        🇧🇷 PT
+                      </button>
+                      <button
+                        onClick={() => setAiNotesLang('en')}
+                        className={cn(
+                          "px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all",
+                          aiNotesLang === 'en'
+                            ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                            : "text-muted-foreground hover:text-white"
+                        )}
+                      >
+                        🇺🇸 EN
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex-1 space-y-6">
-                    {thoughts?.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center opacity-20">
-                        <BrainCircuit className="w-12 h-12 mb-4 animate-pulse" />
-                        <p className="text-xs font-bold uppercase tracking-widest">Syncing AI Feed...</p>
-                      </div>
-                    ) : (
+                    {thoughts?.length > 0 ? (
+                      // Show filtered thoughts (important decisions only)
                       (thoughts || []).slice(0, 5).map((thought, i) => (
                         <div key={i} className="flex gap-4 group">
                           <div className="flex flex-col items-center">
@@ -904,6 +928,83 @@ function DashboardContent() {
                           </div>
                         </div>
                       ))
+                    ) : tradeLog ? (
+                      // Fallback: Show last trade log when no new AI decisions
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="px-2 py-1 rounded-lg bg-purple-500/20 text-purple-400 text-[10px] font-bold uppercase tracking-wider">
+                            Current Position
+                          </span>
+                        </div>
+
+                        {/* Trade Header */}
+                        <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-purple-500/10 to-primary/10 border border-white/10">
+                          <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center font-bold">
+                            {tradeLog.symbol?.substring(0, 2) || 'BTC'}
+                          </div>
+                          <div>
+                            <h4 className="font-bold">{tradeLog.symbol} {tradeLog.side}</h4>
+                            <p className="text-xs text-muted-foreground">@ ${tradeLog.entry_price?.toLocaleString() || '0'}</p>
+                          </div>
+                          <div className="ml-auto text-right">
+                            <span className={cn("text-lg font-bold", getConfidenceColor(tradeLog.confidence || 0))}>
+                              {((tradeLog.confidence || 0) * 100).toFixed(0)}%
+                            </span>
+                            <p className="text-[9px] text-muted-foreground uppercase">Confidence</p>
+                          </div>
+                        </div>
+
+                        {/* Entry Rationale - Bilingual with toggle */}
+                        {(() => {
+                          const notes = tradeLog.ai_notes || tradeLog.entry_rationale || '';
+                          let ptText = '';
+                          let enText = '';
+
+                          if (notes.includes('🇺🇸')) {
+                            [ptText, enText] = notes.split('🇺🇸').map((s: string) => s.replace('🇧🇷', '').trim());
+                          } else if (notes.includes('Position Analysis')) {
+                            const idx = notes.indexOf('Position Analysis');
+                            ptText = notes.substring(0, idx).replace('🇧🇷', '').trim();
+                            enText = notes.substring(idx).trim();
+                          } else {
+                            // No separator - use same text for both
+                            ptText = notes.replace('🇧🇷', '').replace('🇺🇸', '').trim();
+                            enText = ptText;
+                          }
+
+                          const displayText = aiNotesLang === 'pt' ? ptText : enText;
+                          const fallbackText = 'AI discretionary decision based on market structure.';
+
+                          return (
+                            <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                              <div className="flex items-center gap-2 mb-2">
+                                <p className="text-[10px] font-bold text-primary uppercase tracking-wider">
+                                  {aiNotesLang === 'pt' ? '🇧🇷 Análise da IA' : '🇺🇸 AI Analysis'}
+                                </p>
+                              </div>
+                              <p className="text-sm text-white/80 leading-relaxed">{displayText || fallbackText}</p>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Risk Levels */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-center">
+                            <p className="text-[9px] font-bold text-red-300 uppercase">Stop Loss</p>
+                            <p className="text-sm font-bold text-red-400">${tradeLog.risk_management?.stop_loss?.toLocaleString() || '---'}</p>
+                          </div>
+                          <div className="p-2 rounded-lg bg-primary/10 border border-primary/20 text-center">
+                            <p className="text-[9px] font-bold text-primary uppercase">Take Profit</p>
+                            <p className="text-sm font-bold text-primary">${tradeLog.risk_management?.take_profit_1?.toLocaleString() || '---'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      // No thoughts and no trade log
+                      <div className="h-full flex flex-col items-center justify-center opacity-20">
+                        <BrainCircuit className="w-12 h-12 mb-4 animate-pulse" />
+                        <p className="text-xs font-bold uppercase tracking-widest">Waiting for AI decisions...</p>
+                      </div>
                     )}
                   </div>
                 </GlassCard>
