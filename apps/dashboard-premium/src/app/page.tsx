@@ -31,9 +31,12 @@ import {
   History,
   UserCircle,
   Grid,
-  ShieldCheck
+  ShieldCheck,
+  CandlestickChart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import SettingsModal from "@/components/SettingsModal";
+import { useSettingsStandalone, Settings as SettingsType, defaultSettings } from "@/hooks/useSettings";
 
 // --- Hooks ---
 const useIsMobile = () => {
@@ -333,7 +336,7 @@ function DashboardContent() {
   const [thoughts, setThoughts] = useState<AIThought[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'chat' | 'logs' | 'all'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'chat' | 'logs' | 'all' | 'charts'>('overview');
   const [activeFleetTab, setActiveFleetTab] = useState<'Asset Positions' | 'Open Orders' | 'Recent Fills' | 'Completed Trades' | 'TWAP' | 'Deposits & Withdrawals'>('Asset Positions');
   const [pnlData, setPnlData] = useState<any>(null);
   const [pnlHistory, setPnlHistory] = useState<any[]>([]);
@@ -351,10 +354,14 @@ function DashboardContent() {
   // --- UI Expanded/Modal States ---
   const [isTradeLogModalOpen, setIsTradeLogModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isPositionsExpanded, setIsPositionsExpanded] = useState(true);
   const [isPnLExpanded, setIsPnLExpanded] = useState(true);
   const [isStrategyExpanded, setIsStrategyExpanded] = useState(true);
   const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(true);
+
+  // --- Settings Hook ---
+  const { settings, updateSetting, resetSettings } = useSettingsStandalone();
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -512,13 +519,14 @@ function DashboardContent() {
           {[
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+            { id: 'charts', label: 'Charts', icon: CandlestickChart },
             { id: 'all', label: 'All Indicators', icon: Grid },
             { id: 'chat', label: 'AI Chat', icon: MessageSquare },
             { id: 'logs', label: 'Execution Logs', icon: Terminal },
           ].map((item) => (
             <button
               key={item.id}
-              onClick={() => { setActiveTab(item.id as 'overview' | 'analytics' | 'chat' | 'logs' | 'all'); setSidebarOpen(false); }}
+              onClick={() => { setActiveTab(item.id as 'overview' | 'analytics' | 'chat' | 'logs' | 'all' | 'charts'); setSidebarOpen(false); }}
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
                 activeTab === item.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-white/5 hover:text-white"
@@ -532,7 +540,7 @@ function DashboardContent() {
         </nav>
 
         <div className="w-full pt-8 mt-8 border-t border-white/5 space-y-2">
-          <button onClick={() => setSidebarOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-white transition-colors">
+          <button onClick={() => { setIsSettingsModalOpen(true); setSidebarOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-white transition-colors">
             <Settings className="w-5 h-5" />
             <span className="font-semibold text-sm">Settings</span>
           </button>
@@ -1270,6 +1278,144 @@ function DashboardContent() {
                   </motion.div>
                 )}
 
+                {/* CHARTS Tab - Live Candlestick Charts for Each Position */}
+                {activeTab === 'charts' && (
+                  <motion.div
+                    key="charts"
+                    initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
+                    animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
+                    transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                  >
+                    {/* Charts Header */}
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h2 className="text-2xl font-bold tracking-tight">Live Charts</h2>
+                        <p className="text-sm text-muted-foreground">Real-time candlestick charts for your active positions</p>
+                      </div>
+                      <div className="flex gap-1 bg-white/5 p-1 rounded-xl border border-white/10">
+                        {['1m', '5m', '15m', '1h', '4h'].map((tf) => (
+                          <button
+                            key={tf}
+                            className="px-3 py-1.5 text-xs font-bold rounded-lg transition-all hover:bg-white/10 text-white/60 hover:text-white"
+                          >
+                            {tf}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Chart Grid */}
+                    {positions.length > 0 ? (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {positions.map((pos, idx) => (
+                          <GlassCard key={pos.symbol} className="overflow-hidden" delay={idx * 0.1}>
+                            {/* Chart Header */}
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className={cn(
+                                  "w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold",
+                                  pos.side === 'LONG' ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
+                                )}>
+                                  {pos.symbol.slice(0, 2)}
+                                </div>
+                                <div>
+                                  <h3 className="font-bold tracking-tight">{pos.symbol}/USD</h3>
+                                  <div className="flex items-center gap-2">
+                                    <span className={cn(
+                                      "text-[10px] font-bold px-1.5 py-0.5 rounded",
+                                      pos.side === 'LONG' ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
+                                    )}>
+                                      {pos.side} {pos.leverage}x
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      Size: ${pos.size.toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className={cn(
+                                  "text-lg font-bold",
+                                  pos.unrealized_pnl >= 0 ? "text-primary" : "text-secondary"
+                                )}>
+                                  {pos.unrealized_pnl >= 0 ? '+' : ''}${pos.unrealized_pnl.toFixed(2)}
+                                </p>
+                                <p className={cn(
+                                  "text-xs font-bold",
+                                  pos.pnl_pct >= 0 ? "text-primary/70" : "text-secondary/70"
+                                )}>
+                                  {pos.pnl_pct >= 0 ? '+' : ''}{pos.pnl_pct.toFixed(2)}%
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Chart Area Placeholder */}
+                            <div className="relative h-64 bg-white/[0.02] rounded-2xl border border-white/5 overflow-hidden">
+                              {/* Placeholder Chart Lines */}
+                              <div className="absolute inset-0 flex flex-col justify-between py-4 px-2">
+                                {[...Array(5)].map((_, i) => (
+                                  <div key={i} className="w-full h-px bg-white/5" />
+                                ))}
+                              </div>
+
+                              {/* Entry Line */}
+                              <div className="absolute left-0 right-0 top-1/2 flex items-center">
+                                <div className="flex-1 h-px bg-cyan-500/50 border-dashed" style={{ borderTopWidth: 1, borderStyle: 'dashed' }} />
+                                <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-[9px] font-bold rounded">
+                                  ENTRY ${pos.entry.toFixed(2)}
+                                </span>
+                              </div>
+
+                              {/* Chart Coming Soon Message */}
+                              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <CandlestickChart className="w-12 h-12 text-white/10 mb-3" />
+                                <p className="text-xs font-bold text-white/30 uppercase tracking-widest">TradingView Integration</p>
+                                <p className="text-[10px] text-white/20">Coming Soon</p>
+                              </div>
+
+                              {/* Current Price Indicator */}
+                              <div className="absolute right-2 top-1/3 bg-primary/20 text-primary px-2 py-1 rounded text-xs font-bold">
+                                ${pos.mark.toFixed(2)}
+                              </div>
+                            </div>
+
+                            {/* Quick Stats */}
+                            <div className="grid grid-cols-4 gap-2 mt-4">
+                              <div className="text-center p-2 bg-white/5 rounded-lg">
+                                <p className="text-[8px] text-muted-foreground uppercase mb-0.5">Entry</p>
+                                <p className="text-xs font-bold text-white">${pos.entry.toFixed(2)}</p>
+                              </div>
+                              <div className="text-center p-2 bg-white/5 rounded-lg">
+                                <p className="text-[8px] text-muted-foreground uppercase mb-0.5">Mark</p>
+                                <p className="text-xs font-bold text-white">${pos.mark.toFixed(2)}</p>
+                              </div>
+                              <div className="text-center p-2 bg-white/5 rounded-lg">
+                                <p className="text-[8px] text-muted-foreground uppercase mb-0.5">Liq. Price</p>
+                                <p className="text-xs font-bold text-secondary">${pos.liq_price?.toFixed(2) || '—'}</p>
+                              </div>
+                              <div className="text-center p-2 bg-white/5 rounded-lg">
+                                <p className="text-[8px] text-muted-foreground uppercase mb-0.5">ROE</p>
+                                <p className={cn("text-xs font-bold", pos.pnl_pct >= 0 ? "text-primary" : "text-secondary")}>
+                                  {pos.pnl_pct >= 0 ? '+' : ''}{(pos.pnl_pct * pos.leverage).toFixed(2)}%
+                                </p>
+                              </div>
+                            </div>
+                          </GlassCard>
+                        ))}
+                      </div>
+                    ) : (
+                      <GlassCard className="min-h-[400px] flex flex-col items-center justify-center">
+                        <CandlestickChart className="w-16 h-16 text-white/10 mb-4" />
+                        <h3 className="text-lg font-bold text-white/40 mb-2">No Active Positions</h3>
+                        <p className="text-sm text-muted-foreground text-center max-w-md">
+                          Charts will appear here once you have active trading positions. The AI is analyzing the market...
+                        </p>
+                      </GlassCard>
+                    )}
+                  </motion.div>
+                )}
+
 
                 {activeTab === 'analytics' && (
                   <motion.div
@@ -1813,6 +1959,15 @@ function DashboardContent() {
                 <div>© 2025 Ladder Labs</div>
               </footer>
             </main>
-          </div>
+
+          {/* Settings Modal */}
+          <SettingsModal
+            isOpen={isSettingsModalOpen}
+            onClose={() => setIsSettingsModalOpen(false)}
+            settings={settings}
+            updateSetting={updateSetting}
+            resetSettings={resetSettings}
+          />
+        </div>
         );
 }
