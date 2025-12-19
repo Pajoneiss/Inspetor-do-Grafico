@@ -79,13 +79,6 @@ def update_dashboard_state(state_data: dict):
 def add_ai_action(action: dict):
     """Add AI action to history (keep last 50)"""
     global _dashboard_state
-    
-    # Suppress "NO_TRADE" actions from the dashboard to prevent log pollution
-    # Check if 'actions' list exists and contains only NO_TRADE
-    actions_list = action.get("actions", [])
-    if actions_list and all(a.get("type") in ("NO_TRADE", "WAIT", "HOLD") for a in actions_list):
-        return
-
     with _state_lock:
         # Deduplicate: Don't add if identical to the last one
         if _dashboard_state["ai_actions"] and _dashboard_state["ai_actions"][0]["reason"] == action["reason"]:
@@ -823,6 +816,7 @@ def update_trade_log(symbol: str, update_data: dict):
 def api_ai_thoughts():
     """Get AI thoughts feed or current thinking"""
     limit = request.args.get('limit', 50, type=int)
+    include_all = request.args.get('include_all', 'false').lower() == 'true'
     
     # If explicitly asking for current thinking, return the first item or the latest in state
     if request.path == '/api/ai/current-thinking':
@@ -836,9 +830,34 @@ def api_ai_thoughts():
             "data": _ai_thoughts[0] if _ai_thoughts else None
         })
 
+    # Filter out boring thoughts (NO_TRADE/HOLD) for the main feed unless requested
+    filtered_thoughts = []
+    skipped_count = 0
+    
+    for t in _ai_thoughts:
+        if include_all:
+            filtered_thoughts.append(t)
+            continue
+            
+        actions = t.get("actions", [])
+        # Check if it's a "boring" thought (all NO_TRADE, HOLD, WAIT)
+        is_boring = False
+        if not actions:
+            is_boring = True
+        else:
+            is_boring = all(str(a.get("type", "")).upper() in ["NO_TRADE", "WAIT", "HOLD", "monitor", "standby"] for a in actions)
+            
+        if not is_boring:
+            filtered_thoughts.append(t)
+        else:
+            skipped_count += 1
+            
+    # If we filtered everything, maybe return at least the latest one so it doesn't look empty?
+    # Or just return empty list.
+            
     return jsonify({
         "ok": True,
-        "data": _ai_thoughts[:limit],
+        "data": filtered_thoughts[:limit],
         "server_time_ms": int(time.time() * 1000)
     })
 
