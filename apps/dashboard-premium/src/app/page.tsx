@@ -659,35 +659,34 @@ function DashboardContent() {
                   >
                     <div className="flex-1">
 
-                      <div className="flex-1">
-                        {positions?.length === 0 ? (
-                          <div className="h-full flex flex-col items-center justify-center opacity-20">
-                            <LayoutDashboard className="w-12 h-12 mb-4" />
-                            <p className="text-xs font-bold uppercase tracking-widest">No active positions</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-4">
-                            {(positions || []).map((pos, idx) => (
-                              <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/[0.08] transition-all">
-                                <div className="flex items-center gap-4">
-                                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs", pos.side === 'LONG' ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary")}>
-                                    {(pos.symbol || "??").substring(0, 2)}
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-bold tracking-tight">{pos.symbol || "Unknown"}</p>
-                                    <p className={cn("text-[10px] font-bold uppercase tracking-widest", pos.side === 'LONG' ? "text-primary" : "text-secondary")}>{(pos.side || "").toUpperCase()} {pos.size || 0}x</p>
-                                  </div>
+                      {positions?.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center opacity-20">
+                          <LayoutDashboard className="w-12 h-12 mb-4" />
+                          <p className="text-xs font-bold uppercase tracking-widest">No active positions</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {(positions || []).map((pos, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/[0.08] transition-all">
+                              <div className="flex items-center gap-4">
+                                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs", pos.side === 'LONG' ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary")}>
+                                  {(pos.symbol || "??").substring(0, 2)}
                                 </div>
-                                <div className="text-right">
-                                  <p className="text-sm font-bold tracking-tight">${Number(pos.entry_price || 0).toFixed(2)}</p>
-                                  <p className={cn("text-xs font-bold", (pos.unrealized_pnl || 0) >= 0 ? "text-primary" : "text-secondary")}>
-                                    {(pos.unrealized_pnl || 0) >= 0 ? '+' : ''}{Number(pos.unrealized_pnl || 0).toFixed(2)}
-                                  </p>
+                                <div>
+                                  <p className="text-sm font-bold tracking-tight">{pos.symbol || "Unknown"}</p>
+                                  <p className={cn("text-[10px] font-bold uppercase tracking-widest", pos.side === 'LONG' ? "text-primary" : "text-secondary")}>{(pos.side || "").toUpperCase()} {pos.size || 0}x</p>
                                 </div>
                               </div>
-                            ))}
-                          </div>
+                              <div className="text-right">
+                                <p className="text-sm font-bold tracking-tight">${Number(pos.entry_price || 0).toFixed(2)}</p>
+                                <p className={cn("text-xs font-bold", (pos.unrealized_pnl || 0) >= 0 ? "text-primary" : "text-secondary")}>
+                                  {(pos.unrealized_pnl || 0) >= 0 ? '+' : ''}{Number(pos.unrealized_pnl || 0).toFixed(2)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
                         </div>
+                      )}
                     </div>
                   </CollapsibleSection>
                 </GlassCard>
