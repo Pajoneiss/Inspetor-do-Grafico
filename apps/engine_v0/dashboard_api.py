@@ -685,6 +685,7 @@ def api_trade_logs():
     if not response_logs:
         with _state_lock:
             active_positions = _dashboard_state.get("positions", [])
+            equity = float(_dashboard_state.get("account", {}).get("equity", 100))
         
         for pos in active_positions:
             symbol = pos.get('symbol', 'UNKNOWN')
@@ -712,7 +713,6 @@ def api_trade_logs():
             tp2 = float(entry_px * 1.08 if side == "LONG" else entry_px * 0.92)
             
             # Risk calculation
-            equity = float(state["account"]["equity"])
             risk_usd = abs(entry_px - sl) * float(pos.get("size", 0)) / entry_px if entry_px > 0 else 0
             risk_pct = (risk_usd / equity * 100) if equity > 0 else 0
 
