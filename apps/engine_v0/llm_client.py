@@ -537,7 +537,16 @@ IMPORTANT
             funding_lines.append(f"  {symbol}: Funding={rate:.4f}% ({rate_warning}) | {oi_str}")
         funding_str = "\n".join(funding_lines) if funding_lines else "(no funding data)"
         
+        # Get session awareness info
+        try:
+            from session_awareness import format_session_for_prompt
+            session_str = format_session_for_prompt()
+        except Exception as e:
+            session_str = "(session info unavailable)"
+        
         return f"""MARKET DATA SNAPSHOT:
+
+{session_str}
 
 ACCOUNT STATUS:
 - Equity: ${state.get('equity', 0):.2f} (Total Portfolio Value)
