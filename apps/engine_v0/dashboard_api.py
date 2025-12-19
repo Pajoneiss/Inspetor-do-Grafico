@@ -1126,6 +1126,23 @@ def api_journal_stats():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route('/api/session')
+def api_session():
+    """Get current trading session info for Session Badge"""
+    try:
+        from session_awareness import get_current_session
+        session_info = get_current_session()
+        
+        return jsonify({
+            "ok": True,
+            "data": session_info,
+            "server_time_ms": int(time.time() * 1000)
+        })
+    except Exception as e:
+        print(f"[API][ERROR] session: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route('/api/journal/export')
 def api_journal_export():
     """Export journal as CSV"""

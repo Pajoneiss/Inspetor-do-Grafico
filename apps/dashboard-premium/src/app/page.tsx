@@ -375,6 +375,23 @@ function DashboardContent() {
   const [cryptoPrices, setCryptoPrices] = useState<{ btc: any, eth: any } | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [aiNotesLang, setAiNotesLang] = useState<'pt' | 'en'>('pt'); // Language toggle for AI Strategy Core
+
+  // New states for UI improvements (Option B)
+  const [journalStats, setJournalStats] = useState<{
+    win_rate: number;
+    total_trades: number;
+    total_pnl_usd: number;
+    best_trade_pct: number;
+    worst_trade_pct: number;
+    avg_duration_minutes: number;
+  } | null>(null);
+  const [sessionInfo, setSessionInfo] = useState<{
+    session: string;
+    current_time_utc: string;
+    is_weekend: boolean;
+  } | null>(null);
+  const [aiMood, setAiMood] = useState<'aggressive' | 'defensive' | 'observing'>('observing');
+
   const { settings, updateSetting, resetSettings } = useSettings();
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -411,6 +428,35 @@ function DashboardContent() {
       if (ordersRes.ok && Array.isArray(ordersRes.data)) setOpenOrders(ordersRes.data);
       if (fillsRes.ok && Array.isArray(fillsRes.data)) setRecentFills(fillsRes.data);
       if (transfersRes.ok && Array.isArray(transfersRes.data)) setTransfers(transfersRes.data);
+
+      // Fetch journal stats for Trading Performance widget
+      try {
+        const journalRes = await fetch(`${API_URL}/api/journal/stats`).then(r => r.json());
+        if (journalRes.ok && journalRes.data) {
+          setJournalStats(journalRes.data);
+        }
+      } catch (e) { /* Journal stats optional */ }
+
+      // Fetch session info for Session Badge
+      try {
+        const sessionRes = await fetch(`${API_URL}/api/session`).then(r => r.json());
+        if (sessionRes.ok && sessionRes.data) {
+          setSessionInfo(sessionRes.data);
+        }
+      } catch (e) { /* Session info optional */ }
+
+      // Determine AI mood from latest thought
+      if (thoughtRes.ok && thoughtRes.data && thoughtRes.data.length > 0) {
+        const latestThought = thoughtRes.data[0];
+        const summary = (latestThought.summary || '').toLowerCase();
+        if (summary.includes('entry') || summary.includes('open') || summary.includes('adding') || summary.includes('long') || summary.includes('short')) {
+          setAiMood('aggressive');
+        } else if (summary.includes('stop') || summary.includes('exit') || summary.includes('close') || summary.includes('protect') || summary.includes('tighten')) {
+          setAiMood('defensive');
+        } else {
+          setAiMood('observing');
+        }
+      }
 
       setError(null);
     } catch (err) {
@@ -584,6 +630,19 @@ function DashboardContent() {
                   {error ? "API Disconnected" : "System Live"}
                 </span>
                 <span className="text-muted-foreground">/</span>
+                {/* Session Badge */}
+                {sessionInfo && (
+                  <span className="flex items-center gap-2 text-cyan-400">
+                    <Globe className="w-3 h-3" />
+                    {sessionInfo.session === 'ASIA' && '🌏 Asia'}
+                    {sessionInfo.session === 'LONDON' && '🇬🇧 London'}
+                    {sessionInfo.session === 'NEW_YORK' && '🇺🇸 NY'}
+                    {sessionInfo.session === 'OVERLAP_LONDON_NY' && '🔥 NY/London'}
+                    {sessionInfo.session === 'QUIET' && '🌙 Quiet'}
+                    {sessionInfo.is_weekend && ' (Weekend)'}
+                  </span>
+                )}
+                <span className="text-muted-foreground">/</span>
                 <span className="flex items-center gap-2 text-white/50">
                   <Activity className="w-3 h-3" />
                   {status ? `${status.margin_usage}% Margin Use` : "Fetching Data..."}
@@ -719,6 +778,14 @@ function DashboardContent() {
                   subValue="Capitalização de mercado global"
                   trend="neutral"
                   icon={Globe}
+                />
+                {/* Trading Performance Card (Journal Stats) */}
+                <StatCard
+                  title="Win Rate"
+                  value={journalStats ? `${journalStats.win_rate.toFixed(1)}%` : "---"}
+                  sub={journalStats ? `${journalStats.total_trades} trades | $${journalStats.total_pnl_usd >= 0 ? '+' : ''}${journalStats.total_pnl_usd.toFixed(2)}` : "No data yet"}
+                  trend={journalStats && journalStats.win_rate > 50 ? "up" : journalStats && journalStats.win_rate < 50 ? "down" : "neutral"}
+                  icon={Target}
                 />
               </div>
 
@@ -878,6 +945,17 @@ function DashboardContent() {
                         <BrainCircuit className="w-5 h-5" />
                       </div>
                       <h3 className="text-xl font-bold tracking-tight">AI Strategy Core</h3>
+                      {/* AI Mood Indicator */}
+                      <span className={cn(
+                        "px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border",
+                        aiMood === 'aggressive' && "bg-green-500/20 text-green-400 border-green-500/30",
+                        aiMood === 'defensive' && "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+                        aiMood === 'observing' && "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                      )}>
+                        {aiMood === 'aggressive' && '🚀 Aggressive'}
+                        {aiMood === 'defensive' && '🛡️ Defensive'}
+                        {aiMood === 'observing' && '⏸️ Observing'}
+                      </span>
                     </div>
                     {/* Language Toggle */}
                     <div className="flex items-center gap-1 bg-white/5 p-1 rounded-lg border border-white/10">
