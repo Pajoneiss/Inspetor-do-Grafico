@@ -30,6 +30,8 @@ import {
   UserCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SettingsModal } from "@/components/SettingsModal";
+import { useSettingsStandalone } from "@/hooks/useSettings";
 
 // --- Hooks ---
 const useIsMobile = () => {
@@ -297,6 +299,8 @@ function DashboardContent() {
   const [recentFills, setRecentFills] = useState<any[]>([]);
   const [transfers, setTransfers] = useState<any[]>([]);
   const [cryptoPrices, setCryptoPrices] = useState<{ btc: any, eth: any } | null>(null);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const { settings, updateSetting, resetSettings } = useSettingsStandalone();
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -473,7 +477,7 @@ function DashboardContent() {
         </nav>
 
         <div className="w-full pt-8 mt-8 border-t border-white/5 space-y-2">
-          <button onClick={() => setSidebarOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-white transition-colors">
+          <button onClick={() => { setIsSettingsModalOpen(true); setSidebarOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-white transition-colors">
             <Settings className="w-5 h-5" />
             <span className="font-semibold text-sm">Settings</span>
           </button>
@@ -1579,6 +1583,15 @@ function DashboardContent() {
           <div>© 2025 Ladder Labs</div>
         </footer>
       </main >
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        settings={settings}
+        updateSetting={updateSetting}
+        resetSettings={resetSettings}
+      />
     </div >
   );
 }
