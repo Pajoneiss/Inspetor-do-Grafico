@@ -1111,7 +1111,7 @@ function DashboardContent() {
                 )}
                       </GlassCard>
                     </div>
-                  </motion.div>
+            </motion.div>
           )}
 
           {activeTab === 'all' && (
@@ -1273,7 +1273,7 @@ function DashboardContent() {
                           <p className="text-[9px] font-bold uppercase tracking-widest text-center leading-tight">Neural Link Stable<br />More cards coming</p>
                         </div>
                       </div>
-                    </motion.div>
+              </motion.div>
           )}
 
                   {/* CHARTS Tab - Live Candlestick Charts for Each Position */}
@@ -1411,7 +1411,7 @@ function DashboardContent() {
                           </p>
                         </GlassCard>
               )}
-                    </motion.div>
+              </motion.div>
           )}
 
 
@@ -1852,7 +1852,7 @@ function DashboardContent() {
                         </div>
 
                       </GlassCard>
-                    </motion.div>
+              </motion.div>
           )}
 
           {activeTab === 'chat' && (
@@ -1916,7 +1916,7 @@ function DashboardContent() {
                           </button>
                         </div>
                       </GlassCard>
-                    </motion.div>
+              </motion.div>
           )}
 
           {activeTab === 'logs' && (
@@ -1943,7 +1943,7 @@ function DashboardContent() {
                   )}
                         </div>
                       </GlassCard>
-                    </motion.div>
+              </motion.div>
           )}
                 </AnimatePresence>
 
