@@ -923,7 +923,7 @@ function DashboardContent() {
                                 <p className="text-xs font-bold uppercase tracking-widest text-purple-300">AI Notes</p>
                               </div>
 
-                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Coluna PT-BR */}
                                 <div className="space-y-2 p-3 bg-black/20 rounded-lg border border-white/5">
                                   <div className="flex items-center gap-2 mb-2">
