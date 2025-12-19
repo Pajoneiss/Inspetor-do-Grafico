@@ -1080,6 +1080,72 @@ Keep answers concise and practical."""
         }), 500
 
 
+# ============================================================================
+# TRADE JOURNAL API (for ML Phase 1)
+# ============================================================================
+
+@app.route('/api/journal')
+def api_journal():
+    """Get all trades from the trade journal"""
+    try:
+        from trade_journal import get_journal
+        journal = get_journal()
+        
+        limit = request.args.get('limit', 50, type=int)
+        status = request.args.get('status', None)
+        
+        trades = journal.get_all_trades(limit=limit, status=status)
+        
+        return jsonify({
+            "ok": True,
+            "data": trades,
+            "count": len(trades),
+            "server_time_ms": int(time.time() * 1000)
+        })
+    except Exception as e:
+        print(f"[API][ERROR] journal: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/journal/stats')
+def api_journal_stats():
+    """Get trading statistics from the journal"""
+    try:
+        from trade_journal import get_journal
+        journal = get_journal()
+        
+        stats = journal.get_stats()
+        
+        return jsonify({
+            "ok": True,
+            "data": stats,
+            "server_time_ms": int(time.time() * 1000)
+        })
+    except Exception as e:
+        print(f"[API][ERROR] journal/stats: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/journal/export')
+def api_journal_export():
+    """Export journal as CSV"""
+    try:
+        from trade_journal import get_journal
+        journal = get_journal()
+        
+        csv_content = journal.export_csv()
+        
+        from flask import Response
+        return Response(
+            csv_content,
+            mimetype='text/csv',
+            headers={'Content-Disposition': 'attachment; filename=trade_journal.csv'}
+        )
+    except Exception as e:
+        print(f"[API][ERROR] journal/export: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 def run_dashboard_server(port: int = 8080, host: str = "0.0.0.0"):
     """Run dashboard server in background thread"""
     def _run():

@@ -793,6 +793,37 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
         
         # Post-verification only if successful
         _post_verify(hl_client, symbol, "PLACE_ORDER")
+        
+        # ========== TRADE JOURNAL ENTRY ==========
+        try:
+            from trade_journal import get_journal
+            journal = get_journal()
+            
+            # Build market snapshot from action context
+            market_snapshot = {
+                "funding_rate": action.get("_funding_rate", 0),
+                "open_interest": action.get("_open_interest", 0),
+                "relative_volume": action.get("_relative_volume", 1.0),
+                "rsi_14": action.get("_rsi", 50),
+                "trend": action.get("_trend", "UNKNOWN"),
+                "bos_status": action.get("_bos", "UNKNOWN"),
+                "choch_detected": action.get("_choch", False),
+                "atr_pct": action.get("_atr_pct", 0)
+            }
+            
+            journal.record_entry(
+                symbol=symbol,
+                side="LONG" if is_buy else "SHORT",
+                entry_price=price,
+                size=normalized["size"],
+                leverage=target_leverage,
+                reason=action.get("reason", "AI discretionary trade"),
+                confidence=action.get("confidence", 0.5),
+                market_snapshot=market_snapshot
+            )
+        except Exception as je:
+            print(f"[JOURNAL][WARN] Failed to record entry: {je}")
+        
         return True
         
     except Exception as e:
@@ -999,6 +1030,30 @@ def _execute_close_position(action: Dict[str, Any], is_paper: bool, hl_client) -
         
         # Check success
         if resp and resp.get("status") == "ok":
+            # ========== TRADE JOURNAL EXIT ==========
+            try:
+                from trade_journal import get_journal
+                journal = get_journal()
+                
+                # Get exit price
+                exit_price = hl_client.get_last_price(symbol) or 0
+                
+                # Determine exit type
+                exit_type = action.get("_exit_type", "AI_EXIT")
+                if action.get("_is_stop_loss"):
+                    exit_type = "SL"
+                elif action.get("_is_take_profit"):
+                    exit_type = "TP"
+                
+                journal.record_exit(
+                    symbol=symbol,
+                    exit_price=exit_price,
+                    reason=action.get("reason", "AI closed position"),
+                    exit_type=exit_type
+                )
+            except Exception as je:
+                print(f"[JOURNAL][WARN] Failed to record exit: {je}")
+            
             return True
         return False
         
