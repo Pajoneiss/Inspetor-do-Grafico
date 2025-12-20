@@ -6,6 +6,7 @@ import json
 import hashlib
 import time
 from typing import List, Dict, Any
+from datetime import datetime
 
 from config import (
     LIVE_TRADING,
@@ -15,8 +16,67 @@ from config import (
     PLACE_ORDER_DEDUP_SECONDS,
     TRIGGER_DEDUP_SECONDS,
     MAX_OPEN_ORDERS_PER_SYMBOL,
-    MAX_POSITION_ADDS_PER_HOUR
+    MAX_POSITION_ADDS_PER_HOUR,
+    MIN_HOLD_MINUTES,
+    REENTRY_COOLDOWN_MINUTES,
+    MIN_STOP_LOSS_PCT
 )
+
+
+# ==================================================================
+# 🔴 ANTI-CHURN: Position tracking for hold time and reentry cooldown
+# ==================================================================
+_position_open_time: Dict[str, float] = {}  # symbol -> timestamp when position was opened
+_position_close_time: Dict[str, float] = {}  # symbol -> timestamp when position was closed
+
+
+def track_position_open(symbol: str):
+    """Track when a position was opened"""
+    _position_open_time[symbol] = time.time()
+    print(f"[ANTI-CHURN] 📍 Position opened: {symbol} at {datetime.now().strftime('%H:%M:%S')}")
+
+
+def track_position_close(symbol: str):
+    """Track when a position was closed"""
+    _position_close_time[symbol] = time.time()
+    if symbol in _position_open_time:
+        hold_time = (time.time() - _position_open_time[symbol]) / 60
+        print(f"[ANTI-CHURN] 📍 Position closed: {symbol} (held for {hold_time:.1f} min)")
+        del _position_open_time[symbol]
+
+
+def can_close_position(symbol: str) -> tuple:
+    """
+    Check if position can be closed based on MIN_HOLD_MINUTES.
+    Returns: (can_close: bool, reason: str)
+    """
+    if symbol not in _position_open_time:
+        return True, "no_tracking"
+    
+    held_minutes = (time.time() - _position_open_time[symbol]) / 60
+    
+    if held_minutes < MIN_HOLD_MINUTES:
+        remaining = MIN_HOLD_MINUTES - held_minutes
+        return False, f"hold_time_not_met ({held_minutes:.1f}/{MIN_HOLD_MINUTES} min, wait {remaining:.1f} min)"
+    
+    return True, f"held_for_{held_minutes:.1f}_min"
+
+
+def can_open_position(symbol: str) -> tuple:
+    """
+    Check if position can be opened based on REENTRY_COOLDOWN_MINUTES.
+    Returns: (can_open: bool, reason: str)
+    """
+    if symbol not in _position_close_time:
+        return True, "no_recent_close"
+    
+    minutes_since_close = (time.time() - _position_close_time[symbol]) / 60
+    
+    if minutes_since_close < REENTRY_COOLDOWN_MINUTES:
+        remaining = REENTRY_COOLDOWN_MINUTES - minutes_since_close
+        return False, f"reentry_cooldown ({minutes_since_close:.1f}/{REENTRY_COOLDOWN_MINUTES} min, wait {remaining:.1f} min)"
+    
+    return True, f"cooldown_passed ({minutes_since_close:.1f} min since close)"
 
 
 # ==================================================================
@@ -648,10 +708,17 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
     
     if is_paper:
         print(f"[PAPER] would PLACE_ORDER {symbol} {side} size={size} type={order_type}")
+        track_position_open(symbol)  # Track even in paper mode
         return
     
     # LIVE execution
     try:
+        # 🔴 ANTI-CHURN: Check reentry cooldown
+        can_open, reason = can_open_position(symbol)
+        if not can_open:
+            print(f"[ANTI-CHURN] ⛔ PLACE_ORDER {symbol} BLOCKED: {reason}")
+            return False
+        
         # GATE 1: If position exists, LOG but DON'T BLOCK - LLM has autonomy
         # Just convert PLACE_ORDER to ADD_TO_POSITION behavior
         positions = hl_client.get_positions_by_symbol()
@@ -793,6 +860,9 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
         
         # Post-verification only if successful
         _post_verify(hl_client, symbol, "PLACE_ORDER")
+        
+        # 🔴 ANTI-CHURN: Track position open
+        track_position_open(symbol)
         
         # ========== TRADE JOURNAL ENTRY ==========
         try:
@@ -980,8 +1050,21 @@ def _execute_close_position(action: Dict[str, Any], is_paper: bool, hl_client) -
         pct = 1.0  # Default to full close
     order_type = action.get("orderType", "MARKET")
     
+    # 🔴 ANTI-CHURN: Check if triggered by SL (always allow) or AI decision (check hold time)
+    is_stop_loss = action.get("_is_stop_loss", False)
+    is_take_profit = action.get("_is_take_profit", False)
+    
+    if not is_stop_loss and not is_take_profit:
+        # AI-initiated close - check hold time
+        can_close, reason = can_close_position(symbol)
+        if not can_close:
+            print(f"[ANTI-CHURN] ⛔ CLOSE_POSITION {symbol} BLOCKED: {reason}")
+            print(f"[ANTI-CHURN] 💡 Use SL/TP for early exit if needed")
+            return False
+    
     if is_paper:
         print(f"[PAPER] would CLOSE_POSITION {symbol} pct={pct:.1%} type={order_type}")
+        track_position_close(symbol)  # Track even in paper mode
         return True
     
     # LIVE execution
@@ -1030,6 +1113,9 @@ def _execute_close_position(action: Dict[str, Any], is_paper: bool, hl_client) -
         
         # Check success
         if resp and resp.get("status") == "ok":
+            # 🔴 ANTI-CHURN: Track position close
+            track_position_close(symbol)
+            
             # ========== TRADE JOURNAL EXIT ==========
             try:
                 from trade_journal import get_journal
