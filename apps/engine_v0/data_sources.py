@@ -317,6 +317,7 @@ def fetch_macro() -> Dict[str, Any]:
     """
     Fetch macro indicators: USD/BRL, DXY, S&P500, Nasdaq
     Uses public stooq.com CSV endpoint (free, no key)
+    NOW WITH CHANGE %
     """
     cache_key = "macro"
     cached = _get_cache(cache_key)
@@ -327,7 +328,9 @@ def fetch_macro() -> Dict[str, Any]:
         "usd_brl": "N/A",
         "dxy": "N/A",
         "sp500": "N/A",
+        "sp500_change": 0,  # NEW
         "nasdaq": "N/A",
+        "nasdaq_change": 0,  # NEW
         "timestamp": datetime.now().isoformat()
     }
     
@@ -363,7 +366,16 @@ def fetch_macro() -> Dict[str, Any]:
                         
                         if data_parts and len(data_parts) >= 7 and data_parts[6] != "N/D":
                             try:
-                                result[key] = float(data_parts[6])
+                                close = float(data_parts[6])
+                                open_price = float(data_parts[3]) if data_parts[3] != "N/D" else close
+                                
+                                result[key] = close
+                                
+                                # Calculate % change from open (NEW)
+                                if key in ["sp500", "nasdaq"] and open_price > 0:
+                                    change_pct = ((close - open_price) / open_price) * 100
+                                    result[f"{key}_change"] = round(change_pct, 2)
+                                
                             except ValueError:
                                 pass
                 except Exception:
@@ -375,7 +387,7 @@ def fetch_macro() -> Dict[str, Any]:
         result["eth"] = crypto["eth"]
         
         _set_cache(cache_key, result, TTL_MACRO)
-        print(f"[MACRO] Fetched: BTC={result['btc']} DXY={result['dxy']}")
+        print(f"[MACRO] Fetched: BTC={result['btc']} SP500={result['sp500']} ({result['sp500_change']:+.2f}%) NASDAQ={result['nasdaq']} ({result['nasdaq_change']:+.2f}%)")
     except Exception as e:
         print(f"[MACRO][WARN] Macro fetch failed: {e}")
     
@@ -447,3 +459,4 @@ def get_cryptopanic_news() -> Dict[str, Any]:
         return {"headlines": headlines}
     except Exception as e:
         return {"error": str(e)}
+
