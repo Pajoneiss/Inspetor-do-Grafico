@@ -651,6 +651,15 @@ def main():
                             # Get AI decision
                             decision = llm.decide(state)
                             
+                            # Store last decision with timestamp for Telegram
+                            from datetime import datetime, timezone
+                            state["last_decision"] = {
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                                "summary": decision.get("summary", ""),
+                                "confidence": decision.get("confidence", 0),
+                                "actions": decision.get("actions", [])
+                            }
+                            
                             # v13.0: Update AI thoughts in dashboard
                             if dashboard_api:
                                 try:
@@ -804,3 +813,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
