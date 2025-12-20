@@ -849,6 +849,35 @@ Responda como se VOCÊ fosse o bot operando. Diga "Eu estou...", "Minha posiçã
             if best != 0:
                 text += f"Best: ${best:+.2f}\n"
         
+        # PNL History (24h, 7D, 30D, ALL) - NEW
+        pnl_hist = state.get("pnl_history", {})
+        if pnl_hist:
+            text += "\n💰 *PNL HISTÓRICO*\n"
+            
+            pnl_24h = pnl_hist.get("24h", 0)
+            pnl_7d = pnl_hist.get("7d", 0)
+            pnl_30d = pnl_hist.get("30d", 0)
+            pnl_all = pnl_hist.get("all", 0)
+            
+            # Emojis based on positive/negative
+            emoji_24h = "🟢" if pnl_24h > 0 else "🔴" if pnl_24h < 0 else "⚪"
+            emoji_7d = "🟢" if pnl_7d > 0 else "🔴" if pnl_7d < 0 else "⚪"
+            emoji_30d = "🟢" if pnl_30d > 0 else "🔴" if pnl_30d < 0 else "⚪"
+            emoji_all = "🟢" if pnl_all > 0 else "🔴" if pnl_all < 0 else "⚪"
+            
+            text += f"{emoji_24h} 24h: ${pnl_24h:+.2f} | {emoji_7d} 7D: ${pnl_7d:+.2f}\n"
+            text += f"{emoji_30d} 30D: ${pnl_30d:+.2f} | {emoji_all} ALL: ${pnl_all:+.2f}\n"
+        
+        # AI Self-Assessment - NEW
+        ai_assessment = state.get("ai_assessment", "")
+        if ai_assessment:
+            text += "\n🧠 *PENSAMENTO DA IA*\n"
+            # Truncate if too long
+            if len(ai_assessment) > 120:
+                ai_assessment = ai_assessment[:117] + "..."
+            text += f"\"{escape_md(ai_assessment)}\"\n"
+        
+        
         # Top Symbols - NEW
         top_syms = state.get("top_symbols", [])
         if top_syms and len(top_syms) > 0:
@@ -1324,6 +1353,44 @@ def update_telegram_state(state: Dict[str, Any]):
             "take_profit": pos.get("take_profit", 0)
         }
     
+    
+    # Calculate PNL History (24h, 7D, 30D, ALL) - NEW
+    pnl_history = {}
+    try:
+        from pnl_tracker import get_pnl_history
+        pnl_data = get_pnl_history()
+        
+        pnl_history = {
+            "24h": pnl_data.get("pnl_24h", 0),
+            "7d": pnl_data.get("pnl_7d", 0),
+            "30d": pnl_data.get("pnl_30d", 0),
+            "all": pnl_data.get("pnl_all_time", 0)
+        }
+    except Exception as e:
+        print(f"[TELEGRAM] Failed to get PNL history: {e}")
+    
+    # Generate AI Self-Assessment - NEW
+    ai_assessment = ""
+    try:
+        if performance_today.get("trades", 0) > 0 and pnl_history.get("24h") is not None:
+            win_rate = performance_today.get("win_rate", 0)
+            pnl_24h = pnl_history.get("24h", 0)
+            pnl_7d = pnl_history.get("7d", 0)
+            
+            # Generate simple assessment based on performance
+            if pnl_24h > 0 and win_rate >= 60:
+                ai_assessment = f"Performance sólida hoje: {win_rate:.0f}% win rate, ${pnl_24h:+.2f} em 24h. Estratégias funcionando bem."
+            elif pnl_24h > 0:
+                ai_assessment = f"Positivo em 24h (${pnl_24h:+.2f}) mas win rate pode melhorar ({win_rate:.0f}%)."
+            elif pnl_24h < 0 and win_rate < 50:
+                ai_assessment = f"Dia desafiador: ${pnl_24h:.2f} em 24h, {win_rate:.0f}% win rate. Ajustando estratégia."
+            elif pnl_7d > 0:
+                ai_assessment = f"Curto prazo negativo (${pnl_24h:.2f}) mas 7D positivo (${pnl_7d:+.2f}). Mantendo curso."
+            else:
+                ai_assessment = f"Analisando mercado. PnL 24h: ${pnl_24h:.2f}, buscando melhores setups."
+    except Exception as e:
+        print(f"[TELEGRAM] Failed to generate AI assessment: {e}")
+    
     # Update state with ALL data
     _bot_state["last_summary"] = {
         # Original fields
@@ -1337,7 +1404,9 @@ def update_telegram_state(state: Dict[str, Any]):
         # NEW fields
         "last_ai_decision": last_ai_decision,
         "performance_today": performance_today,
-        "top_symbols": top_symbols
+        "top_symbols": top_symbols,
+        "pnl_history": pnl_history,  # NEW
+        "ai_assessment": ai_assessment  # NEW
     }
     
     # Update scan info for visibility
@@ -1371,3 +1440,4 @@ def should_panic_close() -> bool:
         _bot_state["panic_close_all"] = False  # Reset flag
         return True
     return False
+
