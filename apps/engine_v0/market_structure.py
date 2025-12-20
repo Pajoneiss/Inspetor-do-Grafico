@@ -227,7 +227,8 @@ def analyze_market_structure(symbol_data):
     """
     result = {}
     
-    for tf in ['1h', '15m', '5m']:
+    # v13.0: Now includes 15m for entry-level order blocks
+    for tf in ['4h', '1h', '15m', '5m']:
         if tf not in symbol_data or not symbol_data[tf]:
             continue
         
@@ -242,14 +243,14 @@ def analyze_market_structure(symbol_data):
         # Detect CHoCH
         choch = detect_change_of_character(candles, trend)
         
-        # Find order blocks (only for higher timeframes)
+        # Find order blocks (now includes 15m for entry precision)
         order_blocks = []
-        if tf in ['1h', '4h']:
+        if tf in ['4h', '1h', '15m']:
             order_blocks = find_order_blocks(candles)
         
-        # Find liquidity zones (only for higher timeframes)
+        # Find liquidity zones (now includes 15m)
         liquidity_zones = []
-        if tf in ['1h', '4h']:
+        if tf in ['4h', '1h', '15m']:
             liquidity_zones = find_liquidity_zones(candles)
         
         result[tf] = {
