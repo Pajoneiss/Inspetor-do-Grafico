@@ -652,9 +652,9 @@ def main():
                             decision = llm.decide(state)
                             
                             # Store last decision with timestamp for Telegram
-                            from datetime import datetime, timezone
+                            # Store last decision with timestamp for Telegram
                             state["last_decision"] = {
-                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                                "timestamp": datetime.utcnow().isoformat(),
                                 "summary": decision.get("summary", ""),
                                 "confidence": decision.get("confidence", 0),
                                 "actions": decision.get("actions", [])
@@ -813,4 +813,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
