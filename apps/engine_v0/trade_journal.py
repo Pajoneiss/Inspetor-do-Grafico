@@ -405,6 +405,50 @@ def get_journal() -> TradeJournal:
     return journal
 
 
+
+def record_ai_intent(
+    symbol: str,
+    side: str,
+    size: float,
+    entry_price: float,
+    leverage: int = 1,
+    stop_loss: float = None,
+    take_profit_1: float = None,
+    reason: str = "",
+    confidence: float = 0.0
+):
+    """
+    Record AI trading intent for tracking (not actual execution)
+    This is called when AI makes a decision, before execution
+    """
+    try:
+        timestamp = datetime.now(timezone.utc).isoformat()
+        
+        intent_data = {
+            "timestamp": timestamp,
+            "symbol": symbol,
+            "side": side,
+            "size": size,
+            "entry_price": entry_price,
+            "leverage": leverage,
+            "stop_loss": stop_loss,
+            "take_profit_1": take_profit_1,
+            "reason": reason,
+            "confidence": confidence,
+            "status": "intent"  # Not executed yet
+        }
+        
+        # Log for tracking
+        print(f"[JOURNAL] AI Intent recorded: {symbol} {side} @ ${entry_price} (conf={confidence:.2f})")
+        
+        # Could save to file or DB here if needed
+        # For now, just log it
+        
+        return True
+    except Exception as e:
+        print(f"[JOURNAL] Failed to record AI intent: {e}")
+        return False
+
 def get_recent_trades_for_ai(limit: int = 10) -> Dict[str, Any]:
     """
     Get recent trade history formatted for AI context.
@@ -485,3 +529,4 @@ def get_recent_trades_for_ai(limit: int = 10) -> Dict[str, Any]:
         "last_24h_by_symbol": symbol_stats,
         "recent_trades": recent
     }
+
