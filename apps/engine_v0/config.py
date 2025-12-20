@@ -35,10 +35,10 @@ ROTATE_PER_TICK = int(os.getenv("ROTATE_PER_TICK", "5"))
 ALLOW_SYMBOL_NOT_IN_SNAPSHOT = os.getenv("ALLOW_SYMBOL_NOT_IN_SNAPSHOT", "true").lower() == "true"
 
 # ============================================================
-# 💰 TRADE SIZING - Larger trades = less fee impact
+# 💰 TRADE SIZING - AI decides sizing, these are just minimums
 # ============================================================
-MIN_NOTIONAL_USD = float(os.getenv("MIN_NOTIONAL_USD", "50.0"))  # $50 minimum per trade
-MIN_STOP_LOSS_PCT = float(os.getenv("MIN_STOP_LOSS_PCT", "1.5"))  # Minimum 1.5% SL distance (avoid noise stops)
+MIN_NOTIONAL_USD = float(os.getenv("MIN_NOTIONAL_USD", "15.0"))  # $15 minimum (exchange is $10)
+MIN_STOP_LOSS_PCT = float(os.getenv("MIN_STOP_LOSS_PCT", "1.0"))  # Minimum 1% SL distance - INFO for AI, not enforced
 AUTO_CAP_LEVERAGE = os.getenv("AUTO_CAP_LEVERAGE", "true").lower() == "true"
 ORDER_SLIPPAGE = float(os.getenv("ORDER_SLIPPAGE", "0.01"))  # 1% default slippage for market orders
 
