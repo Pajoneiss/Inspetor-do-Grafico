@@ -544,6 +544,47 @@ IMPORTANT
         except Exception as e:
             session_str = "(session info unavailable)"
         
+        # v13.0: Get trade history for AI context
+        trade_history_str = ""
+        try:
+            from trade_journal import get_recent_trades_for_ai
+            history = get_recent_trades_for_ai(limit=10)
+            
+            overall = history.get("overall_stats", {})
+            by_symbol = history.get("last_24h_by_symbol", {})
+            recent = history.get("recent_trades", [])
+            
+            trade_history_str = f"""
+📈 YOUR TRADING PERFORMANCE (Information Only - You Decide How to Use):
+
+Overall Stats:
+- Total Trades: {overall.get('total_trades', 0)} | Win Rate: {overall.get('win_rate', 0):.1f}%
+- Total PnL: ${overall.get('total_pnl_usd', 0):.2f} | Avg PnL: {overall.get('avg_pnl_pct', 0):.2f}%
+- Best Trade: {overall.get('best_trade_pct', 0):.2f}% | Worst Trade: {overall.get('worst_trade_pct', 0):.2f}%
+- Avg Duration: {overall.get('avg_duration_min', 0):.0f} min
+
+Last 24h by Symbol:"""
+            
+            if by_symbol:
+                for sym, data in by_symbol.items():
+                    trade_history_str += f"\n  {sym}: {data['trades']} trades, {data['win_rate']:.0f}% win rate, ${data['total_pnl']:.2f} PnL"
+            else:
+                trade_history_str += "\n  (no trades in last 24h)"
+            
+            trade_history_str += "\n\nRecent Trades (most recent first):"
+            if recent:
+                for t in recent[:7]:  # Last 7 trades
+                    status = "🟢" if t.get('win') else "🔴" if t.get('win') == False else "⏳"
+                    pnl = f"${t.get('pnl_usd', 0):.2f}" if t.get('pnl_usd') is not None else "open"
+                    dur = f"{t.get('duration_min', 0):.0f}m" if t.get('duration_min') else "open"
+                    exit_type = t.get('exit_type', 'open')
+                    trade_history_str += f"\n  {status} {t.get('symbol')} {t.get('side')} | PnL: {pnl} | Exit: {exit_type} | Duration: {dur}"
+            else:
+                trade_history_str += "\n  (no recent trades)"
+                
+        except Exception as e:
+            trade_history_str = f"\n(trade history unavailable: {e})"
+        
         return f"""MARKET DATA SNAPSHOT:
 
 {session_str}
@@ -554,10 +595,12 @@ ACCOUNT STATUS:
 - Total Buying Power: ${state.get('buying_power', 0):.2f} (with {state.get('leverage', 1)}x leverage)
 - Active Positions: {len(state.get('positions', {}))}
 - Open Orders: {state.get('open_orders_count', 0)}
+{trade_history_str}
 
-⚠️ CRITICAL TRADING RULES:
-- Minimum trade size is $10.00 notional.
+⚠️ TRADING NOTES:
+- Minimum trade size is $10.00 notional (exchange requirement).
 - "size" field in JSON is ASSET QUANTITY (e.g. 0.001 BTC), NOT USD. Use prices to convert.
+- ATR% is provided per timeframe - you may use it for stop sizing if you find it useful.
 
 CURRENT POSITIONS ({state.get('positions_count', 0)}):
 {positions_str}
@@ -570,47 +613,23 @@ MARKET SCAN (TOP INDICATOR SCORES):
 MARKET STRUCTURE (SMC):
 {structure_str}
 
-💰 FUNDING RATES (CRITICAL FOR FAKEOUT DETECTION):
+💰 FUNDING RATES & OPEN INTEREST:
 {funding_str}
 
-DETAILED CHART ANALYSIS (Top 8 Symbols):
+DETAILED CHART ANALYSIS (Top Symbols):
 {candles_str}
 
-📐 MARKET STRUCTURE (SMART MONEY CONCEPTS)
-You now have access to institutional market structure data for key timeframes:
+📐 MARKET STRUCTURE DATA (SMART MONEY CONCEPTS)
+Available for your analysis:
 
-**Trend**: Based on Higher Highs/Higher Lows (BULLISH) or Lower Highs/Lower Lows (BEARISH)
-**BOS (Break of Structure)**: Trend continuation signal
-  - UP: Price broke above recent swing high (bullish continuation)
-  - DOWN: Price broke below recent swing low (bearish continuation)
-**CHoCH (Change of Character)**: Early reversal warning
-  - In uptrend: Failed to make HH, made LH instead
-  - In downtrend: Failed to make LL, made HL instead
+**Trend**: HH/HL (BULLISH) or LH/LL (BEARISH) pattern
+**BOS (Break of Structure)**: UP = broke swing high, DOWN = broke swing low
+**CHoCH (Change of Character)**: Potential reversal signal (failed to continue pattern)
 **Order Blocks**: Institutional entry zones (last candle before strong move)
-  - BULLISH: Last red candle before up move = potential support
-  - BEARISH: Last green candle before down move = potential resistance
-**Liquidity Zones**: Clustered swing highs/lows where stops are placed
+**Liquidity Zones**: Clustered swing points where stops may be placed
+**ATR%**: Average True Range as percentage of price (volatility measure)
 
-HOW TO USE SMC DATA:
-- **Trend Following**: Enter on pullbacks to order blocks in trending markets
-- **Reversal Trading**: CHoCH = early warning, consider exits or reversal entries
-- **Target Selection**: Liquidity zones = high-probability targets (stops get hit)
-- **Structure Confirmation**: BOS confirms trend, wait for pullback to order block
-- **Multi-TF Alignment**: 1h trend + 15m BOS + 5m order block = high conviction
-
-EXAMPLE DECISION FLOW:
-1. Check 1h trend: BULLISH
-2. See 15m BOS: UP (confirms trend)
-3. Wait for pullback to 1h order block
-4. Enter LONG with stop below order block
-5. Target: Next liquidity zone above
-
-📊 STRATEGIC GUIDANCE:
-- You have access to RSI(14) and EMA(9/21) for every timeframe. Treat them as supplementary technical signals for your discretionary analysis.
-- Use the institutional structures (SwingH/SwingL) across all timeframes to assist in identifying key support/resistance zones and defining logical invalidation points.
-- You have comprehensive market context across multiple timeframes. Analyze the interplay between scales (top-down) before making your final decision.
-
-Perform a professional top-down analysis and execute with your full discretionary conviction. What is your decision?"""
+You have comprehensive data across 7 timeframes (1m to 1w). Analyze top-down, make your professional decision."""
 
     def _parse_json_response(self, content: str) -> Dict[str, Any]:
         """
