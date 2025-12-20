@@ -105,58 +105,68 @@ class LLMClient:
             
             # Record trades in journal
             try:
-                from trade_journal import record_ai_intent, update_trade_log
+                # Try to import trade logging functions (may not exist yet)
+                try:
+                    from trade_journal import record_ai_intent, update_trade_log
+                    has_journal_funcs = True
+                except ImportError:
+                    has_journal_funcs = False
+                    print("[LLM] Trade journal logging functions not available (non-critical)")
                 
-                # Record each action as intent
-                for action in actions:
-                    action_type = action.get("type", "UNKNOWN")
-                    
-                    if action_type == "PLACE_ORDER":
-                        symbol = action.get("symbol", "UNKNOWN")
-                        side = action.get("side", "UNKNOWN")
-                        size = action.get("size", 0)
-                        price = action.get("price")
-                        leverage = action.get("leverage", 1)
-                        stop_price = action.get("stop_price")
-                        tp_price = action.get("tp_price")
-                        reason = action.get("reason", "")
+                if not has_journal_funcs:
+                    # Skip logging if functions don't exist
+                    pass
+                else:
+                    # Record each action as intent
+                    for action in actions:
+                        action_type = action.get("type", "UNKNOWN")
                         
-                        try:
-                            record_ai_intent(
-                                symbol=symbol,
-                                side=side,
-                                size=size,
-                                entry_price=price if price else 0,
-                                leverage=leverage,
-                                stop_loss=stop_price,
-                                take_profit_1=tp_price,
-                                reason=reason,
-                                confidence=confidence
-                            )
-                            print(f"[LLM] Intent recorded: {action_type} {symbol}")
-                        except Exception as ie:
-                            print(f"[LLM] Failed to record intent: {ie}")
-                    
-                    # Update existing trades with new SL/TP
-                    if action_type in ["SET_STOP_LOSS", "SET_TAKE_PROFIT", "MOVE_STOP_TO_BREAKEVEN"]:
-                        symbol = action.get("symbol")
-                        update_data = {}
+                        if action_type == "PLACE_ORDER":
+                            symbol = action.get("symbol", "UNKNOWN")
+                            side = action.get("side", "UNKNOWN")
+                            size = action.get("size", 0)
+                            price = action.get("price")
+                            leverage = action.get("leverage", 1)
+                            stop_price = action.get("stop_price")
+                            tp_price = action.get("tp_price")
+                            reason = action.get("reason", "")
+                            
+                            try:
+                                record_ai_intent(
+                                    symbol=symbol,
+                                    side=side,
+                                    size=size,
+                                    entry_price=price if price else 0,
+                                    leverage=leverage,
+                                    stop_loss=stop_price,
+                                    take_profit_1=tp_price,
+                                    reason=reason,
+                                    confidence=confidence
+                                )
+                                print(f"[LLM] Intent recorded: {action_type} {symbol}")
+                            except Exception as ie:
+                                print(f"[LLM] Failed to record intent: {ie}")
                         
-                        if action_type == "SET_STOP_LOSS" or action_type == "MOVE_STOP_TO_BREAKEVEN":
-                            update_data['stop_loss'] = action.get('price', action.get('stop_price', 0))
-                            update_data['stop_loss_reason'] = action.get('reason', 'AI dynamic adjustment')
-                        elif action_type == "SET_TAKE_PROFIT":
-                            update_data['take_profit_1'] = action.get('price', action.get('tp_price', 0))
-                            update_data['tp1_reason'] = action.get('reason', 'AI target')
-                        
-                        try:
-                            update_trade_log(symbol, update_data)
-                            print(f"[LLM] Trade log updated: {symbol} - {action_type}")
-                        except Exception as ue:
-                            print(f"[LLM] Failed to update trade log: {ue}")
+                        # Update existing trades with new SL/TP
+                        if action_type in ["SET_STOP_LOSS", "SET_TAKE_PROFIT", "MOVE_STOP_TO_BREAKEVEN"]:
+                            symbol = action.get("symbol")
+                            update_data = {}
+                            
+                            if action_type == "SET_STOP_LOSS" or action_type == "MOVE_STOP_TO_BREAKEVEN":
+                                update_data['stop_loss'] = action.get('price', action.get('stop_price', 0))
+                                update_data['stop_loss_reason'] = action.get('reason', 'AI dynamic adjustment')
+                            elif action_type == "SET_TAKE_PROFIT":
+                                update_data['take_profit_1'] = action.get('price', action.get('tp_price', 0))
+                                update_data['tp1_reason'] = action.get('reason', 'AI target')
+                            
+                            try:
+                                update_trade_log(symbol, update_data)
+                                print(f"[LLM] Trade log updated: {symbol} - {action_type}")
+                            except Exception as ue:
+                                print(f"[LLM] Failed to update trade log: {ue}")
                             
             except Exception as e:
-                print(f"[LLM] Failed to record trade log: {e}")
+                print(f"[LLM] Trade logging error (non-critical): {e}")
             
             return decision
             
@@ -334,7 +344,7 @@ If data seems incomplete/contradictory:
 4. Specify what additional data would increase confidence
 
 "Incomplete data" ≠ "insufficient data to trade"
-Work with what you have. ONLY return NO_TRADE if you genuinely have zero actionable information.
+Work with what you have. NO_TRADE is appropriate when you genuinely have zero actionable information (no price data, no indicators, complete system failure).
 
 **FAKEOUT AWARENESS (Context, Not Checklist):**
 Before breakout entries, consider:
@@ -378,14 +388,74 @@ Example: Low OI breakout? → Enter with 0.3% risk instead of 1%, tighter stop. 
 - You decide everything
 
 ═══════════════════════════════════════════════════════════════
+💎 DECISION QUALITY EXAMPLES (Learn from these)
+═══════════════════════════════════════════════════════════════
+
+**GOOD DECISION (Specific, Data-Driven):**
+```
+summary="15m BOS bullish confirmed, EMA 9>21, entering with tight stop"
+confidence=0.65
+reason="15m broke structure at $88,450 with volume 1.8x avg. 
+       EMA 9 crossed EMA 21 on 15m+1h. RSI 58 (room to run). 
+       Stop at $88,100 (below 15m swing low). 
+       R:R 1:2.5 targeting $89,200 resistance."
+```
+Why good: Cites specific levels, indicators, structure, volume ratio, R:R
+
+**BAD DECISION (Vague, Generic):**
+```
+summary="Market is quiet; consider holding position"
+confidence=0.50
+reason="Low activity and liquidity"
+```
+Why bad: No specific data, no levels, no indicators, no structure mentioned
+
+**GOOD STOP PLACEMENT:**
+```
+"Stop at $88,100 (15m swing low + 10 ATR buffer, structure invalidation point)"
+```
+Why good: Specific price + clear reasoning (structure + volatility)
+
+**BAD STOP PLACEMENT:**
+```
+"Stop at $88,000"
+```
+Why bad: No justification, no structure reference, arbitrary number
+
+**GOOD CONFIDENCE REASONING:**
+```
+confidence=0.58
+"Moderate conviction: 15m+1h aligned but 4h still consolidating. 
+ Volume adequate but not exceptional. Clear invalidation at $88,100."
+```
+Why good: Explains why 0.58 specifically based on data alignment
+
+**BAD CONFIDENCE:**
+```
+confidence=0.50
+```
+Why bad: No explanation, seems arbitrary, doesn't vary between decisions
+
+═══════════════════════════════════════════════════════════════
 🎓 PRECISION & QUALITY STANDARDS
 ═══════════════════════════════════════════════════════════════
 
 **CONCRETE REASONING:**
-When citing market conditions, reference specific data points:
-- Instead of generic "strong momentum" → cite "EMA 9 > EMA 21, RSI 65, 15m BOS confirmed"
-- Instead of vague "bullish trend" → cite "HH/HL structure, price above VWAP, 1h CHoCH bullish"
-- Point to: EMA relations, VWAP position, BOS/CHoCH, swing points, specific price levels
+Professional traders back every statement with data. Generic claims damage credibility.
+
+Examples of upgrading generic → specific:
+- "Strong momentum" → "EMA 9 crossed above EMA 21, RSI 65, volume 1.8x avg"
+- "Bullish trend" → "HH/HL structure intact, price above VWAP $88,200, 1h CHoCH bullish" 
+- "Market is quiet" → "Volume 0.6x avg, $120 range last hour, consolidating at $88,300"
+- "Low liquidity" → "OI flat at $45M, funding neutral 0.01%, spread widened to $8"
+
+When you say "because X", cite the DATA that shows X:
+- Trend direction → cite swing points, EMA positions, BOS/CHoCH
+- Momentum → cite RSI, MACD, volume vs average
+- Risk level → cite funding rate, OI change, volatility (ATR%)
+- Entry/exit levels → cite structure (swing high/low, order blocks, support/resistance)
+
+Quality decision-making means: Anyone reading your reasoning can verify it from the data.
 
 **STATE INTEGRITY:**
 Use the data provided in the state. If data seems inconsistent or incomplete:
