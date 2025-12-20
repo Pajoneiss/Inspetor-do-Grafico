@@ -420,23 +420,25 @@ def main():
                                     trend = "RANGE"
                                     reasons.append("ranging")
                                 
-                                # Factor 2: RSI momentum (+/- 20 points)
+                                # Factor 2: RSI - NEUTRAL scoring (just note extreme values)
+                                # v13.0: No penalty for overbought/oversold - AI decides if it's opportunity or risk
                                 if rsi > 70:
-                                    score -= 10  # Overbought penalty
-                                    reasons.append("overbought")
+                                    score += 5  # Extreme = interesting, not penalty
+                                    reasons.append("RSI>70")
                                 elif rsi > 60:
-                                    score += 10
-                                    reasons.append("RSI strong")
+                                    score += 5
+                                    reasons.append("RSI bullish")
                                 elif rsi < 30:
-                                    score -= 10  # Oversold penalty
-                                    reasons.append("oversold")
+                                    score += 5  # Extreme = interesting, not penalty
+                                    reasons.append("RSI<30")
                                 elif rsi < 40:
-                                    score += 10  # Good for shorts
-                                    reasons.append("RSI weak")
+                                    score += 5
+                                    reasons.append("RSI bearish")
                                 else:
                                     score += 0  # Neutral zone
                                 
-                                # Factor 3: MACD confirmation (+/- 10 points)
+                                # Factor 3: MACD confirmation (+10 for alignment, 0 for divergence - not penalty)
+                                # v13.0: Divergence is information, not necessarily bad
                                 if macd_hist > 0 and trend in ["UP", "UP_STRONG"]:
                                     score += 10
                                     reasons.append("MACD+")
@@ -444,22 +446,26 @@ def main():
                                     score += 10
                                     reasons.append("MACD-")
                                 elif (macd_hist > 0 and trend.startswith("DOWN")) or (macd_hist < 0 and trend.startswith("UP")):
-                                    score -= 5  # Divergence penalty
+                                    score += 0  # Divergence = neutral, AI decides significance
                                     reasons.append("MACD diverge")
                                 
-                                # Factor 4: Volume boost (+5 max)
+                                # Factor 4: Volume boost (+10 for high volume - more interesting)
                                 if relative_volume > 1.5:
-                                    score += 5
+                                    score += 10
                                     reasons.append("high vol")
+                                elif relative_volume > 1.2:
+                                    score += 5
+                                    reasons.append("vol+")
                                 
-                                # Factor 5: Volatility penalty (-5 if too high)
+                                # Factor 5: Volatility - HIGH ATR = more opportunity, not penalty
+                                # v13.0: AI decides if volatility is good or bad
                                 if atr_pct > 3.0:
-                                    score -= 5
-                                    reasons.append("high ATR")
+                                    score += 5
+                                    reasons.append("volatile")
                                 
                                 # Factor 6: Micro-conviction variance (prevents flat scores)
                                 # RSI distance from 50 (normalized to range -2 to +2)
-                                score += (rsi - 50) * 0.04
+                                score += abs(rsi - 50) * 0.05  # Further from 50 = more interesting
 
                                 # Clamp score
                                 score = max(0, min(100, score))
