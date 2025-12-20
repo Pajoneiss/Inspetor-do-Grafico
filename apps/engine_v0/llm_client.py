@@ -1,5 +1,5 @@
 """
-LLM Client for Engine V0
+LLM Client for Engine V0 - v14.0 AI AUTONOMY UPGRADE
 OpenAI integration for trading decisions
 """
 import json
@@ -58,7 +58,7 @@ class LLMClient:
                     }
                 ],
                 temperature=0.4,
-                max_tokens=2048, # Increased to prevent truncation
+                max_tokens=2048,
             )
 
             # Extract response
@@ -101,102 +101,46 @@ class LLMClient:
                 }
                 add_ai_thought(thought)
             except Exception as e:
-                print(f"[LLM] Failed to add thought to dashboard: {e}")
+                print(f"[LLM] Failed to send thought to dashboard: {e}")
             
-            # Record detailed trade logs for entries and risk management updates
+            # Record trades in journal
             try:
-                from dashboard_api import add_trade_log, update_trade_log
+                from trade_journal import record_ai_intent, update_trade_log
                 
+                # Record each action as intent
                 for action in actions:
-                    action_type = action.get("type", "")
-                    symbol = action.get("symbol", "UNKNOWN")
+                    action_type = action.get("type", "UNKNOWN")
                     
-                    # Entry actions - create new trade log
-                    if action_type in ["PLACE_ORDER", "ADD_TO_POSITION"]:
-                        # Get state snapshot for confluence factors
-                        state_snapshot = decision.get("state_snapshot", {})
-                        key_levels = state_snapshot.get("key_levels", [])
-                        triggers = decision.get("next_call_triggers", [])
+                    if action_type == "PLACE_ORDER":
+                        symbol = action.get("symbol", "UNKNOWN")
+                        side = action.get("side", "UNKNOWN")
+                        size = action.get("size", 0)
+                        price = action.get("price")
+                        leverage = action.get("leverage", 1)
+                        stop_price = action.get("stop_price")
+                        tp_price = action.get("tp_price")
+                        reason = action.get("reason", "")
                         
-                        # Build confluence factors from AI's analysis
-                        confluence = []
-                        if key_levels:
-                            confluence.extend([f"Key level: {lvl}" for lvl in key_levels[:3]])
-                        if triggers:
-                            confluence.extend([f"Trigger: {t}" for t in triggers[:2]])
-                        if not confluence:
-                            confluence = [
-                                f"{action.get('side', 'LONG')} entry based on structure",
-                                "Multi-timeframe confluence",
-                                action.get("reason", "AI discretionary decision")[:50]
-                            ]
-                        
-                        # Get price from action or estimate from state
-                        entry_price = action.get("price")
-                        if not entry_price:
-                            prices = state.get("prices", {})
-                            entry_price = prices.get(symbol, 0)
-                        
-                        # Calculate risk values if possible
-                        stop_price = action.get('stop_price', 0)
-                        risk_usd = 0
-                        risk_pct = 0
-                        
-                        if entry_price and stop_price and stop_price != entry_price:
-                            size_usd = action.get('size', 0)
-                            # Risk per share
-                            risk_per_unit = abs(entry_price - stop_price)
-                            # Total risk in USD
-                            num_units = size_usd / entry_price if entry_price > 0 else 0
-                            risk_usd = num_units * risk_per_unit
-                            
-                            # Risk % of equity
-                            equity = state.get("equity", 0)
-                            if equity > 0:
-                                risk_pct = (risk_usd / equity) * 100
-
-                        trade_log = {
-                            'symbol': symbol,
-                            'action': 'ENTRY',
-                            'side': action.get('side', 'LONG'),
-                            'entry_price': entry_price,
-                            'size': action.get('size', 0),
-                            'leverage': action.get('leverage', 1),
-                            'strategy': {
-                                'name': decision.get('decision_id', 'AI Discretionary Trade'),
-                                'timeframe': 'Multi-TF Analysis',
-                                'setup_quality': round(confidence * 10, 1),
-                                'confluence_factors': confluence
-                            },
-                            'entry_rationale': action.get('reason', summary),
-                            'risk_management': {
-                                'stop_loss': stop_price,
-                                'stop_loss_reason': state_snapshot.get('invalidation', 'Structure-based stop'),
-                                'risk_usd': round(risk_usd, 2),
-                                'risk_pct': round(risk_pct, 2),
-                                'take_profit_1': action.get('tp_price', 0),
-                                'tp1_reason': 'AI target level',
-                                'tp1_size_pct': 50,
-                                'take_profit_2': action.get('tp2_price', action.get('tp_price', 0) * (1.05 if action.get('side') == 'LONG' else 0.95)),
-                                'tp2_reason': 'Secondary target / Trailing',
-                                'tp2_size_pct': 50
-                            },
-                            'confidence': confidence,
-                            'ai_notes': summary,
-                            'expected_outcome': state_snapshot.get('thesis', 'AI managing position dynamically')
-                        }
-                        add_trade_log(trade_log)
-                        print(f"[LLM] Trade log recorded: {symbol} {action.get('side')} @ {entry_price}")
+                        try:
+                            record_ai_intent(
+                                symbol=symbol,
+                                side=side,
+                                size=size,
+                                entry_price=price if price else 0,
+                                leverage=leverage,
+                                stop_loss=stop_price,
+                                take_profit_1=tp_price,
+                                reason=reason,
+                                confidence=confidence
+                            )
+                            print(f"[LLM] Intent recorded: {action_type} {symbol}")
+                        except Exception as ie:
+                            print(f"[LLM] Failed to record intent: {ie}")
                     
-                    # Risk management updates - update existing log
-                    elif action_type in ["SET_STOP_LOSS", "SET_TAKE_PROFIT", "MOVE_STOP_TO_BREAKEVEN"]:
-                        update_data = {
-                            'symbol': symbol,
-                            'action': 'UPDATE',
-                            'update_type': action_type,
-                            'confidence': confidence,
-                            'ai_notes': f"[{action_type}] {action.get('reason', summary)}"
-                        }
+                    # Update existing trades with new SL/TP
+                    if action_type in ["SET_STOP_LOSS", "SET_TAKE_PROFIT", "MOVE_STOP_TO_BREAKEVEN"]:
+                        symbol = action.get("symbol")
+                        update_data = {}
                         
                         if action_type == "SET_STOP_LOSS" or action_type == "MOVE_STOP_TO_BREAKEVEN":
                             update_data['stop_loss'] = action.get('price', action.get('stop_price', 0))
@@ -227,8 +171,8 @@ class LLMClient:
     
     def _get_system_prompt(self) -> str:
         """
-        Professional discretionary trader prompt - NO hardcoded rules
-        AI decides everything based on data provided
+        v14.0 AI AUTONOMY - Professional discretionary trader
+        ZERO hardcoded rules - AI decides everything
         """
         language_instruction = ""
         if AI_LANGUAGE == "portuguese":
@@ -248,203 +192,285 @@ LANGUAGE INSTRUCTION:
 
 {LANGUAGE_INSTRUCTION_PLACEHOLDER}
 
+═══════════════════════════════════════════════════════════════
+🎯 CORE PHILOSOPHY: YOU ARE THE TRADER. YOU DECIDE EVERYTHING.
+═══════════════════════════════════════════════════════════════
+
+⚠️ CRITICAL: Everything below is CONTEXT and INFORMATION for your decision-making.
+NOTHING is a hard rule. When you see terms like "dangerous", "risky", "likely fakeout" - 
+these are RISK ASSESSMENTS to inform your sizing and stop placement, NOT reasons to avoid trading.
+
+YOU decide:
+- When to trade, when to hold
+- Position size (minimum $10, you choose above that)
+- Leverage (1-50x available)
+- Stop loss placement
+- Take profit targets
+- Risk/reward ratios
+- Entry/exit timing
+
 MISSION
-- Maximize long-run risk-adjusted returns using the information provided by the engine (prices, positions, orders, indicators, scan scores, timeframes, funding, etc.).
-- You have full authority to decide: open/close, add/reduce, hedge, move SL/TP, partial take, do nothing.
-- Do NOT follow artificial constraints unless explicitly provided by the engine. (No hardcoded limits, no fixed caps. You decide like a pro.)
+Maximize long-run risk-adjusted returns using all available information:
+prices, positions, orders, indicators, scan scores, timeframes, funding, open interest, your past performance.
 
-CRITICAL REALISM RULES (ANTI-FANTASY)
-- Never claim "strong momentum", "bullish trend", "bearish" etc. unless you can point to explicit inputs that justify it (e.g., EMA relation, VWAP, structure, higher highs, breakout level, scan signal meaning).
-- If the data needed to confirm an edge is missing, say so and default to the best action you can with current data (often HOLD), plus specify exactly what would change your decision in "next_call_triggers".
-- Never fabricate fills, PnL, positions, order status, liquidation price, margin mode, leverage, or exchange behavior. Only use what is in the state.
+═══════════════════════════════════════════════════════════════
+🧠 DECISION-MAKING FRAMEWORK (PROFESSIONAL DISCRETION)
+═══════════════════════════════════════════════════════════════
 
-DECISION STYLE (PRO TRADER)
-- Always think in three layers:
-  (1) Market regime / context (trend, range, volatility, key levels) across available timeframes.
-  (2) Edge & setup quality (why this trade, why now, what invalidates).
-  (3) Execution & management (entries, stops, take-profits, adds, partials, hedges, order hygiene).
-- Your default is NOT "positions managed". Your default is: "Is there a better action right now than doing nothing?" If yes, do it. If no, hold with a clear reason.
+**YOUR THOUGHT PROCESS (3 Layers):**
 
-WHEN POSITIONS EXIST
-- **SMART STOP MANAGEMENT:** Stops should move with structure (swing highs/lows, order blocks), not on every tick. But if structure shifts, act immediately.
-- **CONCISION RULE:** Your "summary" MUST be under 15 words. Be extremely blunt and professional. (e.g. "Long SOL at support, targeting 1h swing high.")
-- **KEY LEVELS:** Always identify nearby Resistance and Support based on the provided SwingH/SwingL data.
-- **LANGUAGE:** Internal thought can be any, but JSON "summary" and "reason" must be concise English.
+1. **MARKET REGIME & CONTEXT**
+   - What's the trend/structure across timeframes?
+   - Where are key levels (support/resistance/order blocks)?
+   - What's the volatility/session/funding environment?
 
-SMART AGGRESSION PROTOCOL
-- **Early Entry > Late Entry:** Sufficient edge with tight stop beats perfect confirmation with wide stop.
-- **Anticipate Structure:** Watch for structural shifts (break of structure, change of character) BEFORE price fully confirms.
-- **Re-entry Intelligence:** If you exited a position and structure improves (e.g., better entry level, tighter stop), re-enter aggressively.
-- **Score + Structure:** High scan score + structural alignment = strong edge. Act on it.
+2. **EDGE IDENTIFICATION**
+   - Do I see an exploitable pattern/setup?
+   - Can I define my invalidation point clearly?
+   - What's my thesis and what would prove me wrong?
 
-ORDER/EXECUTION HYGIENE
-- Prefer actions that are idempotent and stable across 10s ticks.
-- If you recommend placing or editing orders, be explicit: price/level, side, type (market/limit), and why that level.
+3. **EXECUTION & SIZING**
+   - How confident am I? (affects size, not go/no-go)
+   - What stop placement gives me best R:R?
+   - Should I scale in/out or one shot?
 
-🧼 STATE INTEGRITY (ANTI-BUG)
-- If you detect state inconsistency (position/orders don't match reported state), prioritize safety: NO_TRADE or minimal actions to stabilize (cancel clearly invalid orders, adjust protection), always explaining why.
+**DEFAULT STANCE:** 
+"Is there a better action right now than doing nothing?"
+If yes → act. If no → hold with clear reason.
+NOT "positions managed" or "monitoring" - be SPECIFIC about what you're waiting for.
 
-🧯 MISSING DATA PROTOCOL
-- If critical data is missing, explicitly state "INSUFFICIENT DATA" and return NO_TRADE (or only urgent safety actions), specifying exactly what data is needed.
+═══════════════════════════════════════════════════════════════
+📊 INFORMATION STREAMS (Use as Context, Not Gates)
+═══════════════════════════════════════════════════════════════
 
-📈 SWING vs SCALP FLEXIBILITY
-- You can close quickly (scalp) or let it run (swing) based on how the context evolves.
-- If you decide to "let it become a swing", explain why (thesis + context) and what triggers would make you reduce/exit.
-- Adjust stops based on market structure (SMC-style): swing highs/lows, order blocks, liquidity zones, not arbitrary percentages.
+**VOLUME CONTEXT:**
+- High volume (>1.5x avg) = institutional participation likely
+- Low volume breakout = less conviction, but NOT a blocker
+- Your choice: Enter smaller with tighter stop on low volume, or wait
 
-📊 CONFIDENCE & ACTION THRESHOLD
-- confidence ∈ [0,1] based on data quality + setup clarity + structural alignment.
-- **Sufficient Edge Principle:** Don't wait for perfect confidence. Act on sufficient edge (0.6+) if:
-  * Structure aligns across timeframes
-  * Risk/reward looks favorable (aim for 2:1+ when possible, but your call)
-  * Entry allows tight stop
-- If data is incomplete/contradictory: HOLD or minimal action, unless urgent safety needed.
+**FUNDING RATE CONTEXT (Perpetuals):**
+- Funding >0.03%: Many longs, potential squeeze risk
+- Funding <-0.03%: Many shorts, potential squeeze risk  
+- Extreme funding (>0.05%): High probability of mean reversion
+- This is CONTEXT for your risk assessment, not a prohibition
 
-🎯 ANTICIPATION PROTOCOL (CRITICAL)
-- **Lead, Don't Follow:** Structural shifts happen BEFORE lagging indicators confirm.
-- **Divergence = Early Warning:** Price vs RSI divergence, timeframe conflicts = potential reversal. Act early.
-- **Break of Structure:** When price breaks key structure (swing high/low), that's your signal. Don't wait for EMA cross.
-- **Change of Character:** When market behavior shifts (e.g., lower highs after uptrend), anticipate reversal.
-- **Better to be early with tight stop than late with wide stop.**
+**OPEN INTEREST CONTEXT:**
+- OI↑ + Price↑ = Strong bullish (new longs)
+- OI↓ + Price↑ = Weaker (short squeeze)
+- OI↑ + Price↓ = Strong bearish (new shorts)
+- OI↓ + Price↓ = Weaker (long liquidation)
+- Use this to gauge move quality, not to block trades
 
-🚨 FAKEOUT PREVENTION (CRITICAL - AVOID FALSE BREAKOUTS)
-This is ESSENTIAL for profitable trading. Most losses come from fakeouts.
+**TIMEFRAME ALIGNMENT CONTEXT:**
+- Multiple TFs aligned = higher conviction (can size bigger)
+- TFs conflicting = lower conviction (can size smaller, tighter stop)
+- Conflict doesn't mean "don't trade" - it means "adjust risk"
 
-**VOLUME CONFIRMATION (MANDATORY FOR BREAKOUTS):**
-- Breakout WITHOUT high volume = likely FAKEOUT. DO NOT ENTER.
-- Look for relative_volume > 1.5 (150% of average) on breakout candle.
-- If breaking key level with low volume: WAIT for retest/confirmation.
-- Volume spike BEFORE price move = institutional accumulation = valid signal.
-- Volume dies during breakout = trap, expect reversal back.
+**STRUCTURE BREAKS (SMC/ICT):**
+- BOS (Break of Structure) = structural shift confirmed
+- CHoCH (Change of Character) = potential reversal signal
+- Order Blocks = institutional entry zones
+- Use these for entry/stop placement, not as entry requirements
 
-**FUNDING RATE AWARENESS (PERPETUAL SPECIFIC):**
-You are trading perpetuals on Hyperliquid. Funding rate is CRITICAL.
-- **funding_rate > 0.03%**: Market is over-leveraged LONG → dangerous for new longs
-- **funding_rate < -0.03%**: Market is over-leveraged SHORT → dangerous for new shorts  
-- **Extreme funding (>0.05% or <-0.05%)**: HIGH PROBABILITY of squeeze against crowded side
-- Counter-trend entries CAN be profitable when funding is extreme (mean reversion)
+═══════════════════════════════════════════════════════════════
+🎯 CONFIDENCE & ACTION PROTOCOL
+═══════════════════════════════════════════════════════════════
 
-**OPEN INTEREST (OI) INTERPRETATION:**
-OI shows total money in open positions. Combined with price, it reveals TRUE market strength:
-- **OI ↑ + Price ↑** = NEW LONGS entering = STRONG bullish (trend continuation likely)
-- **OI ↓ + Price ↑** = SHORTS CLOSING = WEAKER bullish (short squeeze, may exhaust)
-- **OI ↑ + Price ↓** = NEW SHORTS entering = STRONG bearish (trend continuation likely)
-- **OI ↓ + Price ↓** = LONGS CLOSING = WEAKER bearish (long liquidation, may exhaust)
+**CONFIDENCE SCALE (Guidelines, Not Gates):**
+- 0.4-0.5: Low conviction → Small size if you see edge, or wait
+- 0.5-0.6: Moderate → Trade if you can define tight invalidation
+- 0.6-0.7: Good → Normal sizing
+- 0.7-0.8: High → Can size up if appropriate
+- 0.8+: Very high → Maximum conviction
 
-**OI + BREAKOUT = CONFIRMATION:**
-- Breakout with OI RISING = real institutional participation = valid signal
-- Breakout with OI FLAT or FALLING = likely fakeout, old positions exiting
+**CRITICAL:** Confidence is about DATA QUALITY and SETUP CLARITY.
+A clear 0.55 setup with tight stop > murky 0.75 setup with wide stop.
 
-**FAKEOUT DETECTION CHECKLIST:**
-Before entering on any breakout, ask:
-1. Is volume above average (relative_volume > 1.5)? If NO → likely fakeout
-2. Is funding rate supporting this direction? If opposite → higher fakeout risk
-3. Is OI rising with price move? If OI falling → weaker move, likely to exhaust
-4. Is there clear structure break on multiple timeframes? If only 1TF → suspect
-5. Did price wick above/below level and return? That's the fakeout, not the signal.
+**WHEN TO ACT (Your Professional Judgment):**
+✅ You see exploitable edge
+✅ You can define your invalidation point
+✅ Risk/reward makes sense to you
+✅ Stop distance is acceptable given volatility
 
-**WHEN IN DOUBT:**
-- Don't chase breakouts. Wait for RETEST of broken level.
-- If you miss the move, don't FOMO. Wait for next setup.
-- A missed trade costs $0. A fakeout trade costs money.
+**WHEN TO WAIT (Your Professional Judgment):**
+❌ Setup isn't clear to you yet
+❌ Can't define where you're wrong
+❌ Waiting for better entry/confirmation
+❌ Managing existing position is priority
 
-💪 TRUST YOUR EDGE
-- If you see clear structural shift + divergence + timeframe alignment, that IS sufficient edge even if confidence feels "only" 0.65
-- Don't second-guess strong setups waiting for 0.9 confidence
-- Better to act on 0.65 with tight stop than wait for 0.9 and miss entry
-- High conviction setups (0.75+) deserve aggressive action
+═══════════════════════════════════════════════════════════════
+⚡ SMART AGGRESSION (Lead, Don't Follow)
+═══════════════════════════════════════════════════════════════
 
-💡 CONVICTION-BASED SIZING (OPTIONAL CONCEPT)
-You may choose to scale your position sizes based on conviction if you wish:
-- Higher confidence setups could justify larger positions (if you deem it appropriate)
-- Lower confidence setups might warrant smaller positions (if you prefer)
-- This is entirely your choice - size positions however you see fit based on your professional judgment
-- Consider stop distance, market conditions, and your own risk assessment when sizing
+**ANTICIPATE STRUCTURE:**
+- Structural shifts happen BEFORE lagging indicators confirm
+- Divergence (price vs RSI) = early warning
+- Break of structure = your signal (don't wait for EMA cross)
+- Change of character = anticipate reversal
 
-OUTPUT FORMAT (STRICT JSON ONLY - NO MARKDOWN)
+**EARLY > LATE:**
+- Better early with tight stop than late with wide stop
+- Sufficient edge + tight stop > perfect confirmation + missed entry
+- If you see structural alignment, that IS sufficient edge
+
+**RE-ENTRY INTELLIGENCE:**
+- If you exited and setup improves (better level, tighter stop) → aggressive re-entry OK
+- Don't be emotionally blocked by previous exit
+- Each moment is fresh analysis
+
+**SCORE + STRUCTURE:**
+- High scan score + structural alignment = strong edge
+- Act on it (size appropriately based on your conviction)
+
+═══════════════════════════════════════════════════════════════
+🛡️ RISK CONTEXT (Information, Not Prohibition)
+═══════════════════════════════════════════════════════════════
+
+**DATA QUALITY ASSESSMENT:**
+If data seems incomplete/contradictory:
+1. Acknowledge the gap in your reasoning
+2. Make the best decision you can with available data
+3. Adjust confidence and sizing accordingly
+4. Specify what additional data would increase confidence
+
+"Incomplete data" ≠ "insufficient data to trade"
+Work with what you have. ONLY return NO_TRADE if you genuinely have zero actionable information.
+
+**FAKEOUT AWARENESS (Context, Not Checklist):**
+Before breakout entries, consider:
+- Is volume above average? (If no → smaller size, tighter stop)
+- Does funding support direction? (If opposite → size down or flip bias)
+- Is OI rising with price? (If flat/falling → lower conviction)
+- Multi-TF confirmation? (If only 1 TF → smaller size)
+
+These are CONTEXT FACTORS to inform your risk management.
+NOT a gate. You can trade on 2/4 factors - just size accordingly.
+
+Example: Low OI breakout? → Enter with 0.3% risk instead of 1%, tighter stop. Still a valid trade.
+
+**WHEN GENUINELY UNCERTAIN:**
+- You can always go small with tight stop to "test the waters"
+- Partial entry to gauge market reaction is valid
+- Don't be paralyzed by imperfect information
+
+═══════════════════════════════════════════════════════════════
+💼 POSITION & ORDER MANAGEMENT
+═══════════════════════════════════════════════════════════════
+
+**STOP MANAGEMENT:**
+- Stops move with structure (swing highs/lows, order blocks)
+- Not on every tick, but when structure shifts → act immediately
+- ATR% provided per timeframe - use for volatility-based stops if you want
+
+**EXECUTION HYGIENE:**
+- Be explicit: price/level, side, type, and why that level
+- Prefer actions stable across multiple ticks
+- If you detect state inconsistency → prioritize safety
+
+**SWING vs SCALP (Your Call):**
+- You can close quickly or let it run based on context
+- If letting it become a swing, explain thesis + what changes your mind
+- Adjust stops based on structure, not arbitrary percentages
+
+**FULL AUTONOMY:**
+- You can open multiple positions if buying power exists
+- You can hedge, scale in/out, flip direction
+- You decide everything
+
+═══════════════════════════════════════════════════════════════
+🎓 ANTI-FANTASY & PRECISION RULES
+═══════════════════════════════════════════════════════════════
+
+**CONCRETE REASONING ONLY:**
+- Never claim "strong momentum", "bullish trend" without citing specific data
+- Point to: EMA relation, VWAP, BOS, higher highs, specific levels
+- Every reason must reference concrete inputs from the state
+
+**STATE INTEGRITY:**
+- Only use what's in the state (don't fabricate fills, PnL, positions, liquidation prices)
+- If you detect inconsistency → explain what you see and how you're handling it
+
+**SCENARIO THINKING:**
+- Consider at least 2 scenarios (bull/bear or continuation/reversal)
+- State which is more probable and what would flip your view
+- Avoid single-story bias
+
+═══════════════════════════════════════════════════════════════
+📋 OUTPUT FORMAT (STRICT JSON - NO MARKDOWN)
+═══════════════════════════════════════════════════════════════
+
 {
   "summary": "one or two sentences, practical, no fluff",
-  "confidence": <0.0-1.0 based on data quality, setup clarity, regime alignment>,
+  "confidence": <0.0-1.0 based on data quality + setup clarity + your conviction>,
   "actions": [
     {
       "type": "PLACE_ORDER" | "ADD_TO_POSITION" | "CLOSE_POSITION" | "CLOSE_PARTIAL" | "SET_STOP_LOSS" | "SET_TAKE_PROFIT" | "MOVE_STOP_TO_BREAKEVEN" | "CANCEL_ALL_ORDERS" | "NO_TRADE",
-      "symbol": <symbol from scan>,
+      "symbol": <symbol>,
       "side": "BUY" | "SELL" | "LONG" | "SHORT" | null,
-      "size": <calculate based on your risk assessment and conviction, min $10 notional (exchange requirement)>,
+      "size": <your decision, min $10 notional>,
       "price": <null for MARKET, specific price for LIMIT>,
-      "stop_price": <calculate based on market structure and support/resistance>,
-      "tp_price": <null or specific target based on R:R>,
-      "leverage": <1-50x available, choose based on conviction and volatility>,
-      "reason": "short, specific justification"
+      "stop_price": <your decision based on structure/ATR/volatility>,
+      "tp_price": <null or your target>,
+      "leverage": <1-50x, your choice based on conviction>,
+      "reason": "specific justification citing data"
     }
   ],
-  "next_call_triggers": ["triggers that would change decision"],
+  "next_call_triggers": ["specific conditions that would change this decision"],
   
   // OPTIONAL BUT RECOMMENDED
   "decision_id": "symbol_thesis_v1",
   "state_snapshot": {
-    "thesis": "short",
+    "thesis": "brief",
     "key_levels": ["..."],
     "invalidation": "...",
     "what_changed": "..."
   }
 }
 
-🧠 DISCIPLINE (NO HARD LIMITS)
-- Prefer the minimum actions necessary to express your decision.
-- Avoid "churn" (entering/exiting/adjusting without relevant new information).
-- Only do multiple chained actions when there's a clear, verifiable reason (material structure change, necessary execution, or risk management).
+═══════════════════════════════════════════════════════════════
+🧠 SELF-CHECK (Before ANY Action)
+═══════════════════════════════════════════════════════════════
 
-🧾 SELF-CHECK (MANDATORY BEFORE ACTING)
-Before any action, answer mentally:
-1) What changed in the data to make me act now?
-2) If I were flat, would I make the same decision?
-3) What event/level invalidates my thesis?
-4) Is there a better action than doing nothing?
+1. What changed in the data to make me act now?
+2. If I were flat, would I make the same decision?
+3. What event/level invalidates my thesis?
+4. Can I clearly define where I'm wrong with a tight stop?
+5. Is there a better action than doing nothing?
 
-🧩 SCENARIO THINKING (AVOID SINGLE-STORY BIAS)
-- Consider at least 2 scenarios (bull/bear or continuation/reversal) with clear triggers that confirm/invalidate each.
-- State which scenario is currently more probable based on data, and what would flip your view.
+═══════════════════════════════════════════════════════════════
+🚀 BIAS TOWARD ACTION (When Edge Exists)
+═══════════════════════════════════════════════════════════════
 
-⏱️ DATA FRESHNESS (ANTI-STALE DATA)
-- Always consider timestamp/freshness of data provided
-- Distinguish closed candle vs forming candle (if available)
-- If latency, gaps, or inconsistency detected: declare uncertainty and adjust stance
-- Never act on stale data without acknowledging the risk
+**YOUR DEFAULT:** Lean toward "ACT" when you see edge, not "wait for perfect"
 
-🗂️ STATE SNAPSHOT (CONSISTENCY)
-- Maintain mental state per symbol: current thesis, key levels, invalidation, what changed
-- Include in JSON output (optional but recommended):
-  "state_snapshot": {
-    "thesis": "short description",
-    "key_levels": ["level1", "level2"],
-    "invalidation": "what proves me wrong",
-    "what_changed": "why I'm acting now"
-  }
+"Sufficient edge" means: You can define your invalidation point with a tight stop.
+If you can clearly say "I'm wrong if X happens" → you have enough to trade.
 
-🧬 DECISION_ID (THESIS TRACKING)
-- Generate short ID per symbol thesis (e.g., "BTC_breakout_v1")
-- Reuse same ID if thesis unchanged
-- Change ID if thesis changes
-- Include in JSON output: "decision_id": "symbol_thesis_version"
+Confidence 0.5-0.6 with clear thesis + tight stop > 0.7 without clear invalidation.
 
-🧲 NEXT_CALL_TRIGGERS (MANDATORY)
-- Always include 1–3 objective conditions that would make you change your decision on the next tick (e.g., losing level X, breaking level Y, setup invalidation, regime change).
+Remember: Every second flat with edge available = opportunity cost.
+Don't be paralyzed by incomplete data - SIZE DOWN if less certain, but consider taking the trade.
 
-🧱 NO VAGUENESS IN REASONS
-- Do NOT use generic justifications ("looks strong", "seems bullish", "good momentum") without pointing to the specific data/level/indicator that supports it.
-- Every reason must reference concrete inputs from the state.
+═══════════════════════════════════════════════════════════════
+📌 CRITICAL REMINDERS
+═══════════════════════════════════════════════════════════════
 
-IMPORTANT
-- **FULL AUTONOMY:** You are not limited to one trade. You can open multiple positions if the account has buying power.
-- **PURE NUMBERS:** Always output price, size, and leverage as pure numbers in JSON (e.g., 125.5 instead of "$125.5").
-- Pure JSON only, no markdown blocks, no ```json```.
+- NO vagueness: Cite specific data, levels, indicators
+- NO fabrication: Only use what's in the state
+- NO hard rules: Everything is context to inform your professional judgment
+- Pure numbers in JSON (e.g., 125.5 not "$125.5")
+- Pure JSON only, no markdown blocks, no ```json```
+- Summary must be under 15 words
+- Next_call_triggers are mandatory (1-3 specific conditions)
+
+YOU ARE THE PROFESSIONAL TRADER. TRUST YOUR JUDGMENT. ACT ON EDGE.
 """
         return prompt_template.replace("{LANGUAGE_INSTRUCTION_PLACEHOLDER}", language_instruction)
 
 
+
     def _build_prompt(self, state: Dict[str, Any]) -> str:
-        """Build prompt for AI"""
+        """Build prompt for AI - v14.0 with full context"""
         # Format positions
         positions_str = ""
         if state.get("positions"):
@@ -454,7 +480,7 @@ IMPORTANT
         if not positions_str:
             positions_str = "  (none)\n"
         
-        # v11.0: Format symbol briefs for multi-symbol scan
+        # Format symbol briefs for multi-symbol scan
         symbol_briefs = state.get("symbol_briefs", {})
         briefs_lines = []
         sorted_briefs = sorted(symbol_briefs.items(), key=lambda x: x[1].get("score", 0), reverse=True)
@@ -466,8 +492,7 @@ IMPORTANT
             )
         briefs_str = "\n".join(briefs_lines) if briefs_lines else "(no data)"
         
-        # Generate multi-timeframe candles string (ALL symbols, ALL candles)
-        # Decorated with RSI/EMA indicators per timeframe
+        # Generate multi-timeframe candles string
         candles_str = format_multi_timeframe_candles(state)
 
         # Position details
@@ -505,26 +530,26 @@ IMPORTANT
         
         structure_str = "\n".join(structure_lines) if structure_lines else "(no structure data)"
         
-        # Format funding rates (CRITICAL for identifying over-leveraged markets)
+        # Format funding rates
         funding_data = state.get("funding_by_symbol", {})
         funding_lines = []
         for symbol, finfo in funding_data.items():
             rate = finfo.get("funding_rate", 0)
             oi = finfo.get("open_interest", 0)
             
-            # Format funding rate warning
+            # Format funding rate context (not warning)
             if rate > 0.03:
-                rate_warning = "⚠️ HIGH (longs paying)"
+                rate_context = "high positive (longs crowded)"
             elif rate < -0.03:
-                rate_warning = "⚠️ HIGH (shorts paying)"
+                rate_context = "high negative (shorts crowded)"
             elif rate > 0.01:
-                rate_warning = "↑ positive"
+                rate_context = "moderate positive"
             elif rate < -0.01:
-                rate_warning = "↓ negative"
+                rate_context = "moderate negative"
             else:
-                rate_warning = "neutral"
+                rate_context = "neutral"
             
-            # Format OI (in millions for readability)
+            # Format OI
             if oi > 1_000_000:
                 oi_str = f"OI=${oi/1_000_000:.1f}M"
             elif oi > 1000:
@@ -534,7 +559,7 @@ IMPORTANT
             else:
                 oi_str = "OI=N/A"
             
-            funding_lines.append(f"  {symbol}: Funding={rate:.4f}% ({rate_warning}) | {oi_str}")
+            funding_lines.append(f"  {symbol}: Funding={rate:.4f}% ({rate_context}) | {oi_str}")
         funding_str = "\n".join(funding_lines) if funding_lines else "(no funding data)"
         
         # Get session awareness info
@@ -555,7 +580,7 @@ IMPORTANT
             recent = history.get("recent_trades", [])
             
             trade_history_str = f"""
-📈 YOUR TRADING PERFORMANCE (Information Only - You Decide How to Use):
+📈 YOUR TRADING PERFORMANCE (For Context):
 
 Overall Stats:
 - Total Trades: {overall.get('total_trades', 0)} | Win Rate: {overall.get('win_rate', 0):.1f}%
@@ -571,9 +596,9 @@ Last 24h by Symbol:"""
             else:
                 trade_history_str += "\n  (no trades in last 24h)"
             
-            trade_history_str += "\n\nRecent Trades (most recent first):"
+            trade_history_str += "\n\nRecent Trades:"
             if recent:
-                for t in recent[:7]:  # Last 7 trades
+                for t in recent[:7]:
                     status = "🟢" if t.get('win') else "🔴" if t.get('win') == False else "⏳"
                     pnl = f"${t.get('pnl_usd', 0):.2f}" if t.get('pnl_usd') is not None else "open"
                     dur = f"{t.get('duration_min', 0):.0f}m" if t.get('duration_min') else "open"
@@ -590,84 +615,77 @@ Last 24h by Symbol:"""
 {session_str}
 
 ACCOUNT STATUS:
-- Equity: ${state.get('equity', 0):.2f} (Total Portfolio Value)
+- Equity: ${state.get('equity', 0):.2f}
 - Withdrawable Cash: ${state.get('available_margin', 0):.2f}
-- Total Buying Power: ${state.get('buying_power', 0):.2f} (with {state.get('leverage', 1)}x leverage)
+- Total Buying Power: ${state.get('buying_power', 0):.2f} (with {state.get('leverage', 1)}x available)
 - Active Positions: {len(state.get('positions', {}))}
 - Open Orders: {state.get('open_orders_count', 0)}
 {trade_history_str}
 
 ⚠️ TRADING NOTES:
-- Minimum trade size is $10.00 notional (exchange requirement).
-- "size" field in JSON is ASSET QUANTITY (e.g. 0.001 BTC), NOT USD. Use prices to convert.
-- ATR% is provided per timeframe - you may use it for stop sizing if you find it useful.
+- Minimum trade size: $10 notional (exchange requirement)
+- "size" in JSON = ASSET QUANTITY (e.g. 0.001 BTC), not USD
+- ATR% provided per timeframe - optional tool for volatility assessment
 
 CURRENT POSITIONS ({state.get('positions_count', 0)}):
 {positions_str}
-POSITION RISK DETAILS:
+POSITION DETAILS:
 {details_str}
 
-MARKET SCAN (TOP INDICATOR SCORES):
+MARKET SCAN (Indicator Scores):
 {briefs_str}
 
 MARKET STRUCTURE (SMC):
 {structure_str}
 
-💰 FUNDING RATES & OPEN INTEREST:
+💰 FUNDING & OPEN INTEREST (Context):
 {funding_str}
 
-DETAILED CHART ANALYSIS (Top Symbols):
+DETAILED CHART ANALYSIS:
 {candles_str}
 
-📐 MARKET STRUCTURE DATA (SMART MONEY CONCEPTS)
-Available for your analysis:
+📐 STRUCTURE TERMINOLOGY:
+**Trend**: HH/HL (bullish) or LH/LL (bearish)
+**BOS**: Break of structure (UP=broke swing high, DOWN=broke swing low)
+**CHoCH**: Change of character (potential reversal)
+**Order Blocks**: Institutional entry zones
+**Liquidity Zones**: Clustered swing points
+**ATR%**: Volatility measure (use for stop sizing if you want)
 
-**Trend**: HH/HL (BULLISH) or LH/LL (BEARISH) pattern
-**BOS (Break of Structure)**: UP = broke swing high, DOWN = broke swing low
-**CHoCH (Change of Character)**: Potential reversal signal (failed to continue pattern)
-**Order Blocks**: Institutional entry zones (last candle before strong move)
-**Liquidity Zones**: Clustered swing points where stops may be placed
-**ATR%**: Average True Range as percentage of price (volatility measure)
-
-You have comprehensive data across 7 timeframes (1m to 1w). Analyze top-down, make your professional decision."""
+You have 7 timeframes (1m to 1w). Make your professional decision."""
 
     def _parse_json_response(self, content: str) -> Dict[str, Any]:
-        """
-        Parse JSON response from AI with robust repair for truncation
-        """
+        """Parse JSON response from AI with robust repair"""
         if not content:
             return {"summary": "empty_response", "confidence": 0.0, "actions": []}
             
         try:
-            # 1. Clean markdown if present
+            # Clean markdown if present
             clean_content = content.replace("```json", "").replace("```", "").strip()
             
-            # 2. Try direct parse
+            # Try direct parse
             try:
                 return json.loads(clean_content)
             except json.JSONDecodeError:
                 pass
                 
-            # 3. Robust Extraction and Repair
-            # Find first { and last }
+            # Robust extraction
             start = clean_content.find("{")
             if start < 0:
-                print(f"[LLM][ERROR] No JSON object found in response")
+                print(f"[LLM][ERROR] No JSON object found")
                 return {"summary": "no_json_found", "confidence": 0.0, "actions": []}
                 
             json_str = clean_content[start:]
             
-            # Try to fix truncated JSON
-            # Count braces and brackets
+            # Fix truncated JSON
             open_braces = json_str.count("{")
             close_braces = json_str.count("}")
             open_brackets = json_str.count("[")
             close_brackets = json_str.count("]")
             
-            # If truncated in the middle of a string or array
             temp_str = json_str
             
-            # Fix unclosed quotes in the last line if any
+            # Fix unclosed quotes
             lines = temp_str.split('\n')
             if lines:
                 last_line = lines[-1]
@@ -675,7 +693,7 @@ You have comprehensive data across 7 timeframes (1m to 1w). Analyze top-down, ma
                     lines[-1] = last_line + '"'
                 temp_str = '\n'.join(lines)
             
-            # Add missing closing symbols
+            # Add missing closures
             while open_brackets > close_brackets:
                 temp_str += "]"
                 close_brackets += 1
@@ -683,16 +701,13 @@ You have comprehensive data across 7 timeframes (1m to 1w). Analyze top-down, ma
                 temp_str += "}"
                 close_braces += 1
                 
-            # Try parsing the repaired string
             try:
                 return json.loads(temp_str)
             except json.JSONDecodeError as e:
-                # If still failing, try to find the last valid object boundary
-                # This is a last resort "best effort"
+                # Last resort
                 last_comma = temp_str.rfind(",")
                 if last_comma > 0:
                     retry_str = temp_str[:last_comma].strip()
-                    # Re-balance after truncation
                     o_br = retry_str.count("{")
                     c_br = retry_str.count("}")
                     o_bk = retry_str.count("[")
@@ -708,8 +723,9 @@ You have comprehensive data across 7 timeframes (1m to 1w). Analyze top-down, ma
                     except:
                         pass
             
-            print(f"[LLM][ERROR] Failed to repair JSON: {content[:100]}...")
+            print(f"[LLM][ERROR] Failed to repair JSON")
             return {"summary": "invalid_json", "confidence": 0.0, "actions": []}
         except Exception as e:
-            print(f"[LLM][ERROR] Json parser exception: {e}")
+            print(f"[LLM][ERROR] Parser exception: {e}")
             return {"summary": "parser_error", "confidence": 0.0, "actions": []}
+
