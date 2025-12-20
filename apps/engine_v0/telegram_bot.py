@@ -740,7 +740,7 @@ Responda como se VOCÊ fosse o bot operando. Diga "Eu estou...", "Minha posiçã
         }
     
     async def _send_full_summary_text(self, update):
-        """Send beautiful summary with full market data (no scan)"""
+        """Send beautiful summary with full market data + AI thoughts + positions details"""
         state = _bot_state.get("last_summary", {})
         
         text = "📊 *RESUMO COMPLETO*\n\n"
@@ -751,24 +751,129 @@ Responda como se VOCÊ fosse o bot operando. Diga "Eu estou...", "Minha posiçã
         text += f"├ Buying Power: ${state.get('buying_power', 0):.0f}\n"
         text += f"└ IA: {'✅ LIGADO' if _bot_state['ai_enabled'] else '❌ DESLIGADO'}\n"
         
-        # Positions section
+        # Positions section - ENHANCED with details
         positions = state.get("positions", {})
         if positions:
             text += "\n📈 *POSIÇÕES*\n"
             for sym, pos in positions.items():
                 pnl = pos.get("unrealized_pnl", 0)
+                pnl_pct = pos.get("pnl_pct", 0)
                 emoji = "🟢" if pnl > 0 else "🔴" if pnl < 0 else "⚪"
                 side = pos.get('side', '?')
-                text += f"├ {sym}: {side} | {emoji} ${pnl:.2f}\n"
+                
+                # Basic info
+                text += f"\n{sym}: {side} | {emoji} ${pnl:.2f}\n"
+                
+                # Detailed info (safely handle missing fields)
+                size = pos.get('size', 0)
+                entry = pos.get('entry_price', 0)
+                mark = pos.get('mark_price', 0)
+                lev = pos.get('leverage', 1)
+                liq = pos.get('liquidation_price', 0)
+                
+                if size > 0:
+                    # Estimate USD value
+                    usd_value = abs(size * mark) if mark > 0 else 0
+                    text += f"├ 📊 Size: {abs(size):.4f} {sym} (~${usd_value:.0f})\n"
+                
+                if entry > 0:
+                    text += f"├ 💵 Entry: ${entry:,.2f}\n"
+                
+                if mark > 0:
+                    text += f"├ 📍 Mark: ${mark:,.2f}\n"
+                
+                if pnl_pct != 0:
+                    text += f"├ 📈 PnL: {pnl_pct:+.2f}% (${pnl:.2f})\n"
+                
+                if lev > 1:
+                    text += f"├ ⚡ Leverage: {lev}x\n"
+                
+                if liq > 0:
+                    text += f"├ 💀 Liq: ${liq:,.2f}\n"
+                
+                # Triggers
+                sl = pos.get('stop_loss', 0)
+                tp = pos.get('take_profit', 0)
+                if sl > 0 or tp > 0:
+                    sl_str = f"${sl:,.0f}" if sl > 0 else "None"
+                    tp_str = f"${tp:,.0f}" if tp > 0 else "None"
+                    text += f"└ 🎯 SL={sl_str} | TP={tp_str}\n"
         else:
             text += "\n📈 *POSIÇÕES:* Nenhuma\n"
         
-        # Triggers
-        triggers = state.get('trigger_status', '')
-        if triggers:
-            text += f"\n🎯 *TRIGGERS*\n└ {escape_md(triggers)}\n"
+        # AI Last Decision - NEW
+        last_ai = state.get("last_ai_decision", {})
+        if last_ai and _bot_state['ai_enabled']:
+            text += "\n🤖 *ÚLTIMA DECISÃO IA*\n"
+            
+            # Timestamp
+            import datetime
+            ts = last_ai.get("timestamp", "")
+            if ts:
+                try:
+                    dt = datetime.datetime.fromisoformat(ts.replace('Z', '+00:00'))
+                    now = datetime.datetime.now(datetime.timezone.utc)
+                    delta = now - dt
+                    mins = int(delta.total_seconds() / 60)
+                    if mins < 60:
+                        time_str = f"Há {mins} min"
+                    else:
+                        hours = mins // 60
+                        time_str = f"Há {hours}h {mins % 60}m"
+                except:
+                    time_str = "Recente"
+            else:
+                time_str = "Recente"
+            
+            conf = last_ai.get("confidence", 0)
+            text += f"⏰ {time_str} | Conf: {conf:.2f}\n\n"
+            
+            # Summary (escape markdown)
+            summary = last_ai.get("summary", "")
+            if summary:
+                # Limit to 80 chars for Telegram
+                if len(summary) > 80:
+                    summary = summary[:77] + "..."
+                text += f"\"{escape_md(summary)}\"\n"
         
-        # Market Data (CMC style)
+        # Performance Today - NEW
+        perf = state.get("performance_today", {})
+        if perf and perf.get("trades", 0) > 0:
+            text += "\n📊 *PERFORMANCE (Hoje)*\n"
+            trades = perf.get("trades", 0)
+            win_rate = perf.get("win_rate", 0)
+            pnl = perf.get("total_pnl", 0)
+            best = perf.get("best_trade", 0)
+            
+            text += f"Trades: {trades} | Win: {win_rate:.0f}% | PnL: ${pnl:+.2f}\n"
+            if best != 0:
+                text += f"Best: ${best:+.2f}\n"
+        
+        # Top Symbols - NEW
+        top_syms = state.get("top_symbols", [])
+        if top_syms and len(top_syms) > 0:
+            text += "\n🔍 *TOP SÍMBOLOS*\n"
+            for i, sym_data in enumerate(top_syms[:4], 1):
+                symbol = sym_data.get("symbol", "?")
+                score = sym_data.get("score", 0)
+                trend = sym_data.get("trend", "")
+                
+                # Emoji based on trend
+                if "BULL" in trend.upper():
+                    emoji = "📈"
+                elif "BEAR" in trend.upper():
+                    emoji = "📉"
+                else:
+                    emoji = "⚖️"
+                
+                text += f"{i}. {symbol}: {score:.0f} {emoji}"
+                if i < len(top_syms[:4]):
+                    text += " | " if i % 2 == 1 else "\n"
+            
+            if len(top_syms[:4]) % 2 == 1:
+                text += "\n"
+        
+        # Market Data (CMC style) - ENHANCED with NASDAQ/SP500
         try:
             from data_sources import get_fear_greed, fetch_coingecko_global, fetch_macro
             
@@ -777,7 +882,6 @@ Responda como se VOCÊ fosse o bot operando. Diga "Eu estou...", "Minha posiçã
             # CoinGecko data
             market = fetch_coingecko_global()
             if market.get("market_cap") and market.get("market_cap") != "N/A":
-                # Format to Trilhões
                 cap = market['market_cap']
                 if isinstance(cap, (int, float)):
                     cap_t = cap / 1_000_000_000_000
@@ -804,7 +908,6 @@ Responda como se VOCÊ fosse o bot operando. Diga "Eu estou...", "Minha posiçã
             if fg.get("value") and fg.get("value") != "N/A":
                 val = fg['value']
                 classification = fg.get('classification', '')
-                # Emoji based on value
                 if val <= 25:
                     fg_emoji = "😱"
                 elif val <= 45:
@@ -817,8 +920,24 @@ Responda como se VOCÊ fosse o bot operando. Diga "Eu estou...", "Minha posiçã
                     fg_emoji = "🤑"
                 text += f"├ {fg_emoji} Fear/Greed: {val} ({classification})\n"
             
-            # Macro
+            # Macro (USD/BRL + NASDAQ + SP500)
             macro = fetch_macro()
+            
+            # NASDAQ - NEW
+            nasdaq = macro.get("nasdaq", 0)
+            nasdaq_change = macro.get("nasdaq_change", 0)
+            if nasdaq and nasdaq != "N/A" and isinstance(nasdaq, (int, float)):
+                nasdaq_emoji = "📈" if nasdaq_change > 0 else "📉" if nasdaq_change < 0 else "➖"
+                text += f"├ {nasdaq_emoji} NASDAQ: {nasdaq:,.0f} ({nasdaq_change:+.2f}%)\n"
+            
+            # SP500 - NEW
+            sp500 = macro.get("sp500", 0)
+            sp500_change = macro.get("sp500_change", 0)
+            if sp500 and sp500 != "N/A" and isinstance(sp500, (int, float)):
+                sp500_emoji = "📈" if sp500_change > 0 else "📉" if sp500_change < 0 else "➖"
+                text += f"├ {sp500_emoji} S&P 500: {sp500:,.0f} ({sp500_change:+.2f}%)\n"
+            
+            # USD/BRL
             if macro.get("usd_brl") and macro.get("usd_brl") != "N/A":
                 text += f"└ 💵 USD/BRL: R${macro['usd_brl']:.2f}\n"
             else:
@@ -828,7 +947,6 @@ Responda como se VOCÊ fosse o bot operando. Diga "Eu estou...", "Minha posiçã
             text += f"\n⚠️ Dados de mercado indisponíveis\n"
         
         await update.message.reply_text(text, parse_mode="Markdown")
-    
     async def _send_news_and_calendar(self, update):
         """Send combined news + economic calendar in Portuguese"""
         await update.message.reply_text("📰 Buscando notícias e calendário...")
