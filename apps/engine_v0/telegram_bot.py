@@ -1122,6 +1122,124 @@ Responda sempre na PRIMEIRA PESSOA ("Eu", "Meu"). Seja direto, analítico e asse
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": question}
+                ],
+                temperature=0.7,
+                max_tokens=400
+            )
+            
+            answer = response.choices[0].message.content.strip()
+            await update.message.reply_text(f"🤖 {answer}")
+            
+        except Exception as e:
+            print(f"[TG][CHAT][ERROR] {e}")
+            await update.message.reply_text(f"❌ Erro ao processar pergunta: {str(e)[:50]}...")
+    
+    def stop(self):
+        """Stop the bot"""
+        self.running = False
+
+
+# Singleton instance
+_telegram_bot: Optional[TelegramBot] = None
+
+
+def get_telegram_bot() -> Optional[TelegramBot]:
+    """Get or create telegram bot instance"""
+    global _telegram_bot
+    if _telegram_bot is None and ENABLE_TELEGRAM:
+        _telegram_bot = TelegramBot()
+    return _telegram_bot
+
+
+# ============================================================================
+# CHAT WITH AI HANDLER (Outside class - avoid scope issues)
+# ============================================================================
+
+async def chat_command_handler(update, context):
+    """Chat with the AI about its strategy and reasoning"""
+    try:
+        from telegram import Update
+        from telegram.ext import ContextTypes
+    except ImportError:
+        await update.message.reply_text("❌ Telegram library not available")
+        return
+    
+    if not context.args:
+        await update.message.reply_text(
+            "💬 *Chat com a IA*\n\n"
+            "Usage: `/chat <sua pergunta>`\n\n"
+            "Exemplos:\n"
+            "• `/chat como você decide leverage?`\n"
+            "• `/chat qual seu estilo de trading?`\n"
+            "• `/chat por que usa stops largos?`",
+            parse_mode="Markdown"
+        )
+        return
+    
+    question = ' '.join(context.args)
+    
+    try:
+        import openai
+        import os
+        
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            await update.message.reply_text("❌ OpenAI API key not configured")
+            return
+        
+        client = openai.OpenAI(api_key=api_key)
+        
+        # Get current state for context
+        state = _bot_state.get('last_summary', {})
+        equity = state.get('equity', 0)
+        positions = state.get('positions', {})
+        
+        system_prompt = f"""You are "Ladder Labs IA Trader", a professional discretionary crypto derivatives trader.
+
+YOUR IDENTITY:
+- Professional trader on Hyperliquid mainnet
+- Multi-timeframe analysis (1m to 1D)
+- Risk-adjusted returns focus
+- Dynamic stops: Based on market structure and volatility
+- Position sizing: $10-50 notional for small accounts
+- Leverage: 1-50x based on conviction (system auto-caps to exchange limits)
+
+CURRENT STATE:
+- Equity: ${equity:.2f}
+- Open Positions: {len(positions)}
+
+Answer questions about your trading style, reasoning, and strategy.
+Be specific, honest, and concise. Respond in Portuguese or English."""
+
+        response = client.chat.completions.create(
+            model=os.getenv("AI_MODEL", "gpt-4o-mini"),
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": question}
+            ],
+            temperature=0.7,
+            max_tokens=300
+        )
+        
+        answer = response.choices[0].message.content.strip()
+        await update.message.reply_text(f"🤖 {answer}")
+        
+    except Exception as e:
+        print(f"[TG] Chat error: {e}")
+        await update.message.reply_text(f"❌ Erro no chat: {str(e)}")
+
+
+# ============================================================================
+# BOT STARTUP
+# ============================================================================
+
+def start_telegram_bot():
+    """Start telegram bot if enabled"""
+    bot = get_telegram_bot()
+    if bot:
+        bot.start()
+
+
 def update_telegram_state(state: Dict[str, Any]):
     """Update telegram with latest engine state + NEW enhanced data"""
     
@@ -1242,124 +1360,6 @@ def update_telegram_state(state: Dict[str, Any]):
                 "reason": brief.get("reason", "")
             })
         _bot_state["last_scan"] = scan
-    """Chat with the AI about its strategy and reasoning"""
-    try:
-        from telegram import Update
-        from telegram.ext import ContextTypes
-    except ImportError:
-        await update.message.reply_text("❌ Telegram library not available")
-        return
-    
-    if not context.args:
-        await update.message.reply_text(
-            "💬 *Chat com a IA*\n\n"
-            "Usage: `/chat <sua pergunta>`\n\n"
-            "Exemplos:\n"
-            "• `/chat como você decide leverage?`\n"
-            "• `/chat qual seu estilo de trading?`\n"
-            "• `/chat por que usa stops largos?`",
-            parse_mode="Markdown"
-        )
-        return
-    
-    question = ' '.join(context.args)
-    
-    try:
-        import openai
-        import os
-        
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            await update.message.reply_text("❌ OpenAI API key not configured")
-            return
-        
-        client = openai.OpenAI(api_key=api_key)
-        
-        # Get current state for context
-        state = _bot_state.get('last_summary', {})
-        equity = state.get('equity', 0)
-        positions = state.get('positions', {})
-        
-        system_prompt = f"""You are "Ladder Labs IA Trader", a professional discretionary crypto derivatives trader.
-
-YOUR IDENTITY:
-- Professional trader on Hyperliquid mainnet
-- Multi-timeframe analysis (1m to 1D)
-- Risk-adjusted returns focus
-- Dynamic stops: Based on market structure and volatility
-- Position sizing: $10-50 notional for small accounts
-- Leverage: 1-50x based on conviction (system auto-caps to exchange limits)
-
-CURRENT STATE:
-- Equity: ${equity:.2f}
-- Open Positions: {len(positions)}
-
-Answer questions about your trading style, reasoning, and strategy.
-Be specific, honest, and concise. Respond in Portuguese or English."""
-
-        response = client.chat.completions.create(
-            model=os.getenv("AI_MODEL", "gpt-4o-mini"),
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": question}
-            ],
-            temperature=0.7,
-            max_tokens=300
-        )
-        
-        answer = response.choices[0].message.content.strip()
-        await update.message.reply_text(f"🤖 {answer}")
-        
-    except Exception as e:
-        print(f"[TG] Chat error: {e}")
-        await update.message.reply_text(f"❌ Erro no chat: {str(e)}")
-
-
-# ============================================================================
-# BOT STARTUP
-# ============================================================================
-
-def start_telegram_bot():
-    """Start telegram bot if enabled"""
-    bot = get_telegram_bot()
-    if bot:
-        bot.start()
-
-
-def update_telegram_state(state: Dict[str, Any]):
-    """Update telegram with latest engine state"""
-    _bot_state["last_summary"] = {
-        "equity": state.get("equity", 0),
-        "buying_power": state.get("buying_power", 0),
-        "positions_count": state.get("positions_count", 0),
-        "positions": state.get("positions", {}),
-        "trigger_status": state.get("trigger_status", ""),
-        "holding_symbol": state.get("holding_symbol", None)
-    }
-    
-    # Update scan info for visibility
-    symbols = state.get("symbols", [])
-    _bot_state["scan_info"] = {
-        "scanned": len(symbols),
-        "total": len(symbols),
-        "symbols": symbols,
-        "timestamp": state.get("scan_timestamp", "")
-    }
-    
-    # Update scan results
-    briefs = state.get("symbol_briefs", {})
-    if briefs:
-        scan = []
-        for sym, brief in sorted(briefs.items(), key=lambda x: x[1].get("score", 0), reverse=True):
-            scan.append({
-                "symbol": sym,
-                "score": brief.get("score", 0),
-                "trend": brief.get("trend", "?"),
-                "reason": brief.get("reason", "")
-            })
-        _bot_state["last_scan"] = scan
-
-
 def is_ai_enabled() -> bool:
     """Check if AI is enabled (can be toggled via Telegram)"""
     return _bot_state.get("ai_enabled", True)
