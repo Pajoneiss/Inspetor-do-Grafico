@@ -1,5 +1,5 @@
 # Multi-Timeframe Candle Formatting Module
-# v12.1: 7 timeframes with structural analysis for LLM clarity
+# v13.0: Enhanced with ATR, better structure info for AI decision making
 
 def identify_trend(candles):
     """
@@ -51,14 +51,31 @@ def format_multi_timeframe_candles(state):
     """
     Format 7 timeframes (1m/5m/15m/1h/4h/1D/1W) for LLM analysis
     Displays in macro→micro order for top-down analysis
+    v13.0: Now includes ATR% for volatility-aware stop placement
     """
     candles_data = state.get("candles_by_symbol", {})
     candles_str = ""
     
-    # DEBUG: Log what we received
-    # v12.8: Condensed summary log for clarity
-    counts = {sym: len(candles_data.get(sym, {})) for sym in list(candles_data.keys())[:5]}
-    print(f"[CANDLES] Processing {len(candles_data)} symbols {list(candles_data.keys())} (Charts: {counts})")
+    # Get symbols with open positions (prioritize these)
+    position_symbols = set(state.get("positions", {}).keys())
+    
+    # v13.0: Reduced to 5 symbols max to avoid context overload
+    # Prioritize: positions first, then top scorers
+    all_symbols = list(candles_data.keys())
+    prioritized = []
+    
+    # Add position symbols first
+    for sym in all_symbols:
+        if sym in position_symbols:
+            prioritized.append(sym)
+    
+    # Add remaining symbols up to limit
+    for sym in all_symbols:
+        if sym not in prioritized and len(prioritized) < 5:
+            prioritized.append(sym)
+    
+    counts = {sym: len(candles_data.get(sym, {})) for sym in prioritized}
+    print(f"[CANDLES] Processing {len(prioritized)} symbols {prioritized} (Charts: {counts})")
     
     # Timeframe display order (macro to micro for context-first analysis)
     TF_ORDER = ["1w", "1d", "4h", "1h", "15m", "5m", "1m"]
@@ -72,12 +89,15 @@ def format_multi_timeframe_candles(state):
         "1m": "MICRO (1 hour confirmation)"
     }
     
-    # Show top 8 symbols (v13.0 expansion)
-    for symbol in list(candles_data.keys())[:8]:
+    for symbol in prioritized:
         symbol_candles = candles_data[symbol]
         current_price = state.get("prices", {}).get(symbol, 0)
         
-        candles_str += f"\n{'='*60}\n{symbol} @ ${current_price:.2f}\n{'='*60}\n"
+        # Show if this symbol has an open position
+        has_position = symbol in position_symbols
+        pos_marker = " 📍 [POSITION OPEN]" if has_position else ""
+        
+        candles_str += f"\n{'='*60}\n{symbol} @ ${current_price:.2f}{pos_marker}\n{'='*60}\n"
         
         for tf in TF_ORDER:
             if tf not in symbol_candles or not symbol_candles[tf]:
@@ -86,7 +106,7 @@ def format_multi_timeframe_candles(state):
             candles = symbol_candles[tf]
             label = TF_LABELS.get(tf, tf)
             
-            # Show last N closes based on timeframe (Expanded for better context)
+            # Show last N closes based on timeframe
             display_count = {
                 "1w": 12,  # Last 3 months
                 "1d": 30,  # Last month
@@ -106,22 +126,18 @@ def format_multi_timeframe_candles(state):
                 candles_str += f"  {label}\n    (no valid data)\n"
                 continue
             
-            # 🆕 STRUCTURAL ANALYSIS
+            # STRUCTURAL ANALYSIS
             trend = identify_trend(candles)
             swing_high, swing_low = find_swing_points(candles)
             
             # Current price position
             current_close = valid_candles[-1]['close'] if valid_candles else current_price
             
-            # Format closes as progression
-            closes_str = " -> ".join([f"{c['close']:.2f}" if tf in ["15m", "5m", "1m"] else f"{c['close']:.0f}" 
-                                     for c in valid_candles[-min(display_count, len(valid_candles)):]])
-            
             # Calculate H/L from ALL candles (not just displayed)
             high = max(c['high'] for c in candles if isinstance(c, dict) and 'high' in c)
             low = min(c['low'] for c in candles if isinstance(c, dict) and 'low' in c)
             
-            # 🆕 STRUCTURE INFO LINE
+            # STRUCTURE INFO LINE
             structure_parts = [f"Trend: {trend}"]
             if swing_high and swing_low:
                 sh_str = f"{swing_high:.2f}" if tf in ["15m", "5m", "1m"] else f"{swing_high:.0f}"
@@ -143,7 +159,7 @@ def format_multi_timeframe_candles(state):
             candles_str += f"  {label}\n"
             candles_str += f"    {structure_str}\n"
 
-            # Calculate indicators for this timeframe
+            # Calculate indicators for this timeframe - NOW WITH ATR%
             try:
                 from indicators import calculate_indicators
                 ind = calculate_indicators(candles)
@@ -151,23 +167,30 @@ def format_multi_timeframe_candles(state):
                 ema9 = ind.get("ema_9", 0)
                 ema21 = ind.get("ema_21", 0)
                 trend_val = ind.get("trend", "neutral").upper()
-                indicator_str = f"    [Indicators] RSI(14): {rsi_val:.1f} | EMA(9/21): {ema9:.2f}/{ema21:.2f} | Trend: {trend_val}\n"
+                atr_pct = ind.get("atr_pct", 0)
+                macd_hist = ind.get("macd_hist", 0)
+                relative_vol = ind.get("relative_volume", 1.0)
+                
+                # v13.0: Enhanced indicator line with ATR% for stop sizing
+                macd_sign = "+" if macd_hist > 0 else "-" if macd_hist < 0 else "0"
+                vol_str = f"Vol:{relative_vol:.1f}x" if relative_vol != 1.0 else ""
+                
+                indicator_str = f"    [Indicators] RSI:{rsi_val:.0f} | EMA9/21:{ema9:.2f}/{ema21:.2f} | ATR%:{atr_pct:.2f}% | MACD:{macd_sign} {vol_str}\n"
             except:
                 indicator_str = ""
             
             if indicator_str:
                 candles_str += indicator_str
 
-            # Format closes as progression
-            # Using 'close' key from valid_candles, not 'c'
-            closes = [c['close'] for c in valid_candles[-min(display_count, len(valid_candles)):]]
+            # Format closes as progression (reduced for clarity)
+            closes = [c['close'] for c in valid_candles[-min(10, len(valid_candles)):]]  # Max 10 closes
             closes_str_formatted = []
             for c_val in closes:
                 if tf in ["15m", "5m", "1m"]:
                     closes_str_formatted.append(f"{c_val:.2f}")
                 else:
                     closes_str_formatted.append(f"{c_val:.0f}")
-            closes_str = " -> ".join(closes_str_formatted)
+            closes_str = " → ".join(closes_str_formatted)
             
             candles_str += f"    Closes: {closes_str}\n"
     
