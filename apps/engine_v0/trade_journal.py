@@ -403,3 +403,85 @@ journal = TradeJournal()
 def get_journal() -> TradeJournal:
     """Get the global TradeJournal instance"""
     return journal
+
+
+def get_recent_trades_for_ai(limit: int = 10) -> Dict[str, Any]:
+    """
+    Get recent trade history formatted for AI context.
+    This gives the AI information about its own performance - NO RULES, just data.
+    
+    Returns:
+        Dict with recent trades summary and per-symbol performance
+    """
+    j = get_journal()
+    all_trades = j.get_all_trades(limit=50)  # Get more for stats
+    stats = j.get_stats()
+    
+    # Format recent trades (last N)
+    recent = []
+    for trade in all_trades[:limit]:
+        result = trade.get("result", {})
+        entry = trade.get("entry", {})
+        exit_data = trade.get("exit", {})
+        
+        recent.append({
+            "symbol": trade.get("symbol"),
+            "side": trade.get("side"),
+            "status": trade.get("status"),
+            "entry_price": entry.get("price"),
+            "exit_price": exit_data.get("price") if exit_data else None,
+            "pnl_pct": result.get("pnl_pct") if result else None,
+            "pnl_usd": result.get("pnl_usd") if result else None,
+            "duration_min": result.get("duration_minutes") if result else None,
+            "win": result.get("win") if result else None,
+            "exit_type": exit_data.get("type") if exit_data else None,
+            "confidence": entry.get("confidence"),
+            "reason": entry.get("reason", "")[:100]  # Truncate
+        })
+    
+    # Per-symbol performance (last 24h)
+    from datetime import datetime, timezone, timedelta
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    
+    symbol_stats = {}
+    for trade in all_trades:
+        symbol = trade.get("symbol")
+        result = trade.get("result")
+        entry_time = trade.get("entry", {}).get("timestamp", "")
+        
+        if not result or not entry_time:
+            continue
+            
+        try:
+            trade_time = datetime.fromisoformat(entry_time.replace('Z', '+00:00'))
+            if trade_time < cutoff:
+                continue
+        except:
+            continue
+        
+        if symbol not in symbol_stats:
+            symbol_stats[symbol] = {"trades": 0, "wins": 0, "total_pnl": 0}
+        
+        symbol_stats[symbol]["trades"] += 1
+        if result.get("win"):
+            symbol_stats[symbol]["wins"] += 1
+        symbol_stats[symbol]["total_pnl"] += result.get("pnl_usd", 0)
+    
+    # Calculate win rate per symbol
+    for sym, data in symbol_stats.items():
+        data["win_rate"] = round(data["wins"] / data["trades"] * 100, 1) if data["trades"] > 0 else 0
+        data["total_pnl"] = round(data["total_pnl"], 2)
+    
+    return {
+        "overall_stats": {
+            "total_trades": stats.get("total_trades", 0),
+            "win_rate": stats.get("win_rate", 0),
+            "avg_pnl_pct": stats.get("avg_pnl_pct", 0),
+            "total_pnl_usd": stats.get("total_pnl_usd", 0),
+            "best_trade_pct": stats.get("best_trade_pct", 0),
+            "worst_trade_pct": stats.get("worst_trade_pct", 0),
+            "avg_duration_min": stats.get("avg_duration_minutes", 0)
+        },
+        "last_24h_by_symbol": symbol_stats,
+        "recent_trades": recent
+    }
