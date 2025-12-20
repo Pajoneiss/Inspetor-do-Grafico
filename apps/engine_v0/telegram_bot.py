@@ -1122,40 +1122,126 @@ Responda sempre na PRIMEIRA PESSOA ("Eu", "Meu"). Seja direto, analítico e asse
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": question}
-                ],
-                temperature=0.7,
-                max_tokens=400
-            )
-            
-            answer = response.choices[0].message.content.strip()
-            await update.message.reply_text(f"🤖 {answer}")
-            
-        except Exception as e:
-            print(f"[TG][CHAT][ERROR] {e}")
-            await update.message.reply_text(f"❌ Erro ao processar pergunta: {str(e)[:50]}...")
+def update_telegram_state(state: Dict[str, Any]):
+    """Update telegram with latest engine state + NEW enhanced data"""
     
-    def stop(self):
-        """Stop the bot"""
-        self.running = False
-
-
-# Singleton instance
-_telegram_bot: Optional[TelegramBot] = None
-
-
-def get_telegram_bot() -> Optional[TelegramBot]:
-    """Get or create telegram bot instance"""
-    global _telegram_bot
-    if _telegram_bot is None and ENABLE_TELEGRAM:
-        _telegram_bot = TelegramBot()
-    return _telegram_bot
-
-
-# ============================================================================
-# CHAT WITH AI HANDLER (Outside class - avoid scope issues)
-# ============================================================================
-
-async def chat_command_handler(update, context):
+    # Get last AI decision if available
+    last_ai_decision = {}
+    if "last_decision" in state:
+        decision = state["last_decision"]
+        last_ai_decision = {
+            "timestamp": decision.get("timestamp", ""),
+            "confidence": decision.get("confidence", 0),
+            "summary": decision.get("summary", "")
+        }
+    
+    # Calculate performance today
+    performance_today = {}
+    try:
+        from trade_journal import get_recent_trades_for_ai
+        history = get_recent_trades_for_ai(limit=50)
+        
+        # Get today's stats from last_24h
+        overall = history.get("overall_stats", {})
+        recent = history.get("recent_trades", [])
+        
+        # Filter only today's trades (last 24h is close enough)
+        from datetime import datetime, timezone, timedelta
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+        
+        today_trades = []
+        for t in recent:
+            try:
+                entry_time = t.get("entry", {}).get("timestamp", "")
+                if entry_time:
+                    trade_time = datetime.fromisoformat(entry_time.replace('Z', '+00:00'))
+                    if trade_time >= cutoff:
+                        today_trades.append(t)
+            except:
+                pass
+        
+        if today_trades:
+            wins = sum(1 for t in today_trades if t.get("win"))
+            total = len(today_trades)
+            win_rate = (wins / total * 100) if total > 0 else 0
+            
+            total_pnl = sum(t.get("pnl_usd", 0) for t in today_trades)
+            best = max((t.get("pnl_usd", 0) for t in today_trades), default=0)
+            
+            performance_today = {
+                "trades": total,
+                "win_rate": round(win_rate, 1),
+                "total_pnl": round(total_pnl, 2),
+                "best_trade": round(best, 2)
+            }
+    except Exception as e:
+        print(f"[TELEGRAM] Failed to get performance: {e}")
+    
+    # Get top symbols from scan
+    top_symbols = []
+    briefs = state.get("symbol_briefs", {})
+    if briefs:
+        sorted_briefs = sorted(briefs.items(), key=lambda x: x[1].get("score", 0), reverse=True)
+        for sym, brief in sorted_briefs[:4]:
+            top_symbols.append({
+                "symbol": sym,
+                "score": brief.get("score", 0),
+                "trend": brief.get("trend", "NEUTRAL")
+            })
+    
+    # Enhanced positions with details
+    positions_enhanced = {}
+    positions = state.get("positions", {})
+    for sym, pos in positions.items():
+        positions_enhanced[sym] = {
+            "side": pos.get("side", "?"),
+            "size": pos.get("size", 0),
+            "entry_price": pos.get("entry_price", 0),
+            "mark_price": pos.get("mark_price", 0),
+            "unrealized_pnl": pos.get("unrealized_pnl", 0),
+            "pnl_pct": pos.get("pnl_pct", 0),
+            "leverage": pos.get("leverage", 1),
+            "liquidation_price": pos.get("liquidation_price", 0),
+            "stop_loss": pos.get("stop_loss", 0),
+            "take_profit": pos.get("take_profit", 0)
+        }
+    
+    # Update state with ALL data
+    _bot_state["last_summary"] = {
+        # Original fields
+        "equity": state.get("equity", 0),
+        "buying_power": state.get("buying_power", 0),
+        "positions_count": state.get("positions_count", 0),
+        "positions": positions_enhanced,  # Enhanced!
+        "trigger_status": state.get("trigger_status", ""),
+        "holding_symbol": state.get("holding_symbol", None),
+        
+        # NEW fields
+        "last_ai_decision": last_ai_decision,
+        "performance_today": performance_today,
+        "top_symbols": top_symbols
+    }
+    
+    # Update scan info for visibility
+    symbols = state.get("symbols", [])
+    _bot_state["scan_info"] = {
+        "scanned": len(symbols),
+        "total": len(symbols),
+        "symbols": symbols,
+        "timestamp": state.get("scan_timestamp", "")
+    }
+    
+    # Update scan results
+    if briefs:
+        scan = []
+        for sym, brief in sorted(briefs.items(), key=lambda x: x[1].get("score", 0), reverse=True):
+            scan.append({
+                "symbol": sym,
+                "score": brief.get("score", 0),
+                "trend": brief.get("trend", "?"),
+                "reason": brief.get("reason", "")
+            })
+        _bot_state["last_scan"] = scan
     """Chat with the AI about its strategy and reasoning"""
     try:
         from telegram import Update
