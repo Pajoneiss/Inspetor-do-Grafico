@@ -18,11 +18,21 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 # External APIs
 CMC_API_KEY = os.getenv("CMC_API_KEY", "6356c1e6bffd4582bd013608d544225a")  # CoinMarketCap API key
 CRYPTOPANIC_API_KEY = os.getenv("CRYPTOPANIC_API_KEY", "")
-AI_CALL_INTERVAL_SECONDS = int(os.getenv("AI_CALL_INTERVAL_SECONDS", "300"))  # Budget: ~$5/mo
-LLM_MIN_SECONDS = int(os.getenv("LLM_MIN_SECONDS", "180"))  # Minimum between AI calls (increased for cost saving)
-LLM_STATE_CHANGE_THRESHOLD = float(os.getenv("LLM_STATE_CHANGE_THRESHOLD", "0.5"))  # % change to force call (reverted to 0.5 as requested)
-MAX_ACTIONS_PER_TICK = int(os.getenv("MAX_ACTIONS_PER_TICK", "25"))
-ACTION_DEDUP_SECONDS = int(os.getenv("ACTION_DEDUP_SECONDS", "30"))
+
+# ============================================================
+# 🔴 ANTI-CHURN: Increased intervals to prevent overtrading
+# ============================================================
+AI_CALL_INTERVAL_SECONDS = int(os.getenv("AI_CALL_INTERVAL_SECONDS", "900"))  # 15 min (was 300)
+LLM_MIN_SECONDS = int(os.getenv("LLM_MIN_SECONDS", "600"))  # 10 min minimum between AI calls (was 180)
+LLM_STATE_CHANGE_THRESHOLD = float(os.getenv("LLM_STATE_CHANGE_THRESHOLD", "1.0"))  # 1% change to force call (was 0.5)
+MAX_ACTIONS_PER_TICK = int(os.getenv("MAX_ACTIONS_PER_TICK", "3"))  # Reduced from 25
+ACTION_DEDUP_SECONDS = int(os.getenv("ACTION_DEDUP_SECONDS", "300"))  # 5 min dedup (was 30)
+
+# ============================================================
+# 🔴 ANTI-CHURN: Position Management
+# ============================================================
+MIN_HOLD_MINUTES = int(os.getenv("MIN_HOLD_MINUTES", "30"))  # NEW: Minimum hold time before closing
+REENTRY_COOLDOWN_MINUTES = int(os.getenv("REENTRY_COOLDOWN_MINUTES", "60"))  # NEW: Wait after closing before reopening same symbol
 
 # Multi-Symbol Snapshot Configuration
 SNAPSHOT_TOP_N = int(os.getenv("SNAPSHOT_TOP_N", "12"))
@@ -30,8 +40,11 @@ SNAPSHOT_MODE = os.getenv("SNAPSHOT_MODE", "TOP_N")  # TOP_N | ROTATE | ALL
 ROTATE_PER_TICK = int(os.getenv("ROTATE_PER_TICK", "5"))
 ALLOW_SYMBOL_NOT_IN_SNAPSHOT = os.getenv("ALLOW_SYMBOL_NOT_IN_SNAPSHOT", "true").lower() == "true"
 
-# Live Trading Normalization
-MIN_NOTIONAL_USD = float(os.getenv("MIN_NOTIONAL_USD", "10.0"))
+# ============================================================
+# 🔴 ANTI-CHURN: Trade Sizing - Increased minimums
+# ============================================================
+MIN_NOTIONAL_USD = float(os.getenv("MIN_NOTIONAL_USD", "25.0"))  # Increased from 10 to 25
+MIN_STOP_LOSS_PCT = float(os.getenv("MIN_STOP_LOSS_PCT", "1.5"))  # NEW: Minimum 1.5% SL distance
 AUTO_CAP_LEVERAGE = os.getenv("AUTO_CAP_LEVERAGE", "true").lower() == "true"
 ORDER_SLIPPAGE = float(os.getenv("ORDER_SLIPPAGE", "0.01"))  # 1% default slippage for market orders
 
@@ -39,10 +52,10 @@ ORDER_SLIPPAGE = float(os.getenv("ORDER_SLIPPAGE", "0.01"))  # 1% default slippa
 ALLOW_SYMBOL_NOT_IN_SNAPSHOT = os.getenv("ALLOW_SYMBOL_NOT_IN_SNAPSHOT", "true").lower() in ("1", "true", "yes", "y", "on")
 
 # Anti-Loop Operational (Intent-based Deduplication)
-PLACE_ORDER_DEDUP_SECONDS = int(os.getenv("PLACE_ORDER_DEDUP_SECONDS", "60"))  # 1 min (was 5min)
-TRIGGER_DEDUP_SECONDS = int(os.getenv("TRIGGER_DEDUP_SECONDS", "120"))  # 2 min (was 10min)
-MAX_OPEN_ORDERS_PER_SYMBOL = int(os.getenv("MAX_OPEN_ORDERS_PER_SYMBOL", "6"))  # Circuit breaker
-MAX_POSITION_ADDS_PER_HOUR = int(os.getenv("MAX_POSITION_ADDS_PER_HOUR", "12"))  # Raised for scaling (was 6)
+PLACE_ORDER_DEDUP_SECONDS = int(os.getenv("PLACE_ORDER_DEDUP_SECONDS", "300"))  # 5 min (was 60)
+TRIGGER_DEDUP_SECONDS = int(os.getenv("TRIGGER_DEDUP_SECONDS", "300"))  # 5 min (was 120)
+MAX_OPEN_ORDERS_PER_SYMBOL = int(os.getenv("MAX_OPEN_ORDERS_PER_SYMBOL", "3"))  # Reduced from 6
+MAX_POSITION_ADDS_PER_HOUR = int(os.getenv("MAX_POSITION_ADDS_PER_HOUR", "3"))  # Reduced from 12
 STATE_INCLUDE_OPEN_ORDERS = os.getenv("STATE_INCLUDE_OPEN_ORDERS", "true").lower() == "true"
 STATE_INCLUDE_RECENT_ACTIONS = os.getenv("STATE_INCLUDE_RECENT_ACTIONS", "true").lower() == "true"
 
@@ -79,6 +92,15 @@ def print_config():
     print(f"[ENV] HYPERLIQUID_NETWORK={HYPERLIQUID_NETWORK}")
     print(f"[ENV] ENABLE_TELEGRAM={ENABLE_TELEGRAM}")
     print(f"[ENV] FORCE_TEST_ORDER={FORCE_TEST_ORDER}")
+    
+    # Anti-churn settings
+    print(f"[ENV] 🔴 ANTI-CHURN SETTINGS:")
+    print(f"[ENV]   LLM_MIN_SECONDS={LLM_MIN_SECONDS}")
+    print(f"[ENV]   AI_CALL_INTERVAL_SECONDS={AI_CALL_INTERVAL_SECONDS}")
+    print(f"[ENV]   MIN_NOTIONAL_USD={MIN_NOTIONAL_USD}")
+    print(f"[ENV]   MIN_HOLD_MINUTES={MIN_HOLD_MINUTES}")
+    print(f"[ENV]   REENTRY_COOLDOWN_MINUTES={REENTRY_COOLDOWN_MINUTES}")
+    print(f"[ENV]   MIN_STOP_LOSS_PCT={MIN_STOP_LOSS_PCT}")
     
     if FORCE_TEST_ORDER:
         print(f"[ENV] TEST_ORDER_SIDE={TEST_ORDER_SIDE}")
