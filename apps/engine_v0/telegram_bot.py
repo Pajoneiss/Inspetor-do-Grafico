@@ -1357,15 +1357,16 @@ def update_telegram_state(state: Dict[str, Any]):
     # Calculate PNL History (24h, 7D, 30D, ALL) - NEW
     pnl_history = {}
     try:
-        from pnl_tracker import get_portfolio_pnl
-        pnl_data = get_portfolio_pnl()
+        from pnl_tracker import get_pnl_windows
+        pnl_data = get_pnl_windows()
         
-        # get_portfolio_pnl returns dict with day, week, month, allTime
+        # get_pnl_windows returns dict like:
+        # {"24h": {"pnl": 0, "pnl_pct": "N/A"}, "7d": {...}, ...}
         pnl_history = {
-            "24h": pnl_data.get("day", 0),
-            "7d": pnl_data.get("week", 0),
-            "30d": pnl_data.get("month", 0),
-            "all": pnl_data.get("allTime", 0)
+            "24h": pnl_data.get("24h", {}).get("pnl", 0),
+            "7d": pnl_data.get("7d", {}).get("pnl", 0),
+            "30d": pnl_data.get("30d", {}).get("pnl", 0),
+            "all": pnl_data.get("allTime", {}).get("pnl", 0)
         }
     except Exception as e:
         print(f"[TELEGRAM] Failed to get PNL history: {e}")
@@ -1441,5 +1442,6 @@ def should_panic_close() -> bool:
         _bot_state["panic_close_all"] = False  # Reset flag
         return True
     return False
+
 
 
