@@ -77,6 +77,14 @@ class LLMClient:
         
         return OpenAI(api_key=api_key)
     
+    def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Main decision method - called by engine"""
+        market_context = state.get("market_context", {})
+        candles_summary = state.get("candles_summary", "")
+        position_context = state.get("position_context")
+        
+        return self.get_trading_decision(market_context, candles_summary, position_context)
+    
     def get_trading_decision(
         self,
         market_context: Dict[str, Any],
