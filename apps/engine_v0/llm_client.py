@@ -1,6 +1,6 @@
 """
-LLM Client v14.3 ULTRA SIMPLE - Guaranteed to work
-Zero complexity initialization
+LLM Client v15.0 CLAUDE ONLY - No OpenAI Fallback
+Claude is the brain, OpenAI is NOT used for trading decisions
 """
 
 import os
@@ -11,71 +11,51 @@ from typing import Dict, Any, Optional
 logger = logging.getLogger(__name__)
 
 class LLMClient:
-    """Ultra-simple LLM client - just works"""
+    """Claude-only LLM client - no OpenAI fallback for trading"""
     
     def __init__(self):
-        self.provider = self._determine_provider()
+        self.provider = "anthropic"  # ALWAYS Claude
         self.model = self._get_model_name()
         self.client = None
         
+        print(f"[LLM] 🧠 Initializing Claude AI trader...")
+        print(f"[LLM]   Provider: {self.provider}")
+        print(f"[LLM]   Model: {self.model}")
+        
         try:
-            self.client = self._initialize_client()
+            self.client = self._initialize_claude()
+            print(f"[LLM] ✅ Claude initialized successfully!")
             logger.info(f"[LLM] ✅ Initialized with provider={self.provider} model={self.model}")
         except Exception as e:
+            print(f"[LLM] ❌ CRITICAL: Claude failed to initialize: {e}")
+            print(f"[LLM] ⚠️  Bot will NOT trade until Claude is working!")
             logger.error(f"[LLM] ❌ Failed to initialize: {e}")
             self.client = None
     
-    def _determine_provider(self) -> str:
-        """Auto-detect provider"""
-        explicit = os.getenv("AI_PROVIDER", "").lower()
-        if explicit in ["anthropic", "claude"]:
-            return "anthropic"
-        elif explicit in ["openai", "gpt"]:
-            return "openai"
-        
-        # Check API keys
-        if os.getenv("ANTHROPIC_API_KEY", "").startswith("sk-ant-"):
-            return "anthropic"
-        elif os.getenv("OPENAI_API_KEY"):
-            return "openai"
-        
-        return "openai"  # Default fallback
-    
     def _get_model_name(self) -> str:
-        """Get model name"""
+        """Get Claude model name"""
         model = os.getenv("AI_MODEL", "")
         if model:
             return model
-        
-        return "claude-sonnet-4-20250514" if self.provider == "anthropic" else "gpt-4o-mini"
+        return "claude-sonnet-4-20250514"  # Default Claude model
     
-    def _initialize_client(self):
-        """Initialize client - ULTRA SIMPLE VERSION"""
-        if self.provider == "anthropic":
-            try:
-                # Import here to avoid issues if not installed
-                import anthropic
-                
-                api_key = os.getenv("ANTHROPIC_API_KEY")
-                if not api_key:
-                    raise ValueError("ANTHROPIC_API_KEY not set")
-                
-                # ULTRA SIMPLE - just API key, nothing else!
-                return anthropic.Anthropic(api_key=api_key)
-                
-            except ImportError:
-                logger.warning("[LLM] anthropic not installed, falling back to OpenAI")
-                self.provider = "openai"
-                self.model = "gpt-4o-mini"
-                # Fall through to OpenAI
+    def _initialize_claude(self):
+        """Initialize Claude client - CLAUDE ONLY, NO FALLBACK"""
+        import anthropic
         
-        # OpenAI
-        from openai import OpenAI
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
-            raise ValueError("OPENAI_API_KEY not set")
+            raise ValueError("ANTHROPIC_API_KEY not set! Claude is REQUIRED for trading.")
         
-        return OpenAI(api_key=api_key)
+        if not api_key.startswith("sk-ant-"):
+            print(f"[LLM] ⚠️  WARNING: ANTHROPIC_API_KEY doesn't start with 'sk-ant-'")
+        
+        # Simple initialization - just API key
+        return anthropic.Anthropic(api_key=api_key)
+    
+    def is_ready(self) -> bool:
+        """Check if Claude is ready to trade"""
+        return self.client is not None
     
     def decide(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Main decision method - called by engine"""
