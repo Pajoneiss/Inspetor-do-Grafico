@@ -1374,12 +1374,15 @@ def update_telegram_state(state: Dict[str, Any]):
     # Generate AI Self-Assessment - NEW
     ai_assessment = ""
     try:
-        if performance_today.get("trades", 0) > 0 and pnl_history.get("24h") is not None:
+        pnl_24h = pnl_history.get("24h", 0)
+        pnl_7d = pnl_history.get("7d", 0)
+        trades_today = performance_today.get("trades", 0)
+        
+        if trades_today > 0:
+            # Has trades today - detailed assessment
             win_rate = performance_today.get("win_rate", 0)
-            pnl_24h = pnl_history.get("24h", 0)
-            pnl_7d = pnl_history.get("7d", 0)
             
-            # Generate simple assessment based on performance
+            # Generate assessment based on performance
             if pnl_24h > 0 and win_rate >= 60:
                 ai_assessment = f"Performance sólida hoje: {win_rate:.0f}% win rate, ${pnl_24h:+.2f} em 24h. Estratégias funcionando bem."
             elif pnl_24h > 0:
@@ -1390,6 +1393,17 @@ def update_telegram_state(state: Dict[str, Any]):
                 ai_assessment = f"Curto prazo negativo (${pnl_24h:.2f}) mas 7D positivo (${pnl_7d:+.2f}). Mantendo curso."
             else:
                 ai_assessment = f"Analisando mercado. PnL 24h: ${pnl_24h:.2f}, buscando melhores setups."
+        else:
+            # No trades today - simple status based on position and market
+            positions_count = state.get("positions_count", 0)
+            
+            if positions_count > 0:
+                # Has open position
+                ai_assessment = "Monitorando posição aberta. Aguardando confirmação de estrutura para próxima ação."
+            else:
+                # Flat
+                ai_assessment = "Flat no momento. Analisando mercado e aguardando setups de alta probabilidade."
+                
     except Exception as e:
         print(f"[TELEGRAM] Failed to generate AI assessment: {e}")
     
@@ -1442,6 +1456,7 @@ def should_panic_close() -> bool:
         _bot_state["panic_close_all"] = False  # Reset flag
         return True
     return False
+
 
 
 
