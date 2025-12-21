@@ -284,7 +284,7 @@ Your decision:"""
     def _log_quality(self, decision: Dict):
         """Log decision quality (informational)"""
         summary = decision.get("summary", "")
-        confidence = decision.get("confidence", 0.0)
+        confidence = decision.get("confidence") or 0.0  # Handle None
         
         has_numbers = any(c.isdigit() for c in summary)
         has_dollar = "$" in summary
