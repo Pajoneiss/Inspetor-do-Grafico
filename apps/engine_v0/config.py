@@ -20,11 +20,12 @@ CMC_API_KEY = os.getenv("CMC_API_KEY", "")  # CoinMarketCap API key from env
 CRYPTOPANIC_API_KEY = os.getenv("CRYPTOPANIC_API_KEY", "")
 
 # ============================================================
-# 🎯 AI TIMING - Balanceado para custo vs reatividade
+# 🎯 AI TIMING - Balanced for cost vs reactivity
 # ============================================================
-AI_CALL_INTERVAL_SECONDS = int(os.getenv("AI_CALL_INTERVAL_SECONDS", "600"))  # 10 min default
-LLM_MIN_SECONDS = int(os.getenv("LLM_MIN_SECONDS", "600"))  # 10 min minimum between AI calls
-LLM_STATE_CHANGE_THRESHOLD = float(os.getenv("LLM_STATE_CHANGE_THRESHOLD", "0.5"))  # 0.5% change triggers AI (CRITICAL for BOS/CHoCH detection!)
+AI_CALL_INTERVAL_SECONDS = int(os.getenv("AI_CALL_INTERVAL_SECONDS", "1800"))  # 30 min default (saves ~65% API costs)
+LLM_MIN_SECONDS = int(os.getenv("LLM_MIN_SECONDS", "1800"))  # 30 min minimum between AI calls
+LLM_STATE_CHANGE_THRESHOLD = float(os.getenv("LLM_STATE_CHANGE_THRESHOLD", "0.5"))  # 0.5% change triggers AI
+VOLATILITY_TRIGGER_PCT = float(os.getenv("VOLATILITY_TRIGGER_PCT", "2.0"))  # Call AI immediately if BTC moves >2%
 MAX_ACTIONS_PER_TICK = int(os.getenv("MAX_ACTIONS_PER_TICK", "10"))  # AI can take up to 10 actions per decision
 ACTION_DEDUP_SECONDS = int(os.getenv("ACTION_DEDUP_SECONDS", "60"))  # 1 min dedup
 
@@ -83,6 +84,18 @@ TEST_ORDER_SYMBOL = os.getenv("TEST_ORDER_SYMBOL", "")
 ENABLE_ROTATION = os.getenv("ENABLE_ROTATION", "false").lower() == "true"
 ROTATE_MIN_DELTA_SCORE = int(os.getenv("ROTATE_MIN_DELTA_SCORE", "12"))
 ROTATE_CONFIRM_TICKS = int(os.getenv("ROTATE_CONFIRM_TICKS", "3"))
+
+# Vision Configuration (multi-timeframe analysis)
+VISION_CANDLES_INTERVALS = os.getenv("VISION_CANDLES_INTERVALS", "1m,5m,15m,1h,4h,1d,1w")
+VISION_CANDLES_LIMIT = int(os.getenv("VISION_CANDLES_LIMIT", "60"))
+VISION_ORDERBOOK_DEPTH = int(os.getenv("VISION_ORDERBOOK_DEPTH", "5"))
+VISION_RECENT_FILLS_LIMIT = int(os.getenv("VISION_RECENT_FILLS_LIMIT", "10"))
+
+# Symbol Configuration
+SYMBOL_ALLOWLIST = [s.strip() for s in os.getenv("SYMBOL_ALLOWLIST", "").split(",") if s.strip()]
+
+# AI Provider (for future multi-provider support)
+AI_PROVIDER = os.getenv("AI_PROVIDER", "anthropic")
 
 
 def print_config():
