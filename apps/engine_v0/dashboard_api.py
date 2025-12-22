@@ -461,6 +461,10 @@ def get_gainers_losers():
         
         data = fetch_cmc_gainers_losers()
         
+        # Handle None response
+        if data is None:
+            data = {}
+        
         return jsonify({
             "ok": True,
             "gainers": data.get("gainers", []),

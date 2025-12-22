@@ -2261,38 +2261,6 @@ function DashboardContent() {
                   </div>
                 </GlassCard>
 
-                {/* Crypto News - Trending/Delayed */}
-                <GlassCard className="border border-indigo-500/20" delay={0.25}>
-                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
-                    <TrendingUp className="w-5 h-5 text-indigo-400" />
-                    <h2 className="text-lg font-bold">Trending & Insights (CryptoPanic)</h2>
-                  </div>
-                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
-                    {trendingNews.length > 0 ? (
-                      trendingNews.map((item, i) => (
-                        <a
-                          key={i}
-                          href={item.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-indigo-500/30 transition-all group"
-                        >
-                          <p className="font-bold text-sm mb-2 line-clamp-2 group-hover:text-indigo-400 transition-colors">{item.title}</p>
-                          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider">
-                            <span className="text-indigo-400">{item.source || "CryptoPanic"}</span>
-                            <span className="text-white/40">24h+ Insights</span>
-                          </div>
-                        </a>
-                      ))
-                    ) : (
-                      <div className="text-center py-20 opacity-20">
-                        <Newspaper className="w-12 h-12 mx-auto mb-4" />
-                        <p className="text-xs font-bold uppercase tracking-widest">No trending updates</p>
-                      </div>
-                    )}
-                  </div>
-                </GlassCard>
-
                 {/* Economic Calendar */}
                 <GlassCard className="border border-yellow-500/20" delay={0.3}>
                   <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
