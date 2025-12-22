@@ -927,6 +927,7 @@ def fetch_funding_rates() -> Dict[str, Any]:
             resp = client.get("https://fapi.binance.com/fapi/v1/premiumIndex")
             if resp.status_code == 200:
                 data = resp.json()
+                rates = {}
                 rates_list = []
                 total_rate, count = 0, 0
                 
@@ -1183,6 +1184,7 @@ def fetch_rainbow_chart() -> Dict[str, Any]:
                 
                 result = {
                     "btc_price": btc_price,
+                    "fair_value": round(log_price, 0),
                     "log_price": round(log_price, 0),
                     "band": band,
                     "band_index": band_index,
