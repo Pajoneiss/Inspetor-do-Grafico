@@ -394,6 +394,30 @@ def get_economic_calendar():
         }), 500
 
 
+@app.route('/api/news')
+def get_news():
+    """Get crypto news from CryptoPanic"""
+    try:
+        from data_sources import fetch_cryptopanic
+        
+        headlines = fetch_cryptopanic()
+        
+        return jsonify({
+            "ok": True,
+            "news": headlines,
+            "count": len(headlines),
+            "server_time_ms": int(time.time() * 1000)
+        })
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] News fetch failed: {e}")
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "news": [],
+            "count": 0
+        }), 500
+
+
 @app.route('/api/cmc/trending')
 def api_cmc_trending():
     """Get trending coins from CoinMarketCap"""
