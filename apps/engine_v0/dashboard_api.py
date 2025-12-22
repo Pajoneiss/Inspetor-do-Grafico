@@ -502,7 +502,7 @@ def api_trending_coins():
 
 
 @app.route('/api/market-intelligence/tvl')
-def api_tvl():
+def api_market_intelligence_tvl():
     """Get Total Value Locked from DefiLlama"""
     try:
         from data_sources import fetch_defillama_tvl
