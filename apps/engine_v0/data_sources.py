@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 # Import API keys from config
-from config import CMC_API_KEY, CRYPTOPANIC_API_KEY, API_TIMEOUT_SECONDS
+from config import CMC_API_KEY, CRYPTOPANIC_API_KEY, FMP_API_KEY, API_TIMEOUT_SECONDS
 
 # Cache storage
 _cache: Dict[str, Dict[str, Any]] = {}
@@ -75,94 +75,87 @@ def fetch_fear_greed() -> Dict[str, Any]:
 
 
 
-def fetch_cryptopanic() -> List[Dict[str, str]]:
+def fetch_cryptocompare() -> List[Dict[str, str]]:
     """
-    Fetch crypto news headlines from CryptoPanic
-    Falls back to CoinDesk RSS if API fails
+    Fetch real-time crypto news from CryptoCompare (Truly Free)
     Returns: [{"title": ..., "url": ..., "source": ...}, ...]
     """
-    cache_key = "cryptopanic"
+    cache_key = "cryptocompare_news"
     cached = _get_cache(cache_key)
     if cached:
         return cached
     
     headlines = []
-    
-    # Try CryptoPanic API first (if key available)
     try:
         import httpx
+        # No key strictly required for this endpoint on some tiers, but good practice
+        url = "https://min-api.cryptocompare.com/data/v2/news/?lang=EN"
         
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            resp = client.get(url)
+            if resp.status_code == 200:
+                data = resp.json()
+                for post in data.get("Data", [])[:20]:
+                    headlines.append({
+                        "title": post.get("title", "")[:120],
+                        "url": post.get("url", ""),
+                        "source": post.get("source_info", {}).get("name", "CryptoCompare"),
+                        "published_at": datetime.fromtimestamp(post.get("published_on", 0)).isoformat(),
+                        "kind": "news"
+                    })
+    except Exception as e:
+        print(f"[NEWS][WARN] CryptoCompare failed: {e}")
+    
+    if headlines:
+        _set_cache(cache_key, headlines, TTL_NEWS)
+    return headlines
+
+
+def fetch_cryptopanic() -> List[Dict[str, str]]:
+    """
+    Fetch crypto news headlines. 
+    Primary: CryptoCompare (Real-time). 
+    Secondary: CryptoPanic (Delayed 24h on free tier).
+    """
+    # Always try CryptoCompare first for REAL-TIME data
+    headlines = fetch_cryptocompare()
+    if headlines:
+        return headlines
+        
+    cache_key = "cryptopanic"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+
+    headlines = []
+    # Try CryptoPanic API if key available
+    try:
+        import httpx
         if CRYPTOPANIC_API_KEY:
-            print(f"[NEWS] CryptoPanic API key configured: {CRYPTOPANIC_API_KEY[:8]}...")
-            # Try free API endpoint first
             url = f"https://cryptopanic.com/api/free/v1/posts/?auth_token={CRYPTOPANIC_API_KEY}&filter=rising&public=true"
-            print(f"[NEWS] Fetching from: {url[:60]}...")
-            
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            }
-            
-            with httpx.Client(timeout=API_TIMEOUT_SECONDS, headers=headers) as client:
+            with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
                 resp = client.get(url)
-                print(f"[NEWS] CryptoPanic response status: {resp.status_code}")
                 if resp.status_code == 200:
                     data = resp.json()
-                    results = data.get("results", [])
-                    if not results and data.get("count", 0) > 0:
-                        print(f"[NEWS] API returned results but they are empty. Check filters.")
-                    
-                    for post in results[:15]:
-                       headlines.append({
+                    for post in data.get("results", [])[:15]:
+                        headlines.append({
                             "title": post.get("title", "")[:120],
                             "url": post.get("url", ""),
                             "source": post.get("source", {}).get("title", "CryptoPanic"),
                             "published_at": post.get("published_at", ""),
-                            "votes": post.get("votes", {}),
                             "kind": post.get("kind", "news")
                         })
-                elif resp.status_code == 401:
-                    print("[NEWS][ERROR] API Token invalid or expired")
-                elif resp.status_code == 404:
-                    # Try pro endpoint
-                    print("[NEWS][WARN] Free endpoint 404, trying alternate...")
-                    url_alt = f"https://cryptopanic.com/api/v1/posts/?auth_token={CRYPTOPANIC_API_KEY}&public=true"
-                    resp_alt = client.get(url_alt)
-                    if resp_alt.status_code == 200:
-                        data = resp_alt.json()
-                        for post in data.get("results", [])[:10]:
-                            headlines.append({
-                                "title": post.get("title", ""),
-                                "url": post.get("url", ""),
-                                "source": post.get("source", {}).get("title", "CryptoPanic")
-                            })
-                else:
-                    print(f"[NEWS][WARN] CryptoPanic returned {resp.status_code}: {resp.text[:100]}")
-        else:
-            print("[NEWS][WARN] CRYPTOPANIC_API_KEY not configured")
     except Exception as e:
-        print(f"[NEWS][WARN] CryptoPanic API failed: {e}")
+        print(f"[NEWS][WARN] CryptoPanic fallback failed: {e}")
     
-    # Fallback: CoinGecko trending + CoinDesk
     if not headlines:
-        try:
-            import httpx
-            
-            # Try CoinGecko trending for some data
-            with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
-                # Simple fallback - create dummy news from market status
-                headlines = [
-                    {"title": "📈 Mercado crypto operando normalmente", "source": "Bot"},
-                    {"title": "💹 Acompanhe Fear & Greed no resumo", "source": "Bot"},
-                    {"title": "🔔 Configure CRYPTOPANIC_API_KEY para notícias", "source": "Sistema"}
-                ]
-                print("[NEWS] Using fallback news (no API key)")
-        except:
-            pass
+        headlines = [
+            {"title": "📈 Mercado crypto operando normalmente", "source": "Bot"},
+            {"title": "💹 Acompanhe Fear & Greed no resumo", "source": "Bot"}
+        ]
     
     if headlines:
         _set_cache(cache_key, headlines, TTL_NEWS)
-        print(f"[NEWS] Fetched: {len(headlines)} headlines")
-    
     return headlines
 
 
@@ -481,121 +474,74 @@ def format_external_data_for_telegram(data: Dict[str, Any]) -> str:
     return "\n".join(lines) if lines else "(dados externos indisponíveis)"
 
 
-def fetch_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any]]:
+def fetch_fmp_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any]]:
     """
-    Fetch upcoming high-impact economic events using Finnhub (free tier)
-    
-    Returns: [{
-        'date': '2025-12-23',
-        'time': '10:00',
-        'event': 'FOMC Meeting',
-        'country': 'US',
-        'importance': 'HIGH',
-        'actual': None,
-        'estimate': '5.25%',
-        'previous': '5.00%'
-    }]
+    Fetch economic events from Financial Modeling Prep (Truly Free tier)
     """
-    cache_key = "economic_calendar"
+    cache_key = "fmp_calendar"
     cached = _get_cache(cache_key)
     if cached:
-        print(f"[CALENDAR] Using cached: {len(cached)} events")
         return cached
     
     events = []
-    
+    if not FMP_API_KEY:
+        print("[CALENDAR][WARN] FMP_API_KEY not configured")
+        return []
+
     try:
         import httpx
         from datetime import datetime, timedelta
         
-        # Finnhub free tier endpoint (no API key needed for basic calendar)
-        # Alternative: can use FINNHUB_API_KEY from env if available
-        from config import os
-        finnhub_key = os.getenv("FINNHUB_API_KEY", "")
-        
-        # Calculate date range
         today = datetime.now()
         end_date = today + timedelta(days=days_ahead)
         
-        # Format dates for API
         from_date = today.strftime("%Y-%m-%d")
         to_date = end_date.strftime("%Y-%m-%d")
         
-        # Finnhub economic calendar endpoint
-        url = f"https://finnhub.io/api/v1/calendar/economic?from={from_date}&to={to_date}"
-        
-        if finnhub_key:
-            url += f"&token={finnhub_key}"
-        else:
-            # Use free tier (limited data, but works)
-            url += "&token=demo"
-        
-        print(f"[CALENDAR] Fetching events from {from_date} to {to_date}...")
+        url = f"https://financialmodelingprep.com/api/v3/economic_calendar?from={from_date}&to={to_date}&apikey={FMP_API_KEY}"
         
         with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
             resp = client.get(url)
-            
             if resp.status_code == 200:
                 data = resp.json()
-                
-                # Filter high-impact US events
-                high_impact_events = [
-                    "FOMC", "NFP", "Non-Farm", "Payroll", "CPI", "PPI", 
-                    "GDP", "Federal Reserve", "Interest Rate", "Unemployment",
-                    "Retail Sales", "Consumer Confidence", "PMI", "ISM"
-                ]
-                
-                for item in data.get("economicCalendar", []):
-                    event_name = item.get("event", "")
-                    country = item.get("country", "")
-                    
-                    # Filter: Only US high-impact events
-                    if country != "US":
-                        continue
-                    
-                    is_important = any(keyword.lower() in event_name.lower() 
-                                      for keyword in high_impact_events)
-                    
-                    if not is_important:
-                        continue
-                    
-                    # Parse date/time
-                    event_date = item.get("date", "")
-                    event_time = item.get("time", "")
-                    
-                    events.append({
-                        "date": event_date,
-                        "time": event_time or "TBD",
-                        "event": event_name,
-                        "country": country,
-                        "importance": "HIGH",
-                        "actual": item.get("actual"),
-                        "estimate": item.get("estimate"),
-                        "previous": item.get("previous"),
-                        "impact": item.get("impact", "high")
-                    })
-                
+                for item in data:
+                    # Filter for relevance (e.g., US events or High impact)
+                    if item.get("country") == "US" or item.get("impact") == "High":
+                        events.append({
+                            "date": item.get("date", "").split(" ")[0],
+                            "time": item.get("date", "").split(" ")[1] if " " in item.get("date", "") else "TBD",
+                            "event": item.get("event", ""),
+                            "country": item.get("country", ""),
+                            "importance": item.get("impact", "Medium").upper(),
+                            "actual": item.get("actual"),
+                            "estimate": item.get("estimate"),
+                            "previous": item.get("previous"),
+                            "impact": item.get("impact", "Medium").lower()
+                        })
                 # Sort by date
                 events.sort(key=lambda x: x["date"])
-                
-                # Cache for 6 hours (events don't change frequently)
-                _set_cache(cache_key, events, ttl=21600)
-                
-                print(f"[CALENDAR] Fetched {len(events)} high-impact events")
-                return events
-            
-            else:
-                print(f"[CALENDAR][WARN] API returned status {resp.status_code}")
-    
+                _set_cache(cache_key, events, ttl=21600) # 6h
     except Exception as e:
-        print(f"[CALENDAR][ERROR] Failed to fetch calendar: {e}")
+        print(f"[CALENDAR][WARN] FMP failed: {e}")
     
-    # Fallback: Return demo events if API fails
-    fallback_events = [
+    return events
+
+
+def fetch_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any]]:
+    """
+    Fetch upcoming high-impact economic events.
+    Switched to FMP (Financial Modeling Prep) as it offers a working free tier.
+    """
+    events = fetch_fmp_economic_calendar(days_ahead)
+    if events:
+        return events
+        
+    # Fallback to an empty list or a notice
+    return [
         {
             "date": "TBD",
             "time": "TBD",
-            "event": "Economic Calendar Unavailable",
+            "event": "Economic Calendar Unavailable (Check FMP_API_KEY)",
             "country": "US",
             "importance": "INFO",
             "actual": None,
@@ -604,8 +550,6 @@ def fetch_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any]]:
             "impact": "low"
         }
     ]
-    
-    return fallback_events
 
 
 def format_economic_calendar(events: List[Dict[str, Any]], max_events: int = 5) -> str:

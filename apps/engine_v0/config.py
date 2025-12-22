@@ -24,6 +24,7 @@ TG_CHAT_MODEL = os.getenv("TG_CHAT_MODEL", "gpt-4o-mini")
 # External APIs - keys from Railway environment
 CMC_API_KEY = os.getenv("CMC_API_KEY", "")  # CoinMarketCap API key from env
 CRYPTOPANIC_API_KEY = os.getenv("CRYPTOPANIC_API_KEY", "")
+FMP_API_KEY = os.getenv("FMP_API_KEY", "")  # Financial Modeling Prep API Key
 
 # ============================================================
 # 🎯 AI TIMING - Balanced for cost vs reactivity
