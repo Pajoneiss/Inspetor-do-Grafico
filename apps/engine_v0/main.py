@@ -681,6 +681,9 @@ def main():
                             # Execute actions from LLM
                             actions = decision.get("actions", [])
                             if actions:
+                                # Tag all actions as coming from LLM
+                                for action in actions:
+                                    action["source"] = "LLM"
                                 execute(actions, live_trading=LIVE_TRADING, hl_client=hl)
                             
                             # Log actions to dashboard
