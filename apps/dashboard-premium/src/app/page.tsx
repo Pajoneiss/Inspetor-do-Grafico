@@ -289,7 +289,7 @@ const TradingViewChart = ({ symbol, theme = 'dark' }: { symbol: string, theme?: 
       if ((window as any).TradingView) {
         new (window as any).TradingView.widget({
           "autosize": true,
-          "symbol": symbol.includes(':') ? symbol : `BINANCE:${symbol}USDT`,
+          "symbol": symbol.includes(':') ? symbol : `BINANCE:${symbol}USDT.P`,
           "interval": "15",
           "timezone": "Etc/UTC",
           "theme": theme,
