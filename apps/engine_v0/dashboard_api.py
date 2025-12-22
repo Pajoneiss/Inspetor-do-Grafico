@@ -420,18 +420,6 @@ def get_news():
         print(f"[DASHBOARD][ERROR] News failed: {e}")
         return jsonify({"ok": False, "error": str(e), "news": [], "count": 0}), 500
 
-@app.route('/api/economic-calendar')
-def get_economic_calendar():
-    """Get economic calendar events"""
-    try:
-        days = request.args.get('days', 7, type=int)
-        from data_sources import fetch_economic_calendar
-        events = fetch_economic_calendar(days)
-        return jsonify({"ok": True, "events": events, "count": len(events), "server_time_ms": int(time.time() * 1000)})
-    except Exception as e:
-        print(f"[DASHBOARD][ERROR] Calendar failed: {e}")
-        return jsonify({"ok": False, "error": str(e), "events": []}), 500
-
 
 @app.route('/api/market')
 def get_market_overview():
