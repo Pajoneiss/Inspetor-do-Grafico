@@ -644,26 +644,37 @@
         // Update crypto news
         async function updateNews() {
             try {
-                // Fetch from data_sources via telegram summary endpoint or create new one
                 const newsContainer = document.getElementById('newsContainer');
 
-                // For now, use placeholder - you can integrate CryptoPanic API
-                const newsHTML = `
-                    <div class="market-item">
-                        <span class="market-label">🔴 BTC breaks key resistance</span>
-                    </div>
-                    <div class="market-item">
-                        <span class="market-label">📈 Institutional inflows surge</span>
-                    </div>
-                    <div class="market-item">
-                        <span class="market-label">⚠️ Fed hints at rate changes</span>
-                    </div>
-                    <div style="text-align: center; margin-top: 12px; font-size: 12px; color: var(--text-secondary);">
-                        Configure CRYPTOPANIC_API_KEY for live news
+                // Fetch preview news
+                const res = await fetch(`${API_BASE}/api/news`);
+                const json = await res.json();
+
+                let content = '';
+                if (json.ok && json.news && json.news.length > 0) {
+                    content = json.news.slice(0, 3).map(item => `
+                        <div class="market-item">
+                            <span class="market-label">
+                                <a href="${item.url}" target="_blank" style="color: inherit; text-decoration: none;">
+                                    ${item.title.substring(0, 50)}${item.title.length > 50 ? '...' : ''}
+                                </a>
+                            </span>
+                        </div>
+                    `).join('');
+                } else {
+                    content = '<div class="empty-state">News unavailable</div>';
+                }
+
+                // Add "View All" link
+                content += `
+                    <div style="text-align: center; margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px;">
+                        <a href="/news" style="font-size: 12px; color: var(--accent); text-decoration: none; font-weight: 500;">
+                            View All News & Market Data →
+                        </a>
                     </div>
                 `;
 
-                newsContainer.innerHTML = newsHTML;
+                newsContainer.innerHTML = content;
             } catch (e) {
                 console.error('News error:', e);
                 document.getElementById('newsContainer').innerHTML =

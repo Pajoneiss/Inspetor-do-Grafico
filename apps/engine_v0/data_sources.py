@@ -97,7 +97,12 @@ def fetch_cryptopanic() -> List[Dict[str, str]]:
             # Try free API endpoint first
             url = f"https://cryptopanic.com/api/free/v1/posts/?auth_token={CRYPTOPANIC_API_KEY}&filter=rising&public=true"
             print(f"[NEWS] Fetching from: {url[:60]}...")
-            with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+            
+            with httpx.Client(timeout=API_TIMEOUT_SECONDS, headers=headers) as client:
                 resp = client.get(url)
                 print(f"[NEWS] CryptoPanic response status: {resp.status_code}")
                 if resp.status_code == 200:

@@ -161,6 +161,13 @@ def serve_logs_page():
     return send_from_directory(DASHBOARD_NEXT_PATH, 'index.html')
 
 
+@app.route('/news/')
+@app.route('/news')
+def serve_news_page():
+    """Serve News page"""
+    return send_from_directory(DASHBOARD_NEXT_PATH, 'news.html')
+
+
 @app.route('/<path:filename>')
 def serve_static(filename):
     """Serve static files from Next.js build or fallback dashboard"""
