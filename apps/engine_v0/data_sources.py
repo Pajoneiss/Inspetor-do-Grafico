@@ -325,46 +325,49 @@ def fetch_cmc_gainers_losers() -> Dict[str, List[Dict[str, Any]]]:
 
 def fetch_binance_movers() -> Dict[str, List[Dict[str, Any]]]:
     """
-    Fetch top gainers and losers from Binance Futures (Highly Reliable)
+    Fetch top gainers and losers from Binance Futures using requests
     """
     try:
-        import httpx
+        import requests
         url = "https://fapi.binance.com/fapi/v1/ticker/24hr"
-        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
-            resp = client.get(url)
-            if resp.status_code == 200:
-                data = resp.json()
-                # Sort by priceChangePercent
-                sorted_data = sorted(data, key=lambda x: float(x.get("priceChangePercent", 0)), reverse=True)
-                
-                gainers = []
-                for c in sorted_data[:5]:
-                    symbol = c.get("symbol", "").replace("USDT", "")
-                    if symbol in ["USDC", "FDUSD", "TUSD", "USDP"]: continue
-                    gainers.append({
-                        "name": symbol,
-                        "symbol": symbol,
-                        "price": float(c.get("lastPrice", 0)),
-                        "percent_change_24h": float(c.get("priceChangePercent", 0))
-                    })
-                
-                losers = []
-                for c in reversed(sorted_data):
-                    symbol = c.get("symbol", "").replace("USDT", "")
-                    if symbol in ["USDC", "FDUSD", "TUSD", "USDP"]: continue
-                    losers.append({
-                        "name": symbol,
-                        "symbol": symbol,
-                        "price": float(c.get("lastPrice", 0)),
-                        "percent_change_24h": float(c.get("priceChangePercent", 0))
-                    })
-                    if len(losers) >= 5: break
-                
-                return {"gainers": gainers, "losers": losers}
+        resp = requests.get(url, timeout=API_TIMEOUT_SECONDS)
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            # Sort by priceChangePercent
+            sorted_data = sorted(data, key=lambda x: float(x.get("priceChangePercent", 0)), reverse=True)
+            
+            gainers = []
+            for c in sorted_data:
+                symbol = c.get("symbol", "").replace("USDT", "")
+                if symbol in ["USDC", "FDUSD", "TUSD", "USDP", "EUR"]: continue
+                gainers.append({
+                    "name": symbol,
+                    "symbol": symbol,
+                    "price": float(c.get("lastPrice", 0)),
+                    "percent_change_24h": float(c.get("priceChangePercent", 0))
+                })
+                if len(gainers) >= 5: break
+            
+            top_losers = []
+            for c in reversed(sorted_data):
+                symbol = c.get("symbol", "").replace("USDT", "")
+                if symbol in ["USDC", "FDUSD", "TUSD", "USDP", "EUR"]: continue
+                top_losers.append({
+                    "name": symbol,
+                    "symbol": symbol,
+                    "price": float(c.get("lastPrice", 0)),
+                    "percent_change_24h": float(c.get("priceChangePercent", 0))
+                })
+                if len(top_losers) >= 5: break
+            
+            result = {"gainers": gainers, "losers": top_losers}
+            print(f"[BINANCE] Fetched {len(gainers)} gainers and {len(top_losers)} losers")
+            return result
     except Exception as e:
-        print(f"[BINANCE_MOVERS][WARN] Failed: {e}")
+        print(f"[BINANCE][ERROR] Movers failed: {e}")
     
-    return fetch_coingecko_movers()
+    return {"gainers": [], "losers": []}
 
 
 def fetch_hl_prices() -> Dict[str, float]:
@@ -576,7 +579,7 @@ def fetch_fmp_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any]]:
 
 def fetch_investing_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any]]:
     """
-    Fetch economic calendar from Investing.com (free, no API key needed)
+    Fetch economic calendar from Investing.com by scraping the HTML
     """
     cache_key = f"economic_calendar_{days_ahead}d"
     cached = _get_cache(cache_key)
@@ -585,39 +588,58 @@ def fetch_investing_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any
     
     events = []
     try:
-        import httpx
-        from datetime import datetime, timedelta
+        import requests
+        from bs4 import BeautifulSoup
+        from datetime import datetime
         
-        # Investing.com economic calendar URL (public data)
         url = "https://www.investing.com/economic-calendar/"
-        
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': 'https://www.google.com/'
         }
         
-        with httpx.Client(timeout=API_TIMEOUT_SECONDS, headers=headers, follow_redirects=True) as client:
-            resp = client.get(url)
-            if resp.status_code == 200:
-                # Simple parsing - look for high impact events
-                # This is a basic implementation, could be improved with BeautifulSoup
-                content = resp.text
+        resp = requests.get(url, headers=headers, timeout=API_TIMEOUT_SECONDS)
+        if resp.status_code == 200:
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            table = soup.find('table', {'id': 'economicCalendarData'})
+            if table:
+                rows = table.find_all('tr', {'class': 'js-event-item'})
+                for row in rows[:15]: # Limit to top 15 events
+                    try:
+                        time_val = row.find('td', {'class': 'time'}).text.strip()
+                        country = row.find('td', {'class': 'flagCur'}).text.strip()
+                        sentiment_td = row.find('td', {'class': 'sentiment'})
+                        impact_count = len(sentiment_td.find_all('i', {'class': 'grayFullBullishIcon'})) if sentiment_td else 1
+                        
+                        impact = "high" if impact_count >= 3 else "medium" if impact_count == 2 else "low"
+                        event_name = row.find('td', {'class': 'event'}).text.strip()
+                        
+                        actual = row.find('td', {'class': 'act'}).text.strip() if row.find('td', {'class': 'act'}) else None
+                        forecast = row.find('td', {'class': 'fore'}).text.strip() if row.find('td', {'class': 'fore'}) else None
+                        previous = row.find('td', {'class': 'prev'}).text.strip() if row.find('td', {'class': 'prev'}) else None
+                        
+                        events.append({
+                            "date": datetime.now().strftime("%Y-%m-%d"),
+                            "time": time_val,
+                            "event": event_name,
+                            "country": country,
+                            "importance": "HIGH" if impact == "high" else "MEDIUM" if impact == "medium" else "LOW",
+                            "actual": actual if actual else None,
+                            "estimate": forecast if forecast else None,
+                            "previous": previous if previous else None,
+                            "impact": impact
+                        })
+                    except Exception as e:
+                        continue
                 
-                # For now, return a placeholder message
-                events.append({
-                    "date": datetime.now().strftime("%Y-%m-%d"),
-                    "time": "TBD",
-                    "event": "Economic Calendar - Free API Integration",
-                    "country": "US",
-                    "importance": "INFO",
-                    "actual": None,
-                    "estimate": None,
-                    "previous": None,
-                    "impact": "info"
-                })
-                
-                _set_cache(cache_key, events, ttl=TTL_CALENDAR)
+                if events:
+                    _set_cache(cache_key, events, ttl=TTL_CALENDAR)
+                    print(f"[CALENDAR] Scraped {len(events)} events from Investing.com")
+        else:
+            print(f"[CALENDAR][WARN] Investing.com returned status {resp.status_code}")
     except Exception as e:
-        print(f"[CALENDAR][WARN] Investing.com failed: {e}")
+        print(f"[CALENDAR][ERROR] Scraping failed: {e}")
     
     return events
 
@@ -967,49 +989,49 @@ def fetch_defi_tvl() -> Dict[str, Any]:
 
 
 def fetch_funding_rates() -> Dict[str, Any]:
-    """Fetch funding rates from Binance (free, no key)"""
+    """Fetch funding rates from Binance using requests"""
     cache_key = "funding_rates"
     cached = _get_cache(cache_key)
     if cached:
         return cached
     
-    result = {"rates": {}, "average": 0, "sentiment": "neutral", "error": None}
+    result = {"rates": {}, "funding_rates": [], "average": 0, "sentiment": "neutral", "error": None}
     
     try:
-        import httpx
+        import requests
         symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"]
+        resp = requests.get("https://fapi.binance.com/fapi/v1/premiumIndex", timeout=API_TIMEOUT_SECONDS)
         
-        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
-            resp = client.get("https://fapi.binance.com/fapi/v1/premiumIndex")
-            if resp.status_code == 200:
-                data = resp.json()
-                rates = {}
-                rates_list = []
-                total_rate, count = 0, 0
-                
-                for item in data:
-                    symbol = item.get("symbol", "")
-                    if symbol in symbols:
-                        rate = float(item.get("lastFundingRate", 0))
-                        # Format for frontend: symbol and rate as string/float
-                        rates_list.append({
-                            "symbol": symbol.replace("USDT", ""),
-                            "lastFundingRate": str(rate)
-                        })
-                        rates[symbol.replace("USDT", "")] = round(rate * 100, 4)
-                        total_rate += (rate * 100)
-                        count += 1
-                
-                # Sort by funding rate descending (highest to lowest) to show interesting ones
-                rates_list.sort(key=lambda x: float(x["lastFundingRate"]), reverse=True)
-
-                avg_rate = total_rate / count if count > 0 else 0
-                sentiment = "bullish" if avg_rate > 0.05 else "bearish" if avg_rate < -0.05 else "neutral"
-                
-                result = {"rates": rates, "funding_rates": rates_list, "average": round(avg_rate, 4), "sentiment": sentiment, "error": None}
-                _set_cache(cache_key, result, TTL_MARKET * 5)
+        if resp.status_code == 200:
+            data = resp.json()
+            rates = {}
+            rates_list = []
+            total_rate, count = 0, 0
+            
+            for item in data:
+                symbol = item.get("symbol", "")
+                if symbol in symbols:
+                    rate = float(item.get("lastFundingRate", 0))
+                    clean_sym = symbol.replace("USDT", "")
+                    rates_list.append({
+                        "symbol": clean_sym,
+                        "lastFundingRate": str(rate)
+                    })
+                    rates[clean_sym] = round(rate * 100, 4)
+                    total_rate += (rate * 100)
+                    count += 1
+            
+            rates_list.sort(key=lambda x: float(x["lastFundingRate"]), reverse=True)
+            avg_rate = total_rate / count if count > 0 else 0
+            sentiment = "bullish" if avg_rate > 0.05 else "bearish" if avg_rate < -0.05 else "neutral"
+            
+            result = {"rates": rates, "funding_rates": rates_list, "average": round(avg_rate, 4), "sentiment": sentiment, "error": None}
+            _set_cache(cache_key, result, TTL_MARKET * 5)
+            print(f"[FUNDING] Fetched {len(rates_list)} rates from Binance")
+        else:
+             print(f"[FUNDING][WARN] Binance returned {resp.status_code}")
     except Exception as e:
-        print(f"[FUNDING][WARN] Failed: {e}")
+        print(f"[FUNDING][ERROR] Failed: {e}")
         result["error"] = str(e)
     
     return result
@@ -1022,48 +1044,57 @@ def fetch_long_short_ratio() -> Dict[str, Any]:
     if cached:
         return cached
     
+def fetch_long_short_ratio() -> Dict[str, Any]:
+    """Fetch Long/Short ratios from Binance using requests"""
+    cache_key = "long_short_ratio"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+    
     result = {"ratios": {}, "global_ratio": [], "btc_ratio": 1.0, "sentiment": "neutral", "error": None}
     
     try:
-        import httpx
+        import requests
+        symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
         ratios = {}
         global_ratio_list = []
         
-        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
-            for symbol in ["BTCUSDT", "ETHUSDT", "SOLUSDT"]:
-                url = f"https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol={symbol}&period=1h&limit=1"
-                resp = client.get(url)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    if data:
-                        item = data[0]
-                        ratio = float(item.get("longShortRatio", 1.0))
-                        clean_symbol = symbol.replace("USDT", "")
-                        ratios[clean_symbol] = round(ratio, 2)
-                        
-                        global_ratio_list.append({
-                            "symbol": clean_symbol,
-                            "longShortRatio": str(ratio),
-                            "longAccount": item.get("longAccount", "0.5"),
-                            "shortAccount": item.get("shortAccount", "0.5")
-                        })
+        for symbol in symbols:
+            url = f"https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol={symbol}&period=1h&limit=1"
+            oi_url = f"https://fapi.binance.com/fapi/v1/openInterest?symbol={symbol}"
+            
+            resp = requests.get(url, timeout=API_TIMEOUT_SECONDS)
+            oi_resp = requests.get(oi_url, timeout=API_TIMEOUT_SECONDS)
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                if data:
+                    item = data[0]
+                    clean_sym = symbol.replace("USDT", "")
+                    ratio = float(item.get("longShortRatio", 1.0))
+                    ratios[clean_sym] = round(ratio, 2)
+                    
+                    oi_val = 0
+                    if oi_resp.status_code == 200:
+                        oi_val = float(oi_resp.json().get("openInterest", 0))
+                    
+                    global_ratio_list.append({
+                        "symbol": clean_sym,
+                        "longShortRatio": str(ratio),
+                        "longAccount": str(item.get("longAccount", "0.5")),
+                        "shortAccount": str(item.get("shortAccount", "0.5")),
+                        "openInterest": f"${oi_val/1e6:.1f}M" if oi_val > 0 else "N/A",
+                        "timestamp": item.get("timestamp")
+                    })
         
         btc_ratio = ratios.get("BTC", 1.0)
-        if btc_ratio > 1.5:
-            sentiment = "very_long"
-        elif btc_ratio > 1.1:
-            sentiment = "long"
-        elif btc_ratio < 0.67:
-            sentiment = "very_short"
-        elif btc_ratio < 0.9:
-            sentiment = "short"
-        else:
-            sentiment = "neutral"
+        sentiment = "bullish" if btc_ratio > 1.1 else "bearish" if btc_ratio < 0.9 else "neutral"
         
         result = {"ratios": ratios, "global_ratio": global_ratio_list, "btc_ratio": btc_ratio, "sentiment": sentiment, "error": None}
         _set_cache(cache_key, result, TTL_MARKET * 5)
+        print(f"[LONGSHORT] Scraped {len(global_ratio_list)} ratios from Binance")
     except Exception as e:
-        print(f"[L/S][WARN] Failed: {e}")
+        print(f"[LONGSHORT][ERROR] Failed: {e}")
         result["error"] = str(e)
     
     return result
@@ -1107,59 +1138,55 @@ def fetch_trending_coins() -> Dict[str, Any]:
 def fetch_altcoin_season() -> Dict[str, Any]:
     """
     Fetch Altcoin Season Index
-    Scrapes blockchaincenter.net because they have no public JSON API
+    Scrapes blockchaincenter.net using requests + BeautifulSoup
     """
     cache_key = "altcoin_season"
     cached = _get_cache(cache_key)
     if cached:
         return cached
     
-    result = {"index": 0, "status": "neutral", "error": None}
+    result = {
+        "index": 0, 
+        "blockchaincenter": {"season_index": 0, "formatted_season_index": "0"},
+        "status": "neutral", 
+        "error": None
+    }
     
     try:
-        import httpx
+        import requests
         import re
         url = "https://www.blockchaincenter.net/en/altcoin-season-index/"
-        # User-agent is required for scraping
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
         
-        with httpx.Client(timeout=API_TIMEOUT_SECONDS, headers=headers, verify=False) as client:
-            resp = client.get(url)
-            if resp.status_code == 200:
-                html = resp.text
-                # Look for the current index in the HTML
-                # <div class="number">67</div>
-                match = re.search(r'<div class="number">(\d+)</div>', html)
-                if match:
-                    val = int(match.group(1))
-                    result = {
-                        "index": val,
-                        "blockchaincenter": {
-                            "season_index": val,
-                            "formatted_season_index": str(val)
-                        },
-                        "status": "altcoin" if val >= 75 else "bitcoin" if val <= 25 else "neutral",
-                        "error": None
-                    }
-                    _set_cache(cache_key, result, TTL_MARKET * 10)
+        resp = requests.get(url, headers=headers, timeout=API_TIMEOUT_SECONDS, verify=False)
+        if resp.status_code == 200:
+            html = resp.text
+            match = re.search(r'<div class="number">(\d+)</div>', html)
+            if not match:
+                match = re.search(r'chartData\.labels.*?\n.*?data:.*?(\d+)', html, re.DOTALL)
+            
+            if match:
+                val = int(match.group(1))
+                result = {
+                    "index": val,
+                    "blockchaincenter": {
+                        "season_index": val,
+                        "formatted_season_index": str(val)
+                    },
+                    "status": "altcoin" if val >= 75 else "bitcoin" if val <= 25 else "neutral",
+                    "error": None
+                }
+                _set_cache(cache_key, result, TTL_MARKET * 10)
+                print(f"[ALTSEASON] Scraped index: {val}")
     except Exception as e:
-        print(f"[ALTSEASON][WARN] Scraping failed: {e}")
-        # Default/Mock if all fails
-        result = {
-            "index": 45,
-            "blockchaincenter": {
-                "season_index": 45,
-                "formatted_season_index": "45"
-            },
-            "status": "neutral",
-            "error": str(e)
-        }
+        print(f"[ALTSEASON][ERROR] Scraping failed: {e}")
+        result["error"] = str(e)
     
     return result
 
 
 def fetch_eth_gas() -> Dict[str, Any]:
-    """Fetch ETH gas prices from Owlracle (free, no key)"""
+    """Fetch ETH gas prices from multiple sources using requests"""
     cache_key = "eth_gas"
     cached = _get_cache(cache_key)
     if cached:
@@ -1168,42 +1195,42 @@ def fetch_eth_gas() -> Dict[str, Any]:
     result = {"slow": 0, "standard": 0, "fast": 0, "instant": 0, "error": None}
     
     try:
-        import httpx
-        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
-            resp = client.get("https://api.owlracle.info/v4/eth/gas")
-            if resp.status_code == 200:
-                data = resp.json()
-                speeds = data.get("speeds", [])
-                if len(speeds) >= 4:
-                    result = {
-                        "slow": round(speeds[0].get("gasPrice", 0), 1),
-                        "standard": round(speeds[1].get("gasPrice", 0), 1),
-                        "fast": round(speeds[2].get("gasPrice", 0), 1),
-                        "instant": round(speeds[3].get("gasPrice", 0), 1),
-                        "error": None
-                    }
-                    _set_cache(cache_key, result, TTL_MARKET)
+        import requests
+        # Source 1: Owlracle (if key exists, but works sometimes without)
+        url = "https://api.owlracle.info/v4/eth/gas"
+        resp = requests.get(url, timeout=API_TIMEOUT_SECONDS)
+        if resp.status_code == 200:
+            data = resp.json()
+            speeds = data.get("speeds", [])
+            if len(speeds) >= 4:
+                result = {
+                    "slow": round(speeds[0].get("gasPrice", 0), 1),
+                    "standard": round(speeds[1].get("gasPrice", 0), 1),
+                    "fast": round(speeds[2].get("gasPrice", 0), 1),
+                    "instant": round(speeds[3].get("gasPrice", 0), 1),
+                    "error": None
+                }
+                _set_cache(cache_key, result, TTL_MARKET)
+                return result
+
+        # Source 2: Etherscan proxy
+        resp = requests.get("https://api.etherscan.io/api?module=proxy&action=eth_gasPrice", timeout=API_TIMEOUT_SECONDS)
+        if resp.status_code == 200:
+            data = resp.json()
+            wei = int(data.get("result", "0x0"), 16)
+            gwei = wei / 1e9
+            result = {
+                "slow": round(gwei * 0.9, 1),
+                "standard": round(gwei, 1),
+                "fast": round(gwei * 1.1, 1),
+                "instant": round(gwei * 1.3, 1),
+                "error": None
+            }
+            _set_cache(cache_key, result, TTL_MARKET)
+            print(f"[GAS] Fetched from Etherscan: {gwei} Gwei")
     except Exception as e:
-        print(f"[GAS][WARN] Owlracle failed: {e}, trying fallback")
-        try:
-            # Fallback to Etherscan free (often works without key for basic status)
-            with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
-                resp = client.get("https://api.etherscan.io/api?module=proxy&action=eth_gasPrice")
-                if resp.status_code == 200:
-                    data = resp.json()
-                    wei = int(data.get("result", "0x0"), 16)
-                    gwei = wei / 1e9
-                    result = {
-                        "slow": round(gwei * 0.9, 1),
-                        "standard": round(gwei, 1),
-                        "fast": round(gwei * 1.1, 1),
-                        "instant": round(gwei * 1.3, 1),
-                        "error": None
-                    }
-                    _set_cache(cache_key, result, TTL_MARKET)
-        except Exception as e2:
-             print(f"[GAS][WARN] Fallback failed: {e2}")
-             result["error"] = str(e)
+        print(f"[GAS][ERROR] Failed: {e}")
+        result["error"] = str(e)
     
     return result
 

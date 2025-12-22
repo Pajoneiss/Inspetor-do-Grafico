@@ -2608,7 +2608,12 @@ function DashboardContent() {
                         <div key={i} className="p-3 rounded-xl bg-white/5 border border-white/5">
                           <div className="flex justify-between items-center mb-2">
                             <span className="text-xs font-bold text-white/70">{item.symbol} Long/Short</span>
-                            <span className="text-xs font-black text-pink-400">{parseFloat(item.longShortRatio).toFixed(2)}</span>
+                            <div className="flex items-center gap-3">
+                              {item.openInterest && (
+                                <span className="text-[9px] font-bold text-white/30 uppercase">OI: <span className="text-white/60">{item.openInterest}</span></span>
+                              )}
+                              <span className="text-xs font-black text-pink-400">{parseFloat(item.longShortRatio).toFixed(2)}</span>
+                            </div>
                           </div>
 
                           <div className="relative h-4 bg-white/10 rounded-full overflow-hidden flex text-[8px] font-bold text-black/70">
