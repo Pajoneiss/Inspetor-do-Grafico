@@ -745,12 +745,29 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
             
             print(f"[LIVE] Margin Calc: Avail=${available_margin:.2f} Lev={target_leverage}x Power=${buying_power:.2f} Notional=${required_notional:.2f} ReqMargin=${required_margin:.2f}")
 
-            # ADD-ON GATE: Block small adds if no power
+            # ADD-ON GATE: Block small adds if no power or too many adds
             positions = hl_client.get_positions_by_symbol()
             if symbol in positions and abs(float(positions[symbol].get("size", 0))) > 0:
+                 # 1. Buying Power Check
                  if buying_power < 5.0:
-                      print(f"[LIVE][REJECT] Add-on blocked. Available buying power ${buying_power:.2f} < $5 min")
+                      print(f"[LIVE][REJECT] {symbol} add-on blocked (Buying power ${buying_power:.2f} < $5)")
                       return
+                 
+                 # 2. Rate Limit: Max adds per hour
+                 now = time.time()
+                 if symbol not in _adds_history:
+                     _adds_history[symbol] = []
+                 
+                 # Purge old history (> 1 hour)
+                 _adds_history[symbol] = [t for t in _adds_history[symbol] if now - t < 3600]
+                 
+                 if len(_adds_history[symbol]) >= MAX_POSITION_ADDS_PER_SYMBOL_PER_HOUR:
+                      print(f"[LIVE][REJECT] {symbol} add-on blocked (Limit: {MAX_POSITION_ADDS_PER_SYMBOL_PER_HOUR}/hr reaching)")
+                      return True # Return true to avoid re-triggering as error, it's a strategic block
+            
+            # Record add if successful (doing it before to be safe or wrap in try)
+            if symbol in positions and abs(float(positions[symbol].get("size", 0))) > 0:
+                _adds_history[symbol].append(time.time())
             
             if required_notional > buying_power:
                 print(f"[LIVE][WARN] Insufficient buying power for size={current_size} (${required_notional:.2f})")
