@@ -39,6 +39,7 @@ import {
 import { cn } from "@/lib/utils";
 import SettingsModal from "@/components/SettingsModal";
 import { useSettings } from "@/hooks/useSettings";
+import AnimatedBackground from "@/components/AnimatedBackground";
 import Link from "next/link";
 
 // --- Hooks ---
