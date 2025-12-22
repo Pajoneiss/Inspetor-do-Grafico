@@ -148,7 +148,7 @@ export default function NewsPage() {
             <p className="text-xs text-white/50 uppercase tracking-wider mb-2">24h Volume</p>
             <p className="text-2xl font-bold">{market?.volume_24h ? formatCurrency(market.volume_24h) : "$0.00"}</p>
           </div>
-          <div className="p-4 rounded-xl bg.white/5 text-center">
+          <div className="p-4 rounded-xl bg-white/5 text-center">
             <p className="text-xs text-white/50 uppercase tracking-wider mb-2">BTC Dominance</p>
             <p className="text-2xl font-bold">{market?.btc_dominance?.toFixed(1) || "0.0"}%</p>
           </div>
@@ -164,7 +164,7 @@ export default function NewsPage() {
         {/* Crypto News */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity =1, y: 0 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="glass-card rounded-2xl p-6"
         >
