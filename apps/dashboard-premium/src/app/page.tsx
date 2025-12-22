@@ -33,6 +33,7 @@ import {
 import { cn } from "@/lib/utils";
 import SettingsModal from "@/components/SettingsModal";
 import { useSettings } from "@/hooks/useSettings";
+import Link from "next/link";
 
 // --- Hooks ---
 const useIsMobile = () => {
@@ -585,22 +586,41 @@ function DashboardContent() {
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'charts', label: 'Charts', icon: LineChart },
             { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+            { id: 'news', label: 'News', icon: Globe, href: '/news' },
             { id: 'chat', label: 'AI Chat', icon: MessageSquare },
             { id: 'logs', label: 'Execution Logs', icon: Terminal },
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
-                activeTab === item.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-white/5 hover:text-white"
-              )}
-            >
-              <item.icon className={cn("w-5 h-5", activeTab === item.id && "neon-glow")} />
-              <span className="font-semibold text-sm">{item.label}</span>
-              {activeTab === item.id && <motion.div layoutId="nav-pill" className="ml-auto w-1.5 h-1.5 rounded-full bg-primary neon-glow" />}
-            </button>
-          ))}
+          ].map((item) => {
+            const content = (
+              <>
+                <item.icon className={cn("w-5 h-5", activeTab === item.id && "neon-glow")} />
+                <span className="font-semibold text-sm">{item.label}</span>
+                {activeTab === item.id && <motion.div layoutId="nav-pill" className="ml-auto w-1.5 h-1.5 rounded-full bg-primary neon-glow" />}
+              </>
+            );
+
+            const className = cn(
+              "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
+              activeTab === item.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-white/5 hover:text-white"
+            );
+
+            if ('href' in item && item.href) {
+              return (
+                <Link key={item.id} href={item.href} className={className}>
+                  {content}
+                </Link>
+              );
+            }
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => { setActiveTab(item.id as any); setSidebarOpen(false); }}
+                className={className}
+              >
+                {content}
+              </button>
+            );
+          })}
         </nav>
 
         <div className="w-full pt-8 mt-8 border-t border-white/5 space-y-2">
