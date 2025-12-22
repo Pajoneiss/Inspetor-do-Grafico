@@ -419,6 +419,50 @@ def get_news():
         }), 500
 
 
+@app.route('/api/market')
+def get_market_overview():
+    """Get global market overview (Market Cap, Volume, Dominance)"""
+    try:
+        from data_sources import fetch_cmc
+        
+        data = fetch_cmc()
+        
+        return jsonify({
+            "ok": True,
+            "data": data,
+            "server_time_ms": int(time.time() * 1000)
+        })
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] Market overview failed: {e}")
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "data": {}
+        }), 500
+
+
+@app.route('/api/gainers-losers')
+def get_gainers_losers():
+    """Get top gainers and losers"""
+    try:
+        from data_sources import fetch_cmc_gainers_losers
+        
+        data = fetch_cmc_gainers_losers()
+        
+        return jsonify({
+            "ok": True,
+            "data": data,
+            "server_time_ms": int(time.time() * 1000)
+        })
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] Gainers/Losers failed: {e}")
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "data": {"gainers": [], "losers": []}
+        }), 500
+
+
 @app.route('/api/cmc/trending')
 def api_cmc_trending():
     """Get trending coins from CoinMarketCap"""
