@@ -164,7 +164,12 @@ def serve_logs_page():
 @app.route('/news/')
 @app.route('/news')
 def serve_news_page():
-    """Serve News page from old dashboard (where news.html exists)"""
+    """Serve News page - try dashboard-next first, then fallback to old dashboard"""
+    # Try dashboard-next/news/index.html first
+    next_news_path = os.path.join(DASHBOARD_NEXT_PATH, 'news', 'index.html')
+    if os.path.exists(next_news_path):
+        return send_from_directory(os.path.join(DASHBOARD_NEXT_PATH, 'news'), 'index.html')
+    # Fallback to dashboard/news.html
     return send_from_directory(DASHBOARD_OLD_PATH, 'news.html')
 
 

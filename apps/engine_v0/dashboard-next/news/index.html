@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News & Market Data - Inspetor do Gráfico</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0B0F14;
+            --bg-secondary: #0E1621;
+            --bg-card: #0F1723;
+            --bg-card-hover: #141D2B;
+            --border: #1E2A3A;
+            --border-light: #2A3A4E;
+            --text-primary: #E6EDF5;
+            --text-secondary: #97A6BA;
+            --text-muted: #6B7C93;
+            --accent: #4DD7FF;
+            --accent-dim: #3AB8DD;
+            --green: #7CFF6B;
+            --red: #FF6B6B;
+            --yellow: #FFD93D;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #4DD7FF, #7CFF6B);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .back-btn {
+            padding: 10px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
+        }
+
+        /* Grid Layout */
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 768px) {
+            .news-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* News Items */
+        .news-item {
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+
+        .news-item:last-child {
+            border-bottom: none;
+        }
+
+        .news-item:hover {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            padding-left: 12px;
+        }
+
+        .news-item a {
+            text-decoration: none;
+            color: var(--text-primary);
+            display: block;
+        }
+
+        .news-title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .news-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+
+        .news-source {
+            color: var(--accent);
+        }
+
+        /* Economic Calendar */
+        .calendar-event {
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 3px solid var(--red);
+        }
+
+        .calendar-event.high {
+            border-left-color: var(--red);
+        }
+
+        .calendar-event.medium {
+            border-left-color: var(--yellow);
+        }
+
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 8px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .event-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .event-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .event-details {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Market Stats */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-item {
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .stat-change {
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .stat-change.positive {
+            color: var(--green);
+        }
+
+        .stat-change.negative {
+            color: var(--red);
+        }
+
+        /* Top Movers */
+        .mover-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .mover-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .mover-rank {
+            width: 24px;
+            height: 24px;
+            background: var(--border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .mover-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .mover-symbol {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .mover-change {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .text-green {
+            color: var(--green);
+        }
+
+        .text-red {
+            color: var(--red);
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            body {
+                padding: 12px;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            .card {
+                padding: 16px;
+            }
+
+            .stat-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .stat-value {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1>📰 News & Market Data</h1>
+                <div class="card-subtitle">Live market updates, news, and economic events</div>
+            </div>
+            <a href="/" class="back-btn">← Back to Dashboard</a>
+        </div>
+
+        <!-- Global Market Stats -->
+        <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header">
+                <div class="card-title">🌍 Global Market Overview</div>
+            </div>
+            <div class="stat-grid" id="globalStats">
+                <div class="loading">
+                    <div class="spinner"></div>Loading...
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="news-grid">
+            <!-- CryptoPanic News -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📰 Crypto News</div>
+                </div>
+                <div id="newsContainer">
+                    <div class="loading">
+                        <div class="spinner"></div>Loading news...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Economic Calendar -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📅 Economic Calendar</div>
+                </div>
+                <div id="calendarContainer">
+                    <div class="loading">
+                        <div class="spinner"></div>Loading events...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Gainers -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📈 Top Gainers (24h)</div>
+                </div>
+                <div id="gainersContainer">
+                    <div class="loading">
+                        <div class="spinner"></div>Loading...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Losers -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📉 Top Losers (24h)</div>
+                </div>
+                <div id="losersContainer">
+                    <div class="loading">
+                        <div class="spinner"></div>Loading...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+
+        // Format currency
+        function formatCurrency(value) {
+            if (!value) return '$0.00';
+            if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
+            if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+            if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+            return `$${value.toFixed(2)}`;
+        }
+
+        // Format percentage
+        function formatPercent(value) {
+            if (value === undefined || value === null) return '0.00%';
+            const sign = value >= 0 ? '+' : '';
+            return `${sign}${value.toFixed(2)}%`;
+        }
+
+        // Time ago
+        function timeAgo(timestamp) {
+            if (!timestamp) return '';
+            const date = new Date(timestamp);
+            const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+            if (seconds < 60) return `${seconds}s ago`;
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+            return `${Math.floor(seconds / 86400)}d ago`;
+        }
+
+        // Load global market stats
+        async function loadGlobalStats() {
+            try {
+                const res = await fetch(`${API_BASE}/api/market`);
+                const json = await res.json();
+
+                if (json.ok && json.data) {
+                    const data = json.data;
+                    const container = document.getElementById('globalStats');
+
+                    // Fallback values if API fails to provide some fields
+                    const mcap = data.market_cap || 0;
+                    const vol = data.volume_24h || 0;
+                    const btcDom = data.btc_dominance || 0;
+                    const change = data.market_cap_change_24h || 0;
+
+                    const changeClass = change >= 0 ? 'positive' : 'negative';
+                    const changeText = formatPercent(change);
+
+                    // Get Fear & Greed separately
+                    let fearValue = '50';
+                    let fearText = 'Neutral';
+
+                    try {
+                        const fearRes = await fetch(`${API_BASE}/api/market`); // Reusing same call, but ideally should be separate endpoint if dashboard_api.py separated them
+                        // Actually, dashboard_api /api/market returns data from fetch_cmc which handles cache.
+                        // Let's assume fear is separate or we mock it for now if not in CMC response
+                        // fetch_cmc returns {market_cap, volume, btc_dom, eth_dom, change}
+                        // Fear index is separate in data_sources.fetch_fear_greed() but not exposed in /api/market yet
+                        // We will add it or fetch from /api/status if needed.
+                        // For now let's use the provided CMC data.
+                    } catch (e) { }
+
+                    container.innerHTML = `
+                        <div class="stat-item">
+                            <div class="stat-label">Market Cap</div>
+                            <div class="stat-value">${formatCurrency(mcap)}</div>
+                            <div class="stat-change ${changeClass}">${changeText}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">24h Volume</div>
+                            <div class="stat-value">${formatCurrency(vol)}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">BTC Dominance</div>
+                            <div class="stat-value">${btcDom.toFixed(1)}%</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">ETH Dominance</div>
+                            <div class="stat-value">${(data.eth_dominance || 0).toFixed(1)}%</div>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error('Global stats error:', e);
+                document.getElementById('globalStats').innerHTML =
+                    '<div class="empty-state">Data unavailable</div>';
+            }
+        }
+
+        // Load news
+        async function loadNews() {
+            try {
+                const res = await fetch(`${API_BASE}/api/news`);
+                const json = await res.json();
+                const container = document.getElementById('newsContainer');
+
+                if (json.ok && json.news && json.news.length > 0) {
+                    container.innerHTML = json.news.map(item => `
+                        <div class="news-item">
+                            <a href="${item.url || '#'}" target="_blank" rel="noopener">
+                                <div class="news-title">${item.title}</div>
+                                <div class="news-meta">
+                                    <span class="news-source">${item.source || 'CryptoPanic'}</span>
+                                    ${item.published_at ? `<span>${timeAgo(item.published_at)}</span>` : ''}
+                                </div>
+                            </a>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="empty-state">No news available</div>';
+                }
+            } catch (e) {
+                console.error('News error:', e);
+                document.getElementById('newsContainer').innerHTML =
+                    '<div class="empty-state">News unavailable</div>';
+            }
+        }
+
+        // Load economic calendar
+        async function loadCalendar() {
+            try {
+                const res = await fetch(`${API_BASE}/api/economic-calendar?days=7`);
+                const json = await res.json();
+                const container = document.getElementById('calendarContainer');
+
+                if (json.ok && json.events && json.events.length > 0) {
+                    container.innerHTML = json.events.slice(0, 10).map(event => {
+                        const impactClass = event.importance === 'HIGH' ? 'high' : 'medium';
+                        const date = event.date === 'TBD' ? 'TBD' :
+                            new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        const time = event.time || 'TBD';
+
+                        return `
+                            <div class="calendar-event ${impactClass}">
+                                <div class="event-header">
+                                    <div class="event-name">${event.event || 'Unknown'}</div>
+                                    <div class="event-time">${date} ${time}</div>
+                                </div>
+                                <div class="event-details">
+                                    ${event.estimate ? `Est: ${event.estimate}` : ''}
+                                    ${event.previous ? ` | Prev: ${event.previous}` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    container.innerHTML = '<div class="empty-state">No upcoming events</div>';
+                }
+            } catch (e) {
+                console.error('Calendar error:', e);
+                document.getElementById('calendarContainer').innerHTML =
+                    '<div class="empty-state">Calendar unavailable</div>';
+            }
+        }
+
+        // Load top movers
+        async function loadMovers() {
+            try {
+                const res = await fetch(`${API_BASE}/api/gainers-losers`);
+                const json = await res.json();
+
+                if (json.ok && json.data) {
+                    const gainers = json.data.gainers || [];
+                    const losers = json.data.losers || [];
+
+                    // Render Gainers
+                    const gainersHTML = gainers.length > 0 ? gainers.map((coin, i) => `
+                        <div class="mover-item">
+                            <div class="mover-info">
+                                <div class="mover-rank">${i + 1}</div>
+                                <div>
+                                    <div class="mover-name">${coin.name}</div>
+                                    <div class="mover-symbol">${coin.symbol}</div>
+                                </div>
+                            </div>
+                            <div class="mover-change text-green">
+                                ${formatPercent(coin.percent_change_24h)}
+                            </div>
+                        </div>
+                    `).join('') : '<div class="empty-state">No data</div>';
+
+                    document.getElementById('gainersContainer').innerHTML = gainersHTML;
+
+                    // Render Losers
+                    const losersHTML = losers.length > 0 ? losers.map((coin, i) => `
+                        <div class="mover-item">
+                            <div class="mover-info">
+                                <div class="mover-rank">${i + 1}</div>
+                                <div>
+                                    <div class="mover-name">${coin.name}</div>
+                                    <div class="mover-symbol">${coin.symbol}</div>
+                                </div>
+                            </div>
+                            <div class="mover-change text-red">
+                                ${formatPercent(coin.percent_change_24h)}
+                            </div>
+                        </div>
+                    `).join('') : '<div class="empty-state">No data</div>';
+
+                    document.getElementById('losersContainer').innerHTML = losersHTML;
+                }
+            } catch (e) {
+                console.error('Movers error:', e);
+                const errorHTML = '<div class="empty-state">Data unavailable</div>';
+                document.getElementById('gainersContainer').innerHTML = errorHTML;
+                document.getElementById('losersContainer').innerHTML = errorHTML;
+            }
+        }
+
+        // Initialize
+        async function init() {
+            await Promise.all([
+                loadGlobalStats(),
+                loadNews(),
+                loadCalendar(),
+                loadMovers()
+            ]);
+
+            // Refresh every 60 seconds
+            setInterval(loadGlobalStats, 60000);
+            setInterval(loadNews, 60000);
+            setInterval(loadCalendar, 300000);
+            setInterval(loadMovers, 60000);
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
