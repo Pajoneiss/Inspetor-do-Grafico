@@ -164,8 +164,9 @@ def serve_logs_page():
 @app.route('/news/')
 @app.route('/news')
 def serve_news_page():
-    """Serve News page"""
-    return send_from_directory(DASHBOARD_NEXT_PATH, 'news.html')
+    """Serve News page from old dashboard (where news.html exists)"""
+    return send_from_directory(DASHBOARD_OLD_PATH, 'news.html')
+
 
 
 @app.route('/<path:filename>')
