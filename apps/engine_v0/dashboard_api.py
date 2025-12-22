@@ -326,9 +326,9 @@ def api_actions():
         })
 
 
-@app.route('/api/market')
-def api_market():
-    """Get market overview"""
+@app.route('/api/market-state')
+def api_market_state():
+    """Get internal market state (for dashboard widgets)"""
     with _state_lock:
         return jsonify({
             "ok": True,
