@@ -227,7 +227,8 @@ def api_status():
                 "last_update": _dashboard_state.get("last_update", ""),
                 "last_update_ms": _dashboard_state.get("last_update_ms", 0),
                 "server_time_ms": int(time.time() * 1000),
-                "market_data": _dashboard_state.get("market", {})
+                "market_data": _dashboard_state.get("market", {}),
+                "account_summary": account
             }
         })
 
@@ -464,7 +465,8 @@ def get_gainers_losers():
         
         return jsonify({
             "ok": True,
-            "data": data,
+            "gainers": data.get("gainers", []),
+            "losers": data.get("losers", []),
             "server_time_ms": int(time.time() * 1000)
         })
     except Exception as e:
@@ -472,7 +474,8 @@ def get_gainers_losers():
         return jsonify({
             "ok": False,
             "error": str(e),
-            "data": {"gainers": [], "losers": []}
+            "gainers": [],
+            "losers": []
         }), 500
 
 

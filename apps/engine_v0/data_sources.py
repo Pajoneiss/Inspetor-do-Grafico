@@ -107,34 +107,36 @@ def fetch_cryptopanic() -> List[Dict[str, str]]:
                 print(f"[NEWS] CryptoPanic response status: {resp.status_code}")
                 if resp.status_code == 200:
                     data = resp.json()
-                    results_count = len(data.get("results", []))
-                    print(f"[NEWS] CryptoPanic returned {results_count} posts")
-                    for post in data.get("results", [])[:10]:
+                    results = data.get("results", [])
+                    if not results and data.get("count", 0) > 0:
+                        print(f"[NEWS] API returned results but they are empty. Check filters.")
+                    
+                    for post in results[:15]:
                        headlines.append({
-                            "title": post.get("title", "")[:100],
+                            "title": post.get("title", "")[:120],
                             "url": post.get("url", ""),
                             "source": post.get("source", {}).get("title", "CryptoPanic"),
                             "published_at": post.get("published_at", ""),
-                            "votes": post.get("votes", {})
+                            "votes": post.get("votes", {}),
+                            "kind": post.get("kind", "news")
                         })
+                elif resp.status_code == 401:
+                    print("[NEWS][ERROR] API Token invalid or expired")
                 elif resp.status_code == 404:
                     # Try pro endpoint
-                    print("[NEWS][WARN] Free endpoint 404, trying pro...")
-                    url_pro = f"https://cryptopanic.com/api/v1/posts/?auth_token={CRYPTOPANIC_API_KEY}&public=true"
-                    resp_pro = client.get(url_pro)
-                    print(f"[NEWS] Pro API response: {resp_pro.status_code}")
-                    if resp_pro.status_code == 200:
-                        data = resp_pro.json()
+                    print("[NEWS][WARN] Free endpoint 404, trying alternate...")
+                    url_alt = f"https://cryptopanic.com/api/v1/posts/?auth_token={CRYPTOPANIC_API_KEY}&public=true"
+                    resp_alt = client.get(url_alt)
+                    if resp_alt.status_code == 200:
+                        data = resp_alt.json()
                         for post in data.get("results", [])[:10]:
                             headlines.append({
-                                "title": post.get("title", "")[:100],
+                                "title": post.get("title", ""),
                                 "url": post.get("url", ""),
                                 "source": post.get("source", {}).get("title", "CryptoPanic")
                             })
-                    else:
-                        print(f"[NEWS][ERROR] Pro API failed: {resp_pro.text[:200]}")
                 else:
-                    print(f"[NEWS][WARN] CryptoPanic returned non-200: {resp.status_code} - {resp.text[:200]}")
+                    print(f"[NEWS][WARN] CryptoPanic returned {resp.status_code}: {resp.text[:100]}")
         else:
             print("[NEWS][WARN] CRYPTOPANIC_API_KEY not configured")
     except Exception as e:
@@ -280,11 +282,11 @@ def fetch_cmc_trending() -> List[Dict[str, Any]]:
 
 def fetch_cmc_gainers_losers() -> Dict[str, List[Dict[str, Any]]]:
     """
-    Fetch top gainers and losers from CoinMarketCap
-    Returns: {gainers: [...], losers: [...]}
+    Fetch top gainers and losers. 
+    Falls back to CoinGecko trending/movers if CMC key is missing or fails.
     """
     if not CMC_API_KEY:
-        return {"gainers": [], "losers": []}
+        return fetch_coingecko_movers()
     
     cache_key = "cmc_gainers_losers"
     cached = _get_cache(cache_key)
@@ -387,7 +389,7 @@ def fetch_macro() -> Dict[str, Any]:
                         # Format: Symbol,Date,Time,Open,High,Low,Close
                         content = resp.text.strip().split("\n")
                         
-                        # Find the data line (skipping header if present)
+                        # Find the data line
                         data_parts = None
                         for line in content:
                             parts = line.split(",")
@@ -644,6 +646,34 @@ def format_economic_calendar(events: List[Dict[str, Any]], max_events: int = 5) 
         lines.append(line)
     
     return "\n".join(lines) if lines else "(sem eventos próximos)"
+
+
+def fetch_coingecko_movers() -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Fetch trending/movers from CoinGecko (free alternative)
+    """
+    try:
+        import httpx
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            resp = client.get("https://api.coingecko.com/api/v3/search/trending")
+            if resp.status_code == 200:
+                coins = resp.json().get("coins", [])
+                movers = []
+                for c in coins[:10]:
+                    item = c.get("item", {})
+                    price_btc = item.get("price_btc", 0)
+                    # Rough conversion to USD if we have BTC price
+                    movers.append({
+                        "name": item.get("name", ""),
+                        "symbol": item.get("symbol", ""),
+                        "percent_change_24h": 0.0,
+                        "price": price_btc
+                    })
+                return {"gainers": movers, "losers": []}
+    except Exception as e:
+        print(f"[MOVERS][WARN] CoinGecko failed: {e}")
+    
+    return {"gainers": [], "losers": []}
 
 
 # Aliases for backward compatibility

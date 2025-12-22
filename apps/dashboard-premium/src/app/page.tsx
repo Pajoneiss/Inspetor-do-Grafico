@@ -28,7 +28,13 @@ import {
   CheckCircle,
   LineChart,
   History,
-  UserCircle
+  UserCircle,
+  Newspaper,
+  Calendar,
+  TrendingUp,
+  TrendingDown,
+  AlertCircle,
+  ArrowLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SettingsModal from "@/components/SettingsModal";
@@ -358,7 +364,7 @@ function DashboardContent() {
   const [allThoughts, setAllThoughts] = useState<AIThought[]>([]); // Full logs including HOLDs
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'charts' | 'analytics' | 'chat' | 'logs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'charts' | 'analytics' | 'news' | 'chat' | 'logs'>('overview');
   const [activeFleetTab, setActiveFleetTab] = useState<'Asset Positions' | 'Open Orders' | 'Recent Fills' | 'Completed Trades' | 'TWAP' | 'Deposits & Withdrawals'>('Asset Positions');
   const [pnlData, setPnlData] = useState<any>(null);
   const [pnlHistory, setPnlHistory] = useState<any[]>([]);
@@ -392,6 +398,13 @@ function DashboardContent() {
     is_weekend: boolean;
   } | null>(null);
   const [aiMood, setAiMood] = useState<'aggressive' | 'defensive' | 'observing'>('observing');
+
+  // News tab state
+  const [newsItems, setNewsItems] = useState<Array<{ title: string; url: string; source?: string; published_at?: string }>>([]);
+  const [calendarEvents, setCalendarEvents] = useState<Array<{ event: string; date: string; time?: string; importance?: string }>>([]);
+  const [globalMarket, setGlobalMarket] = useState<{ market_cap?: number; volume_24h?: number; btc_dominance?: number; eth_dominance?: number; market_cap_change_24h?: number } | null>(null);
+  const [topGainers, setTopGainers] = useState<Array<{ name: string; symbol: string; percent_change_24h: number }>>([]);
+  const [topLosers, setTopLosers] = useState<Array<{ name: string; symbol: string; percent_change_24h: number }>>([]);
 
   const { settings, updateSetting, resetSettings } = useSettings();
 
@@ -524,16 +537,41 @@ function DashboardContent() {
     };
     fetchCryptoPrices();
 
+    // Fetch News tab data when active
+    const fetchNewsData = async () => {
+      if (!API_URL || activeTab !== 'news') return;
+      try {
+        const [newsRes, calendarRes, marketRes, moversRes] = await Promise.all([
+          fetch(`${API_URL}/api/news`).then(r => r.json()).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/api/economic-calendar?days=7`).then(r => r.json()).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/api/cmc/global`).then(r => r.json()).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/api/gainers-losers`).then(r => r.json()).catch(() => ({ ok: false })),
+        ]);
+        if (newsRes.ok && newsRes.news) setNewsItems(newsRes.news);
+        if (calendarRes.ok && calendarRes.events) setCalendarEvents(calendarRes.events);
+        if (marketRes.ok && marketRes.data) setGlobalMarket(marketRes.data);
+        if (moversRes.ok) {
+          setTopGainers(moversRes.gainers || []);
+          setTopLosers(moversRes.losers || []);
+        }
+      } catch (err) {
+        console.error("News data fetch error:", err);
+      }
+    };
+    if (activeTab === 'news') fetchNewsData();
+
     const timer = setInterval(() => setTime(new Date()), 1000);
     const apiTimer = setInterval(fetchData, 15000); // UI Refresh 15s
     const cryptoTimer = setInterval(fetchCryptoPrices, 15000); // Crypto prices every 15s
+    const newsTimer = setInterval(fetchNewsData, 60000); // News data every 60s
 
     return () => {
       clearInterval(timer);
       clearInterval(apiTimer);
       clearInterval(cryptoTimer);
+      clearInterval(newsTimer);
     };
-  }, []);
+  }, [activeTab]);
 
   if (!mounted) return null;
 
@@ -586,7 +624,7 @@ function DashboardContent() {
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'charts', label: 'Charts', icon: LineChart },
             { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-            { id: 'news', label: 'News', icon: Globe, href: '/news' },
+            { id: 'news', label: 'News', icon: Globe },
             { id: 'chat', label: 'AI Chat', icon: MessageSquare },
             { id: 'logs', label: 'Execution Logs', icon: Terminal },
           ].map((item) => {
@@ -2122,6 +2160,187 @@ function DashboardContent() {
                 </div>
 
               </GlassCard>
+            </motion.div>
+          )}
+
+
+          {activeTab === 'news' && (
+            <motion.div
+              key="news"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-8"
+            >
+              <div className="flex flex-col gap-2">
+                <h2 className="text-3xl font-bold tracking-tight">Market Intelligence</h2>
+                <p className="text-muted-foreground">Real-time global news, economic events and top movers</p>
+              </div>
+
+              {/* Global Market Stats */}
+              <GlassCard className="border border-cyan-500/20" delay={0.1}>
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                  <Globe className="w-5 h-5 text-cyan-400" />
+                  <h2 className="text-lg font-bold">Global Market Overview</h2>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-xl bg-white/5 text-center">
+                    <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">Market Cap</p>
+                    <p className="text-2xl font-bold">{globalMarket?.market_cap ? `$${(globalMarket.market_cap / 1e12).toFixed(2)}T` : "$0.00"}</p>
+                    {globalMarket?.market_cap_change_24h !== undefined && (
+                      <p className={cn("text-[10px] mt-1 font-bold", globalMarket.market_cap_change_24h >= 0 ? "text-primary" : "text-secondary")}>
+                        {globalMarket.market_cap_change_24h >= 0 ? "+" : ""}{globalMarket.market_cap_change_24h.toFixed(2)}%
+                      </p>
+                    )}
+                  </div>
+                  <div className="p-4 rounded-xl bg-white/5 text-center">
+                    <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">24h Volume</p>
+                    <p className="text-2xl font-bold">{globalMarket?.volume_24h ? `$${(globalMarket.volume_24h / 1e9).toFixed(2)}B` : "$0.00"}</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-white/5 text-center">
+                    <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">BTC Dominance</p>
+                    <p className="text-2xl font-bold">{globalMarket?.btc_dominance?.toFixed(1) || "0.0"}%</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-white/5 text-center">
+                    <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">ETH Dominance</p>
+                    <p className="text-2xl font-bold">{globalMarket?.eth_dominance?.toFixed(1) || "0.0"}%</p>
+                  </div>
+                </div>
+              </GlassCard>
+
+              {/* Main Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Crypto News */}
+                <GlassCard className="border border-primary/20" delay={0.2}>
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                    <Newspaper className="w-5 h-5 text-primary" />
+                    <h2 className="text-lg font-bold">Crypto News Feed</h2>
+                  </div>
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
+                    {newsItems.length > 0 ? (
+                      newsItems.map((item, i) => (
+                        <a
+                          key={i}
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-primary/30 transition-all group"
+                        >
+                          <p className="font-bold text-sm mb-2 line-clamp-2 group-hover:text-primary transition-colors">{item.title}</p>
+                          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider">
+                            <span className="text-primary">{item.source || "CryptoPanic"}</span>
+                            <span className="text-white/40">{item.published_at ? new Date(item.published_at).toLocaleTimeString() : ""}</span>
+                          </div>
+                        </a>
+                      ))
+                    ) : (
+                      <div className="text-center py-20 opacity-20">
+                        <Newspaper className="w-12 h-12 mx-auto mb-4" />
+                        <p className="text-xs font-bold uppercase tracking-widest">No news available</p>
+                      </div>
+                    )}
+                  </div>
+                </GlassCard>
+
+                {/* Economic Calendar */}
+                <GlassCard className="border border-yellow-500/20" delay={0.3}>
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                    <Calendar className="w-5 h-5 text-yellow-400" />
+                    <h2 className="text-lg font-bold">Global Economic Calendar</h2>
+                  </div>
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
+                    {calendarEvents.length > 0 ? (
+                      calendarEvents.map((event, i) => (
+                        <div
+                          key={i}
+                          className={cn(
+                            "p-4 rounded-2xl bg-white/5 border-l-4 transition-all hover:bg-white/[0.08]",
+                            event.importance === "HIGH" ? "border-secondary" : "border-yellow-500/50"
+                          )}
+                        >
+                          <div className="flex justify-between items-start gap-4">
+                            <p className="font-bold text-sm leading-tight">{event.event || "Unknown"}</p>
+                            <span className="text-[10px] font-mono text-white/50 whitespace-nowrap bg-black/40 px-2 py-0.5 rounded border border-white/5">
+                              {event.date !== "TBD" ? new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "TBD"} {event.time || ""}
+                            </span>
+                          </div>
+                          {(event.estimate || event.previous) && (
+                            <div className="flex gap-4 mt-3 text-[10px] font-bold uppercase tracking-widest">
+                              {event.estimate && <span className="text-white/40">Est: <span className="text-white/80">{event.estimate}</span></span>}
+                              {event.previous && <span className="text-white/40">Prev: <span className="text-white/80">{event.previous}</span></span>}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-20 opacity-20">
+                        <Calendar className="w-12 h-12 mx-auto mb-4" />
+                        <p className="text-xs font-bold uppercase tracking-widest">No upcoming events</p>
+                      </div>
+                    )}
+                  </div>
+                </GlassCard>
+
+                {/* Top Movers */}
+                <GlassCard className="border border-primary/20" delay={0.4}>
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                    <TrendingUp className="w-5 h-5 text-primary" />
+                    <h2 className="text-lg font-bold">Top Gainers (24h)</h2>
+                  </div>
+                  <div className="space-y-2">
+                    {topGainers.length > 0 ? (
+                      topGainers.map((coin, i) => (
+                        <div key={i} className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:border-primary/30 transition-all">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-xs font-black text-primary border border-primary/20">
+                              {i + 1}
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm leading-none mb-1">{coin.name}</p>
+                              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{coin.symbol}</p>
+                            </div>
+                          </div>
+                          <span className="text-primary font-black text-sm">
+                            +{coin.percent_change_24h?.toFixed(2) || 0}%
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-10 opacity-20 text-[10px] font-bold uppercase tracking-widest">Awaiting market data...</div>
+                    )}
+                  </div>
+                </GlassCard>
+
+                <GlassCard className="border border-secondary/20" delay={0.5}>
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                    <TrendingDown className="w-5 h-5 text-secondary" />
+                    <h2 className="text-lg font-bold">Top Losers (24h)</h2>
+                  </div>
+                  <div className="space-y-2">
+                    {topLosers.length > 0 ? (
+                      topLosers.map((coin, i) => (
+                        <div key={i} className="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:border-secondary/30 transition-all">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-secondary/10 flex items-center justify-center text-xs font-black text-secondary border border-secondary/20">
+                              {i + 1}
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm leading-none mb-1">{coin.name}</p>
+                              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{coin.symbol}</p>
+                            </div>
+                          </div>
+                          <span className="text-secondary font-black text-sm">
+                            {coin.percent_change_24h?.toFixed(2) || 0}%
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-10 opacity-20 text-[10px] font-bold uppercase tracking-widest">Awaiting market data...</div>
+                    )}
+                  </div>
+                </GlassCard>
+              </div>
             </motion.div>
           )}
 
