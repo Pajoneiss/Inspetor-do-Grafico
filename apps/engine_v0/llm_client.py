@@ -25,13 +25,21 @@ def _format_candles_multi_tf(candles_by_symbol: Dict) -> str:
                 last_3 = candles[-3:]
                 changes = []
                 for c in last_3:
-                    o = c.get('o', c.get('open', 0))
-                    close = c.get('c', c.get('close', 0))
-                    if o and close:
-                        pct = ((close - o) / o) * 100
-                        changes.append(f"{pct:+.2f}%")
-                last_close = last_3[-1].get('c', last_3[-1].get('close', 0))
-                lines.append(f"  {tf}: ${last_close:.2f} [{' '.join(changes)}]")
+                    try:
+                        o = float(c.get('o', c.get('open', 0)) or 0)
+                        close = float(c.get('c', c.get('close', 0)) or 0)
+                        if o and close:
+                            pct = ((close - o) / o) * 100
+                            changes.append(f"{pct:+.2f}%")
+                    except (ValueError, TypeError):
+                        continue
+                last_c = last_3[-1]
+                try:
+                    last_close = float(last_c.get('c', last_c.get('close', 0)) or 0)
+                except (ValueError, TypeError):
+                    last_close = 0
+                if last_close:
+                    lines.append(f"  {tf}: ${last_close:.2f} [{' '.join(changes)}]")
     
     return "\n".join(lines) if lines else "(no candle data)"
 
