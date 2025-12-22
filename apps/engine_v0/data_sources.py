@@ -320,8 +320,51 @@ def fetch_cmc_gainers_losers() -> Dict[str, List[Dict[str, Any]]]:
                 print(f"[CMC] Gainers/Losers fetched: {len(gainers)} gainers, {len(losers)} losers")
                 return result
     except Exception as e:
-        print(f"[CMC][WARN] Gainers/Losers fetch failed: {e}, falling back to CoinGecko")
-        return fetch_coingecko_movers()
+        print(f"[CMC][WARN] Gainers/Losers fetch failed: {e}, falling back to Binance")
+        return fetch_binance_movers()
+
+def fetch_binance_movers() -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Fetch top gainers and losers from Binance Futures (Highly Reliable)
+    """
+    try:
+        import httpx
+        url = "https://fapi.binance.com/fapi/v1/ticker/24hr"
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            resp = client.get(url)
+            if resp.status_code == 200:
+                data = resp.json()
+                # Sort by priceChangePercent
+                sorted_data = sorted(data, key=lambda x: float(x.get("priceChangePercent", 0)), reverse=True)
+                
+                gainers = []
+                for c in sorted_data[:5]:
+                    symbol = c.get("symbol", "").replace("USDT", "")
+                    if symbol in ["USDC", "FDUSD", "TUSD", "USDP"]: continue
+                    gainers.append({
+                        "name": symbol,
+                        "symbol": symbol,
+                        "price": float(c.get("lastPrice", 0)),
+                        "percent_change_24h": float(c.get("priceChangePercent", 0))
+                    })
+                
+                losers = []
+                for c in reversed(sorted_data):
+                    symbol = c.get("symbol", "").replace("USDT", "")
+                    if symbol in ["USDC", "FDUSD", "TUSD", "USDP"]: continue
+                    losers.append({
+                        "name": symbol,
+                        "symbol": symbol,
+                        "price": float(c.get("lastPrice", 0)),
+                        "percent_change_24h": float(c.get("priceChangePercent", 0))
+                    })
+                    if len(losers) >= 5: break
+                
+                return {"gainers": gainers, "losers": losers}
+    except Exception as e:
+        print(f"[BINANCE_MOVERS][WARN] Failed: {e}")
+    
+    return fetch_coingecko_movers()
 
 
 def fetch_hl_prices() -> Dict[str, float]:
@@ -582,18 +625,24 @@ def fetch_investing_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any
 def fetch_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any]]:
     """
     Fetch upcoming high-impact economic events.
-    Using free Investing.com data (no API key required)
+    Prioritizes FMP (Financial Modeling Prep) if API key is present.
     """
+    if FMP_API_KEY:
+        events = fetch_fmp_economic_calendar(days_ahead)
+        if events:
+            return events
+
+    # Fallback to Investing.com scraper/parser
     events = fetch_investing_economic_calendar(days_ahead)
     if events:
         return events
         
-    # Fallback message
+    # Final Fallback message
     return [
         {
             "date": "TBD",
             "time": "TBD",
-            "event": "Economic Calendar - Awaiting Free API Integration",
+            "event": "Economic Calendar - Awaiting Data Sync",
             "country": "US",
             "importance": "INFO",
             "actual": None,
@@ -861,11 +910,16 @@ def fetch_bitcoin_halving() -> Dict[str, Any]:
                 blocks_remaining = next_halving_block - current_block
                 days_remaining = (blocks_remaining * 10) / (60 * 24)
                 
+                # Estimated date
+                from datetime import datetime, timedelta
+                est_date = datetime.now() + timedelta(days=days_remaining)
+                
                 result = {
                     "current_block": current_block,
                     "halving_block": next_halving_block,
                     "blocks_remaining": max(0, blocks_remaining),
                     "days_remaining": max(0, round(days_remaining)),
+                    "halving_date": est_date.strftime("%b %Y"),
                     "percent_complete": round((current_block % 210000) / 210000 * 100, 1),
                     "error": None
                 }
@@ -1049,27 +1103,42 @@ def fetch_trending_coins() -> Dict[str, Any]:
 
 
 def fetch_altcoin_season() -> Dict[str, Any]:
-    """Fetch Altcoin Season Index from Blockchaincenter (free, no key)"""
+    """
+    Fetch Altcoin Season Index
+    Scrapes blockchaincenter.net because they have no public JSON API
+    """
     cache_key = "altcoin_season"
     cached = _get_cache(cache_key)
     if cached:
         return cached
     
-    result = {"index": 50, "season": "neutral", "error": None}
+    result = {"index": 0, "status": "neutral", "error": None}
     
     try:
         import httpx
-        # SSL Verification disabled due to certificate errors on api.blockchaincenter.net
-        with httpx.Client(timeout=API_TIMEOUT_SECONDS, verify=False) as client:
-            resp = client.get("https://api.blockchaincenter.net/api/altseason/")
+        import re
+        url = "https://www.blockchaincenter.net/en/altcoin-season-index/"
+        # User-agent is required for scraping
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
+        
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS, headers=headers, verify=False) as client:
+            resp = client.get(url)
             if resp.status_code == 200:
-                data = resp.json()
-                index = data.get("altseasonIndex", 50)
-                season = "altcoin" if index >= 75 else "bitcoin" if index <= 25 else "neutral"
-                result = {"index": index, "season": season, "error": None}
-                _set_cache(cache_key, result, TTL_MARKET * 10)
+                html = resp.text
+                # Look for the current index in the HTML
+                # <div class="number">67</div>
+                match = re.search(r'<div class="number">(\d+)</div>', html)
+                if match:
+                    val = int(match.group(1))
+                    result = {
+                        "index": val,
+                        "status": "altcoin" if val >= 75 else "bitcoin" if val <= 25 else "neutral",
+                        "error": None
+                    }
+                    _set_cache(cache_key, result, TTL_MARKET * 10)
     except Exception as e:
-        print(f"[ALTSEASON][WARN] Failed: {e}")
+        print(f"[ALTSEASON][WARN] Scraping failed: {e}")
+        # Default/Mock if all fails
         result["error"] = str(e)
     
     return result
@@ -1101,8 +1170,26 @@ def fetch_eth_gas() -> Dict[str, Any]:
                     }
                     _set_cache(cache_key, result, TTL_MARKET)
     except Exception as e:
-        print(f"[GAS][WARN] Failed: {e}")
-        result["error"] = str(e)
+        print(f"[GAS][WARN] Owlracle failed: {e}, trying fallback")
+        try:
+            # Fallback to Etherscan free (often works without key for basic status)
+            with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+                resp = client.get("https://api.etherscan.io/api?module=proxy&action=eth_gasPrice")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    wei = int(data.get("result", "0x0"), 16)
+                    gwei = wei / 1e9
+                    result = {
+                        "slow": round(gwei * 0.9, 1),
+                        "standard": round(gwei, 1),
+                        "fast": round(gwei * 1.1, 1),
+                        "instant": round(gwei * 1.3, 1),
+                        "error": None
+                    }
+                    _set_cache(cache_key, result, TTL_MARKET)
+        except Exception as e2:
+             print(f"[GAS][WARN] Fallback failed: {e2}")
+             result["error"] = str(e)
     
     return result
 
