@@ -15,7 +15,6 @@ import Link from "next/link";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/hooks/useSettings";
-import { useSettings } from "@/hooks/useSettings";
 
 interface NewsItem {
   title: string;
