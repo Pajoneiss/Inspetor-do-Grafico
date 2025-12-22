@@ -69,15 +69,32 @@ def _format_orderbook(orderbook_by_symbol: Dict) -> str:
     for symbol, book in orderbook_by_symbol.items():
         if not book:
             continue
-        bids = book.get("bids", [])
-        asks = book.get("asks", [])
-        bid_vol = sum(float(b.get("sz", b.get("size", 0))) for b in bids[:5]) if bids else 0
-        ask_vol = sum(float(a.get("sz", a.get("size", 0))) for a in asks[:5]) if asks else 0
-        total = bid_vol + ask_vol
-        if total > 0:
-            bid_pct = (bid_vol / total) * 100
-            imbalance = "BID HEAVY" if bid_pct > 60 else "ASK HEAVY" if bid_pct < 40 else "BALANCED"
-            lines.append(f"  {symbol}: {imbalance} (bids {bid_pct:.0f}%)")
+        try:
+            bids = book.get("bids", []) if isinstance(book, dict) else []
+            asks = book.get("asks", []) if isinstance(book, dict) else []
+            
+            # Handle both formats: list of lists [[price, size], ...] or list of dicts
+            bid_vol = 0
+            for b in bids[:5]:
+                if isinstance(b, (list, tuple)) and len(b) >= 2:
+                    bid_vol += float(b[1])  # [price, size]
+                elif isinstance(b, dict):
+                    bid_vol += float(b.get("sz", b.get("size", 0)) or 0)
+            
+            ask_vol = 0
+            for a in asks[:5]:
+                if isinstance(a, (list, tuple)) and len(a) >= 2:
+                    ask_vol += float(a[1])
+                elif isinstance(a, dict):
+                    ask_vol += float(a.get("sz", a.get("size", 0)) or 0)
+            
+            total = bid_vol + ask_vol
+            if total > 0:
+                bid_pct = (bid_vol / total) * 100
+                imbalance = "BID HEAVY" if bid_pct > 60 else "ASK HEAVY" if bid_pct < 40 else "BALANCED"
+                lines.append(f"  {symbol}: {imbalance} (bids {bid_pct:.0f}%)")
+        except (TypeError, ValueError, AttributeError):
+            continue
     
     return "\n".join(lines) if lines else "(no orderbook data)"
 
