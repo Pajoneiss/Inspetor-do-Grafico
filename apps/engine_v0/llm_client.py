@@ -461,7 +461,7 @@ As a professional trader, you understand:
 ═══════════════════════════════════════════════════════════════════════════════
 
 😱 Fear & Greed Index: {fear_greed} ({fg_class})
-₿ BTC Dominance: {btc_dom:.1f}%
+₿ BTC Dominance: {btc_dom:.1f}% if isinstance(btc_dom, (int, float)) else btc_dom}
 
 📰 Recent News:
 {news_str}

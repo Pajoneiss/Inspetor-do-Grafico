@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 # Import API keys from config
-from config import CMC_API_KEY, CRYPTOPANIC_API_KEY
+from config import CMC_API_KEY, CRYPTOPANIC_API_KEY, API_TIMEOUT_SECONDS
 
 # Cache storage
 _cache: Dict[str, Dict[str, Any]] = {}
