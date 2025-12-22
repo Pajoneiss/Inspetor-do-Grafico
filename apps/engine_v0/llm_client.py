@@ -134,6 +134,41 @@ def _format_positions(positions: Dict, position_details: Dict) -> str:
     return "\n".join(lines) if lines else "(no open positions)"
 
 
+def _format_recent_trades(recent_fills: list) -> str:
+    """Format recent trades for AI to learn from"""
+    if not recent_fills:
+        return "(no recent trades)"
+    
+    lines = []
+    wins = 0
+    losses = 0
+    
+    for fill in recent_fills[:10]:  # Last 10 trades
+        symbol = fill.get("coin", fill.get("symbol", "?"))
+        side = fill.get("side", "?")
+        px = float(fill.get("px", 0))
+        sz = float(fill.get("sz", 0))
+        pnl = float(fill.get("closedPnl", fill.get("realizedPnl", 0)))
+        
+        if pnl > 0:
+            wins += 1
+            result = f"✅ +${pnl:.2f}"
+        elif pnl < 0:
+            losses += 1
+            result = f"❌ -${abs(pnl):.2f}"
+        else:
+            result = "⚪ $0"
+        
+        lines.append(f"  {symbol} {side} @ ${px:.2f} ({sz}) → {result}")
+    
+    total = wins + losses
+    win_rate = (wins / total * 100) if total > 0 else 0
+    
+    summary = f"Win Rate: {win_rate:.0f}% ({wins}W / {losses}L)"
+    
+    return f"{summary}\n" + "\n".join(lines) if lines else "(no recent trades)"
+
+
 def _get_session() -> str:
     """Get current trading session"""
     hour = datetime.utcnow().hour
@@ -250,6 +285,10 @@ class LLMClient:
         indicators_str = _format_indicators(indicators, prices)
         positions_str = _format_positions(positions, position_details)
         session_str = _get_session()
+        
+        # Trade history for learning
+        recent_fills = state.get("recent_fills", [])
+        trades_str = _format_recent_trades(recent_fills)
         
         # Symbol briefs
         briefs_lines = []
@@ -431,6 +470,12 @@ As a professional trader, you understand:
 ═══════════════════════════════════════════════════════════════════════════════
 
 {positions_str}
+
+═══════════════════════════════════════════════════════════════════════════════
+📜 RECENT TRADE HISTORY (learn from your performance)
+═══════════════════════════════════════════════════════════════════════════════
+
+{trades_str}
 
 ═══════════════════════════════════════════════════════════════════════════════
 🎯 YOUR DECISION
