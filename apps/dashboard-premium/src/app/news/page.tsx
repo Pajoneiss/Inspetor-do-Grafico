@@ -224,90 +224,46 @@ export default function NewsPage() {
         </div>
       </motion.div>
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Real-time Crypto News */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="glass-card rounded-2xl p-6"
-        >
-          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
-            <Newspaper className="w-5 h-5 text-cyan-400" />
-            <h2 className="text-lg font-bold">{isPt ? "Notícias em Tempo Real (CryptoCompare)" : "Real-time News (CryptoCompare)"}</h2>
-          </div>
-          <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-            {loading ? (
-              <div className="flex items-center justify-center py-10">
-                <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : realtimeNews.length > 0 ? (
-              realtimeNews.map((item, i) => (
-                <a
-                  key={i}
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all border border-transparent hover:border-cyan-400/30"
-                >
-                  <p className="font-medium text-sm mb-2 line-clamp-2">{item.title}</p>
-                  <div className="flex items-center gap-4 text-xs text-white/50">
-                    <span className="text-cyan-400">{item.source}</span>
-                    {item.published_at && <span>{timeAgo(item.published_at)}</span>}
-                  </div>
-                </a>
-              ))
-            ) : (
-              <div className="text-center py-10 text-white/40">
-                <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-                <p>{isPt ? "Nenhuma notícia disponível" : "No news available"}</p>
-              </div>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Trending News */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="glass-card rounded-2xl p-6"
-        >
-          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
-            <TrendingUp className="w-5 h-5 text-purple-400" />
-            <h2 className="text-lg font-bold">{isPt ? "Tendências e Destaques (CryptoPanic)" : "Trending & Rising (CryptoPanic)"}</h2>
-          </div>
-          <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-            {loading ? (
-              <div className="flex items-center justify-center py-10">
-                <div className="w-8 h-8 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : trendingNews.length > 0 ? (
-              trendingNews.map((item, i) => (
-                <a
-                  key={i}
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all border border-transparent hover:border-purple-400/30"
-                >
-                  <p className="font-medium text-sm mb-2 line-clamp-2">{item.title}</p>
-                  <div className="flex items-center gap-4 text-xs text-white/50">
-                    <span className="text-purple-400">{item.source}</span>
-                    {item.published_at && <span>{timeAgo(item.published_at)}</span>}
-                  </div>
-                </a>
-              ))
-            ) : (
-              <div className="text-center py-10 text-white/40">
-                <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-                <p>{isPt ? "Nenhuma tendência disponível" : "No trends available"}</p>
-              </div>
-            )}
-          </div>
-        </motion.div>
-      </div>
+      {/* Real-time Crypto News - Full Width */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="glass-card rounded-2xl p-6 mb-8"
+      >
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+          <Newspaper className="w-5 h-5 text-cyan-400" />
+          <h2 className="text-lg font-bold">{isPt ? "Notícias em Tempo Real (CryptoCompare)" : "Real-time News (CryptoCompare)"}</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto pr-2">
+          {loading ? (
+            <div className="col-span-full flex items-center justify-center py-10">
+              <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : realtimeNews.length > 0 ? (
+            realtimeNews.map((item, i) => (
+              <a
+                key={i}
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all border border-transparent hover:border-cyan-400/30"
+              >
+                <p className="font-medium text-sm mb-2 line-clamp-2">{item.title}</p>
+                <div className="flex items-center gap-4 text-xs text-white/50">
+                  <span className="text-cyan-400">{item.source}</span>
+                  {item.published_at && <span>{timeAgo(item.published_at)}</span>}
+                </div>
+              </a>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-10 text-white/40">
+              <AlertCircle className="w-8 h-8 mx-auto mb-2" />
+              <p>{isPt ? "Nenhuma notícia disponível" : "No news available"}</p>
+            </div>
+          )}
+        </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Economic Calendar */}
