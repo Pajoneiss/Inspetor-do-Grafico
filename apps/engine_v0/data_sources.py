@@ -93,17 +93,26 @@ def fetch_cryptopanic() -> List[Dict[str, str]]:
         import httpx
         
         if CRYPTOPANIC_API_KEY:
+            print(f"[NEWS] CryptoPanic API key configured: {CRYPTOPANIC_API_KEY[:8]}...")
             url = f"https://cryptopanic.com/api/v1/posts/?auth_token={CRYPTOPANIC_API_KEY}&public=true&kind=news"
+            print(f"[NEWS] Fetching from CryptoPanic...")
             with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
                 resp = client.get(url)
+                print(f"[NEWS] CryptoPanic response status: {resp.status_code}")
                 if resp.status_code == 200:
                     data = resp.json()
+                    results_count = len(data.get("results", []))
+                    print(f"[NEWS] CryptoPanic returned {results_count} posts")
                     for post in data.get("results", [])[:10]:
                         headlines.append({
                             "title": post.get("title", "")[:100],
                             "url": post.get("url", ""),
                             "source": post.get("source", {}).get("title", "CryptoPanic")
                         })
+                else:
+                    print(f"[NEWS][WARN] CryptoPanic returned non-200: {resp.status_code} - {resp.text[:200]}")
+        else:
+            print("[NEWS][WARN] CRYPTOPANIC_API_KEY not configured")
     except Exception as e:
         print(f"[NEWS][WARN] CryptoPanic API failed: {e}")
     
