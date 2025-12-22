@@ -782,12 +782,12 @@ function DashboardContent() {
               </AnimatePresence>
             </div>
 
-            {/* Language Toggle */}
-            <div className="flex bg-white/5 border border-white/10 rounded-xl p-0.5 gap-0.5 mr-2">
+            {/* Language Toggle - 150% Larger */}
+            <div className="flex bg-white/5 border border-white/10 rounded-xl p-1 gap-1 mr-2">
               <button
                 onClick={() => updateSetting('language', 'pt')}
                 className={cn(
-                  "px-2 py-1 rounded-lg text-[9px] font-black tracking-tight transition-all",
+                  "px-4 py-2 rounded-lg text-sm font-black tracking-tight transition-all",
                   settings.language === 'pt' ? "bg-primary text-black shadow-[0_0_15px_rgba(0,255,157,0.3)]" : "text-white/40 hover:text-white hover:bg-white/5"
                 )}
               >
@@ -796,7 +796,7 @@ function DashboardContent() {
               <button
                 onClick={() => updateSetting('language', 'en')}
                 className={cn(
-                  "px-2 py-1 rounded-lg text-[9px] font-black tracking-tight transition-all",
+                  "px-4 py-2 rounded-lg text-sm font-black tracking-tight transition-all",
                   settings.language === 'en' ? "bg-primary text-black shadow-[0_0_15px_rgba(0,255,157,0.3)]" : "text-white/40 hover:text-white hover:bg-white/5"
                 )}
               >
