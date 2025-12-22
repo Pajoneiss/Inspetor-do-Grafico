@@ -10,13 +10,13 @@ LOOP_INTERVAL_SECONDS = int(os.getenv("LOOP_INTERVAL_SECONDS", "10"))
 LIVE_TRADING = os.getenv("LIVE_TRADING", "false").lower() == "true"
 AI_ENABLED = os.getenv("AI_ENABLED", "true").lower() == "true"
 
-# AI Configuration
-AI_MODEL = os.getenv("AI_MODEL") or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+# AI Configuration - Claude is the default trader
+AI_MODEL = os.getenv("AI_MODEL", "claude-sonnet-4-20250514")  # Claude as default
 AI_LANGUAGE = os.getenv("AI_LANGUAGE", "english").lower() # 'english' or 'portuguese'
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")  # Kept for dashboard chat only
 
-# External APIs
-CMC_API_KEY = os.getenv("CMC_API_KEY", "6356c1e6bffd4582bd013608d544225a")  # CoinMarketCap API key
+# External APIs - keys from Railway environment
+CMC_API_KEY = os.getenv("CMC_API_KEY", "")  # CoinMarketCap API key from env
 CRYPTOPANIC_API_KEY = os.getenv("CRYPTOPANIC_API_KEY", "")
 
 # ============================================================
