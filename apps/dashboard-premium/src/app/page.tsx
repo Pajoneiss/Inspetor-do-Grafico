@@ -34,7 +34,12 @@ import {
   TrendingUp,
   TrendingDown,
   AlertCircle,
-  ArrowLeft
+  ArrowLeft,
+  Flame,
+  Fuel,
+  Layers,
+  Timer,
+  Gauge
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SettingsModal from "@/components/SettingsModal";
@@ -415,6 +420,15 @@ function DashboardContent() {
   const [globalMarket, setGlobalMarket] = useState<{ market_cap?: number; volume_24h?: number; btc_dominance?: number; eth_dominance?: number; market_cap_change_24h?: number } | null>(null);
   const [topGainers, setTopGainers] = useState<Array<{ name: string; symbol: string; percent_change_24h: number }>>([]);
   const [topLosers, setTopLosers] = useState<Array<{ name: string; symbol: string; percent_change_24h: number }>>([]);
+  // New Market Intelligence States
+  const [halvingData, setHalvingData] = useState<any>(null);
+  const [tvlData, setTvlData] = useState<any>(null);
+  const [fundingData, setFundingData] = useState<any>(null);
+  const [longShortData, setLongShortData] = useState<any>(null);
+  const [trendingCoins, setTrendingCoins] = useState<any[]>([]);
+  const [altSeasonData, setAltSeasonData] = useState<any>(null);
+  const [ethGasData, setEthGasData] = useState<any>(null);
+  const [rainbowData, setRainbowData] = useState<any>(null);
 
   const { settings, updateSetting, resetSettings } = useSettings();
 
@@ -554,12 +568,24 @@ function DashboardContent() {
     const fetchNewsData = async () => {
       if (!API_URL || activeTab !== 'news') return;
       try {
-        const [newsRes, calendarRes, marketRes, moversRes] = await Promise.all([
+        const results = await Promise.all([
           fetch(`${API_URL}/api/news`).then(r => r.json()).catch(() => ({ ok: false })),
           fetch(`${API_URL}/api/economic-calendar?days=7`).then(r => r.json()).catch(() => ({ ok: false })),
           fetch(`${API_URL}/api/cmc/global`).then(r => r.json()).catch(() => ({ ok: false })),
           fetch(`${API_URL}/api/gainers-losers`).then(r => r.json()).catch(() => ({ ok: false })),
+          // New Features
+          fetch(`${API_URL}/api/halving`).then(r => r.json()).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/api/tvl`).then(r => r.json()).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/api/funding`).then(r => r.json()).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/api/long-short`).then(r => r.json()).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/api/trending`).then(r => r.json()).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/api/altseason`).then(r => r.json()).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/api/gas`).then(r => r.json()).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/api/rainbow`).then(r => r.json()).catch(() => ({ ok: false })),
         ]);
+
+        const [newsRes, calendarRes, marketRes, moversRes, halvingRes, tvlRes, fundingRes, longShortRes, trendingRes, altSeasonRes, gasRes, rainbowRes] = results;
+
         if (newsRes.ok) {
           setRealtimeNews(newsRes.realtime || []);
           setTrendingNews(newsRes.trending || []);
@@ -570,6 +596,26 @@ function DashboardContent() {
           setTopGainers(moversRes.gainers || []);
           setTopLosers(moversRes.losers || []);
         }
+
+        // New Features State Updates
+        if (halvingRes.ok) setHalvingData(halvingRes.data);
+        if (tvlRes.ok) setTvlData(tvlRes.data);
+        if (fundingRes.ok) setFundingData(fundingRes.data);
+        if (longShortRes.ok) setLongShortData(longShortRes.data);
+        if (trendingRes.ok) setTrendingCoins(trendingRes.data);
+        if (altSeasonRes.ok) setAltSeasonData(altSeasonRes.data);
+        if (gasRes.ok) setEthGasData(gasRes.data);
+        if (rainbowRes.ok) setRainbowData(rainbowRes.data);
+
+        // Set new data
+        if (results[4]?.ok) setHalvingData(results[4]);
+        if (results[5]?.ok) setTvlData(results[5]);
+        if (results[6]?.ok) setFundingData(results[6]);
+        if (results[7]?.ok) setLongShortData(results[7]);
+        if (results[8]?.ok) setTrendingCoins(results[8].coins || []);
+        if (results[9]?.ok) setAltSeasonData(results[9]);
+        if (results[10]?.ok) setEthGasData(results[10]);
+        if (results[11]?.ok) setRainbowData(results[11]);
       } catch (err) {
         console.error("News data fetch error:", err);
       }
@@ -637,12 +683,12 @@ function DashboardContent() {
 
         <nav className="flex-1 w-full space-y-2">
           {[
-            { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-            { id: 'charts', label: 'Charts', icon: LineChart },
-            { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-            { id: 'news', label: 'News', icon: Globe },
-            { id: 'chat', label: 'AI Chat', icon: MessageSquare },
-            { id: 'logs', label: 'Execution Logs', icon: Terminal },
+            { id: 'overview', label: isPt ? 'Visão Geral' : 'Overview', icon: LayoutDashboard },
+            { id: 'charts', label: isPt ? 'Gráficos' : 'Charts', icon: LineChart },
+            { id: 'analytics', label: isPt ? 'Análise' : 'Analytics', icon: BarChart3 },
+            { id: 'news', label: isPt ? 'Notícias' : 'News', icon: Globe },
+            { id: 'chat', label: isPt ? 'Chat IA' : 'AI Chat', icon: MessageSquare },
+            { id: 'logs', label: isPt ? 'Logs de Execução' : 'Execution Logs', icon: Terminal },
           ].map((item) => {
             const content = (
               <>
@@ -680,7 +726,7 @@ function DashboardContent() {
         <div className="w-full pt-8 mt-8 border-t border-white/5 space-y-2">
           <button onClick={() => { setIsSettingsModalOpen(true); setSidebarOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-white transition-colors">
             <Settings className="w-5 h-5" />
-            <span className="font-semibold text-sm">Settings</span>
+            <span className="font-semibold text-sm">{isPt ? 'Configurações' : 'Settings'}</span>
           </button>
         </div>
       </aside>
@@ -839,30 +885,29 @@ function DashboardContent() {
                 }
               }} />
 
-              {/* Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                 <StatCard
-                  title="Equity"
+                  title={isPt ? "Patrimônio" : "Equity"}
                   value={status?.equity !== undefined ? `$${Number(status.equity).toFixed(2)}` : "---"}
-                  sub="Update Live"
-                  subValue="Atualizado em tempo real"
+                  sub={isPt ? "Atualização Ao Vivo" : "Update Live"}
+                  subValue={isPt ? "Atualizado em tempo real" : "Real-time updates"}
                   trend="neutral"
                   icon={Wallet}
                   sensitive={true}
                 />
                 <StatCard
-                  title="Unrealized PnL"
+                  title={isPt ? "PnL Não Realizado" : "Unrealized PnL"}
                   value={status?.unrealized_pnl !== undefined ? `${status.unrealized_pnl >= 0 ? '+' : ''}$${Number(status.unrealized_pnl).toFixed(2)}` : "---"}
                   sub={status?.equity ? `${((Number(status.unrealized_pnl || 0) / Number(status.equity)) * 100).toFixed(2)}%` : "---"}
-                  subValue="Lucro/Prejuízo não realizado"
+                  subValue={isPt ? "Lucro/Prejuízo não realizado" : "Open Profit/Loss"}
                   trend={status && (status.unrealized_pnl || 0) >= 0 ? "up" : "down"}
                   icon={Activity}
                   sensitive={true}
                 />
                 <StatCard
-                  title="Win Rate"
+                  title={isPt ? "Taxa de Vitória" : "Win Rate"}
                   value={journalStats ? `${journalStats.win_rate.toFixed(1)}%` : "---"}
-                  sub={journalStats ? `${journalStats.total_trades} trades | $${journalStats.total_pnl_usd >= 0 ? '+' : ''}${journalStats.total_pnl_usd.toFixed(2)}` : "No data yet"}
+                  sub={journalStats ? `${journalStats.total_trades} trades | $${journalStats.total_pnl_usd >= 0 ? '+' : ''}${journalStats.total_pnl_usd.toFixed(2)}` : (isPt ? "Sem dados" : "No data yet")}
                   trend={journalStats && journalStats.win_rate > 50 ? "up" : journalStats && journalStats.win_rate < 50 ? "down" : "neutral"}
                   icon={Target}
                 />
@@ -876,7 +921,7 @@ function DashboardContent() {
                       <div className="p-2 rounded-xl bg-primary/20 text-primary">
                         <BarChart3 className="w-5 h-5" />
                       </div>
-                      <h3 className="text-xl font-bold tracking-tight">Active Positions</h3>
+                      <h3 className="text-xl font-bold tracking-tight">{isPt ? "Posições Ativas" : "Active Positions"}</h3>
                     </div>
                   </div>
 
@@ -884,7 +929,7 @@ function DashboardContent() {
                     {positions?.length === 0 ? (
                       <div className="h-full flex flex-col items-center justify-center opacity-20">
                         <LayoutDashboard className="w-12 h-12 mb-4" />
-                        <p className="text-xs font-bold uppercase tracking-widest">No active positions</p>
+                        <p className="text-xs font-bold uppercase tracking-widest">{isPt ? "Nenhuma posição ativa" : "No active positions"}</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -919,7 +964,7 @@ function DashboardContent() {
                       <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 text-primary">
                         <Activity className="w-4 h-4" />
                       </div>
-                      <h3 className="text-base font-bold tracking-tight">PnL Performance</h3>
+                      <h3 className="text-base font-bold tracking-tight">{isPt ? "Performance de PnL" : "PnL Performance"}</h3>
                     </div>
                     <div className="flex gap-1">
                       {(['24H', '7D', '30D', 'ALL'] as const).map(period => (
@@ -944,7 +989,7 @@ function DashboardContent() {
                     <p className={cn("text-2xl font-bold", (pnlData?.[`pnl_${pnlPeriod.toLowerCase()}`] || pnlData?.pnl_24h || 0) >= 0 ? "text-primary neon-glow" : "text-secondary")}>
                       {(pnlData?.[`pnl_${pnlPeriod.toLowerCase()}`] || pnlData?.pnl_24h || 0) >= 0 ? '+' : ''}${(pnlData?.[`pnl_${pnlPeriod.toLowerCase()}`] || pnlData?.pnl_24h || 0).toFixed(2)}
                     </p>
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Realized PnL ({pnlPeriod})</p>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{isPt ? "PnL Realizado" : "Realized PnL"} ({pnlPeriod})</p>
                   </div>
 
                   {/* Chart */}
@@ -1023,7 +1068,7 @@ function DashboardContent() {
                       <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400">
                         <BrainCircuit className="w-5 h-5" />
                       </div>
-                      <h3 className="text-xl font-bold tracking-tight">AI Strategy Core</h3>
+                      <h3 className="text-xl font-bold tracking-tight">{isPt ? "Núcleo de Estratégia de IA" : "AI Strategy Core"}</h3>
                       {/* AI Mood Indicator */}
                       <span className={cn(
                         "px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border",
@@ -1031,9 +1076,9 @@ function DashboardContent() {
                         aiMood === 'defensive' && "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
                         aiMood === 'observing' && "bg-blue-500/20 text-blue-400 border-blue-500/30"
                       )}>
-                        {aiMood === 'aggressive' && '🚀 Aggressive'}
-                        {aiMood === 'defensive' && '🛡️ Defensive'}
-                        {aiMood === 'observing' && '⏸️ Observing'}
+                        {aiMood === 'aggressive' && (isPt ? '🚀 Agressivo' : '🚀 Aggressive')}
+                        {aiMood === 'defensive' && (isPt ? '🛡️ Defensivo' : '🛡️ Defensive')}
+                        {aiMood === 'observing' && (isPt ? '⏸️ Observando' : '⏸️ Observing')}
                       </span>
                     </div>
                     {/* Language Toggle */}
@@ -1090,7 +1135,7 @@ function DashboardContent() {
                       <div className="space-y-4">
                         <div className="flex items-center gap-2 mb-4">
                           <span className="px-2 py-1 rounded-lg bg-purple-500/20 text-purple-400 text-[10px] font-bold uppercase tracking-wider">
-                            Current Position
+                            {isPt ? 'Posição Atual' : 'Current Position'}
                           </span>
                         </div>
 
@@ -1107,7 +1152,7 @@ function DashboardContent() {
                             <span className={cn("text-lg font-bold", getConfidenceColor(tradeLog.confidence || 0))}>
                               {((tradeLog.confidence || 0) * 100).toFixed(0)}%
                             </span>
-                            <p className="text-[9px] text-muted-foreground uppercase">Confidence</p>
+                            <p className="text-[9px] text-muted-foreground uppercase">{isPt ? "Confiabilidade" : "Confidence"}</p>
                           </div>
                         </div>
 
@@ -1160,7 +1205,7 @@ function DashboardContent() {
                       // No thoughts and no trade log
                       <div className="h-full flex flex-col items-center justify-center opacity-20">
                         <BrainCircuit className="w-12 h-12 mb-4 animate-pulse" />
-                        <p className="text-xs font-bold uppercase tracking-widest">Waiting for AI decisions...</p>
+                        <p className="text-xs font-bold uppercase tracking-widest">{isPt ? "Aguardando decisões da IA..." : "Waiting for AI decisions..."}</p>
                       </div>
                     )}
                   </div>
@@ -1176,7 +1221,7 @@ function DashboardContent() {
                         <BrainCircuit className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold tracking-tight">Latest AI Trade Analysis</h3>
+                        <h3 className="text-xl font-bold tracking-tight">{isPt ? "Análise de Trade Recente" : "Latest AI Trade Analysis"}</h3>
                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">
                           {_trade_logs && _trade_logs.length > 1
                             ? `${_trade_logs.findIndex((log: any) => log === tradeLog) + 1} of ${_trade_logs.length} Active Positions`
@@ -1214,7 +1259,7 @@ function DashboardContent() {
                         onClick={() => setViewAllModalOpen(true)}
                         className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-all text-xs font-bold uppercase tracking-wider"
                       >
-                        View All
+                        {isPt ? "Ver Todos" : "View All"}
                       </button>
                     </div>
                   </div>
@@ -1234,7 +1279,7 @@ function DashboardContent() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Setup Quality</p>
+                            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">{isPt ? "Qualidade do Setup" : "Setup Quality"}</p>
                             <div className="flex items-center gap-2 mt-1">
                               <div className="h-2 w-24 bg-white/10 rounded-full overflow-hidden">
                                 <motion.div
@@ -1252,7 +1297,7 @@ function DashboardContent() {
                         <div>
                           <div className="flex items-center gap-2 mb-3">
                             <Target className="w-4 h-4 text-primary" />
-                            <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Strategy</h5>
+                            <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">{isPt ? "Estratégia" : "Strategy"}</h5>
                           </div>
                           <div className="p-4 rounded-xl bg-white/5 border border-white/5">
                             <p className="text-xs font-bold text-primary mb-1">{tradeLog.strategy?.name || 'N/A'} • {tradeLog.strategy?.timeframe || 'N/A'}</p>
@@ -1265,7 +1310,7 @@ function DashboardContent() {
                           <div>
                             <div className="flex items-center gap-2 mb-3">
                               <Shield className="w-4 h-4 text-primary" />
-                              <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Confluence ({tradeLog.strategy.confluence_factors.length} factors)</h5>
+                              <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">{isPt ? `Confluência (${tradeLog.strategy.confluence_factors.length} fatores)` : `Confluence (${tradeLog.strategy.confluence_factors.length} factors)`}</h5>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                               {tradeLog.strategy.confluence_factors.map((factor: any, i: number) => (
@@ -1300,7 +1345,7 @@ function DashboardContent() {
                         <div>
                           <div className="flex items-center gap-2 mb-3">
                             <Activity className="w-4 h-4 text-secondary" />
-                            <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Risk Management</h5>
+                            <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">{isPt ? "Gestão de Risco" : "Risk Management"}</h5>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {/* Stop Loss */}
@@ -1333,7 +1378,7 @@ function DashboardContent() {
                             {/* Risk */}
                             <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex flex-col justify-between min-h-[100px] transition-all hover:bg-white/10">
                               <div>
-                                <p className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.15em] mb-1">Risk</p>
+                                <p className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.15em] mb-1">{isPt ? "Risco" : "Risk"}</p>
                                 <p className="text-xl font-bold text-white tracking-tight">${tradeLog.risk_management?.risk_usd?.toFixed(2) || '0'}</p>
                               </div>
                               <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.risk_pct?.toFixed(2) || '0'}% of equity</p>
@@ -2283,13 +2328,13 @@ function DashboardContent() {
                           <div className="flex justify-between items-start gap-4">
                             <p className="font-bold text-sm leading-tight">{event.event || "Unknown"}</p>
                             <span className="text-[10px] font-mono text-white/50 whitespace-nowrap bg-black/40 px-2 py-0.5 rounded border border-white/5">
-                              {event.date !== "TBD" ? new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "TBD"} {event.time || ""}
+                              {event.date !== "TBD" ? new Date(event.date).toLocaleDateString(isPt ? "pt-BR" : "en-US", { month: "short", day: "numeric" }) : "TBD"} {event.time || ""}
                             </span>
                           </div>
                           {(event.estimate || event.previous) && (
                             <div className="flex gap-4 mt-3 text-[10px] font-bold uppercase tracking-widest">
-                              {event.estimate && <span className="text-white/40">Est: <span className="text-white/80">{event.estimate}</span></span>}
-                              {event.previous && <span className="text-white/40">Prev: <span className="text-white/80">{event.previous}</span></span>}
+                              {event.estimate && <span className="text-white/40">{isPt ? 'Est:' : 'Est:'} <span className="text-white/80">{event.estimate}</span></span>}
+                              {event.previous && <span className="text-white/40">{isPt ? 'Ant:' : 'Prev:'} <span className="text-white/80">{event.previous}</span></span>}
                             </div>
                           )}
                         </div>
@@ -2297,7 +2342,7 @@ function DashboardContent() {
                     ) : (
                       <div className="text-center py-20 opacity-20">
                         <Calendar className="w-12 h-12 mx-auto mb-4" />
-                        <p className="text-xs font-bold uppercase tracking-widest">No upcoming events</p>
+                        <p className="text-xs font-bold uppercase tracking-widest">{isPt ? 'Nenhum evento futuro' : 'No upcoming events'}</p>
                       </div>
                     )}
                   </div>
@@ -2362,6 +2407,237 @@ function DashboardContent() {
                   </div>
                 </GlassCard>
               </div>
+
+              {/* --- NEW MARKET INTELLIGENCE CARDS --- */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+
+                {/* 1. Rainbow Chart & Altcoin Season */}
+                <GlassCard className="border border-purple-500/20" delay={0.6}>
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                    <BarChart3 className="w-5 h-5 text-purple-400" />
+                    <h2 className="text-lg font-bold">{isPt ? 'Bitcoin Rainbow & Altseason' : 'Bitcoin Rainbow & Altseason'}</h2>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* Rainbow Chart Section */}
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2">
+                          <i className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                          BTC Rainbow Band
+                        </h3>
+                        <span className={cn("px-2 py-1 rounded text-[10px] font-black uppercase",
+                          rainbowData?.band === 'sell' || rainbowData?.band === 'max_bubble' ? "bg-red-500/20 text-red-400" :
+                            rainbowData?.band === 'buy' || rainbowData?.band === 'fire_sale' ? "bg-green-500/20 text-green-400" :
+                              "bg-yellow-500/20 text-yellow-400"
+                        )}>
+                          {rainbowData?.band_name || "Loading..."}
+                        </span>
+                      </div>
+
+                      {rainbowData && (
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-xs font-bold text-white/50">
+                            <span>BTC Price: <span className="text-white">${rainbowData.btc_price?.toLocaleString()}</span></span>
+                            <span>Fair Value: <span className="text-white">${rainbowData.log_price?.toLocaleString()}</span></span>
+                          </div>
+                          <div className="relative h-2 bg-white/10 rounded-full overflow-hidden">
+                            <div
+                              className={cn("absolute top-0 bottom-0 w-full transition-all duration-1000",
+                                rainbowData.band_index <= 2 ? "bg-gradient-to-r from-green-500 to-green-300" :
+                                  rainbowData.band_index >= 6 ? "bg-gradient-to-r from-red-500 to-red-300" :
+                                    "bg-gradient-to-r from-yellow-500 to-orange-500"
+                              )}
+                              style={{ width: `${Math.min(100, Math.max(0, (rainbowData.band_index / 8) * 100))}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between text-[8px] text-white/20 font-black uppercase tracking-widest">
+                            <span>Fire Sale</span>
+                            <span>HODL</span>
+                            <span>Bubble</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Altcoin Season Section */}
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2">
+                          <Gauge className="w-3 h-3 text-cyan-400" />
+                          Altcoin Season Index
+                        </h3>
+                        <span className="text-xl font-black text-cyan-400">{altSeasonData?.blockchaincenter?.formatted_season_index || "---"}</span>
+                      </div>
+                      {altSeasonData && (
+                        <div className="space-y-2">
+                          <div className="relative h-4 bg-white/10 rounded-full overflow-hidden border border-white/5">
+                            <div
+                              className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-orange-500 via-yellow-500 to-cyan-500 transition-all duration-1000"
+                              style={{ width: `${altSeasonData.blockchaincenter?.season_index || 0}%` }}
+                            />
+                            {/* Markers */}
+                            <div className="absolute top-0 bottom-0 left-[25%] w-0.5 bg-white/30" />
+                            <div className="absolute top-0 bottom-0 left-[75%] w-0.5 bg-white/30" />
+                          </div>
+                          <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest pt-1">
+                            <span className={cn(altSeasonData.blockchaincenter?.season_index < 25 ? "text-orange-400" : "text-white/30")}>Bitcoin Season</span>
+                            <span className={cn(altSeasonData.blockchaincenter?.season_index > 75 ? "text-cyan-400" : "text-white/30")}>Altcoin Season</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </GlassCard>
+
+                {/* 2. Halving & ETH Gas */}
+                <GlassCard className="border border-blue-500/20" delay={0.7}>
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                    <Timer className="w-5 h-5 text-blue-400" />
+                    <h2 className="text-lg font-bold">{isPt ? 'Halving & Network Stats' : 'Halving & Network Stats'}</h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Halving */}
+                    <div className="p-4 rounded-xl bg-black/20 border border-white/5 flex flex-col justify-between relative overflow-hidden group">
+                      <div className="bg-orange-500/5 absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Next BTC Halving</h3>
+                      <p className="text-xs text-white/50 mb-3">(Est: {halvingData?.next_halving_date || '---'})</p>
+
+                      <div className="text-center py-2">
+                        <span className="text-2xl font-black text-orange-500 tracking-tighter">
+                          {halvingData?.days_until_halving !== undefined ? halvingData.days_until_halving : '---'}
+                        </span>
+                        <span className="text-[10px] block font-bold text-white/30 uppercase mt-1">Days Remaining</span>
+                      </div>
+                    </div>
+
+                    {/* ETH Gas */}
+                    <div className="p-4 rounded-xl bg-black/20 border border-white/5 flex flex-col justify-between relative overflow-hidden group">
+                      <div className="bg-blue-500/5 absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <Fuel className="w-3 h-3 text-white/40" /> ETH Gas
+                      </h3>
+                      {ethGasData && ethGasData.speeds ? (
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center text-xs border-b border-white/5 pb-1">
+                            <span className="text-white/50">Standard</span>
+                            <span className="font-bold text-blue-400">{ethGasData.speeds[1]?.gasPrice || 0} Gwei</span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-white/50">Fast</span>
+                            <span className="font-bold text-green-400">{ethGasData.speeds[2]?.gasPrice || 0} Gwei</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center text-[10px] opacity-30 uppercase">No Data</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Funding Rates Mini-Table */}
+                  <div className="mt-6">
+                    <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <Activity className="w-3 h-3" /> Top Funding Rates (Binance)
+                    </h3>
+                    {fundingData && fundingData.funding_rates ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        {fundingData.funding_rates.slice(0, 3).map((rate: any, i: number) => (
+                          <div key={i} className="bg-white/5 rounded-lg p-2 text-center border border-white/5">
+                            <div className="text-[9px] font-black text-white/60 mb-1">{rate.symbol}</div>
+                            <div className={cn("text-xs font-bold", parseFloat(rate.lastFundingRate) > 0.01 ? "text-orange-400" : "text-green-400")}>
+                              {(parseFloat(rate.lastFundingRate) * 100).toFixed(4)}%
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (<div className="text-xs text-center opacity-30">Loading...</div>)}
+                  </div>
+                </GlassCard>
+
+                {/* 3. DeFi TVL & Trending */}
+                <GlassCard className="border border-green-500/20" delay={0.8}>
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                    <Layers className="w-5 h-5 text-green-400" />
+                    <h2 className="text-lg font-bold">{isPt ? 'DeFi & Trending' : 'DeFi & Trending'}</h2>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* TVL */}
+                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-500/10 to-transparent rounded-xl border border-green-500/20">
+                      <div>
+                        <p className="text-[10px] font-bold text-green-400 uppercase tracking-widest mb-1">Total Value Locked</p>
+                        <p className="text-2xl font-black text-white drop-shadow-md">
+                          {tvlData?.totalLiquidityUSD ? `$${(tvlData.totalLiquidityUSD / 1e9).toFixed(2)}B` : '---'}
+                        </p>
+                      </div>
+                      <Layers className="w-8 h-8 text-green-500/20" />
+                    </div>
+
+                    {/* Trending Coins (Simple List) */}
+                    <div>
+                      <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <Flame className="w-3 h-3 text-orange-500" /> Trending on CoinGecko
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {trendingCoins.length > 0 ? (
+                          trendingCoins.slice(0, 4).map((coin: any, i: number) => (
+                            <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-white/5 border border-white/5">
+                              <img src={coin.item.thumb} alt={coin.item.symbol} className="w-5 h-5 rounded-full opacity-80" />
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold">{coin.item.name} <span className="text-[9px] text-white/40">{coin.item.symbol}</span></span>
+                                <span className="text-[9px] text-white/50">Rank #{coin.item.market_cap_rank}</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-[10px] opacity-30 uppercase col-span-2 text-center py-2">No Trending Data</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </GlassCard>
+
+                {/* 4. Long/Short Ratio */}
+                <GlassCard className="border border-pink-500/20" delay={0.9}>
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                    <Activity className="w-5 h-5 text-pink-400" />
+                    <h2 className="text-lg font-bold">{isPt ? 'Sentimento Futuros' : 'Futures Sentiment'}</h2>
+                  </div>
+
+                  {longShortData && longShortData.global_ratio ? (
+                    <div className="space-y-4">
+                      {longShortData.global_ratio.map((item: any, i: number) => (
+                        <div key={i} className="p-3 rounded-xl bg-white/5 border border-white/5">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs font-bold text-white/70">{item.symbol} Long/Short</span>
+                            <span className="text-xs font-black text-pink-400">{parseFloat(item.longShortRatio).toFixed(2)}</span>
+                          </div>
+
+                          <div className="relative h-4 bg-white/10 rounded-full overflow-hidden flex text-[8px] font-bold text-black/70">
+                            <div
+                              className="h-full bg-green-400 flex items-center justify-center transition-all duration-500"
+                              style={{ width: `${parseFloat(item.longAccount) * 100}%` }}
+                            >
+                              {(parseFloat(item.longAccount) * 100).toFixed(0)}% L
+                            </div>
+                            <div
+                              className="h-full bg-red-400 flex items-center justify-center transition-all duration-500"
+                              style={{ width: `${parseFloat(item.shortAccount) * 100}%` }}
+                            >
+                              {(parseFloat(item.shortAccount) * 100).toFixed(0)}% S
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 opacity-20 text-[10px] font-bold uppercase">Loading Ratios...</div>
+                  )}
+                </GlassCard>
+
+              </div>
+
             </motion.div>
           )}
 
@@ -2472,12 +2748,13 @@ function DashboardContent() {
       </main >
 
       {/* Animated Background with Floating BTC/ETH Coins */}
-      <AnimatedBackground />
+      < AnimatedBackground />
 
       {/* Settings Modal */}
-      <SettingsModal
+      < SettingsModal
         isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
+        onClose={() => setIsSettingsModalOpen(false)
+        }
         settings={settings}
         updateSetting={updateSetting}
         resetSettings={resetSettings}
