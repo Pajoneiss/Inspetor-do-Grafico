@@ -50,7 +50,7 @@ ALLOW_SYMBOL_NOT_IN_SNAPSHOT = os.getenv("ALLOW_SYMBOL_NOT_IN_SNAPSHOT", "true")
 PLACE_ORDER_DEDUP_SECONDS = int(os.getenv("PLACE_ORDER_DEDUP_SECONDS", "300"))  # 5 min dedup for same order
 TRIGGER_DEDUP_SECONDS = int(os.getenv("TRIGGER_DEDUP_SECONDS", "120"))  # 2 min for triggers
 MAX_OPEN_ORDERS_PER_SYMBOL = int(os.getenv("MAX_OPEN_ORDERS_PER_SYMBOL", "6"))  # Circuit breaker
-MAX_POSITION_ADDS_PER_HOUR = int(os.getenv("MAX_POSITION_ADDS_PER_HOUR", "5"))  # Max 5 adds per hour
+MAX_POSITION_ADDS_PER_SYMBOL_PER_HOUR = int(os.getenv("MAX_POSITION_ADDS_PER_SYMBOL_PER_HOUR", "5"))  # Max 5 adds per hour
 STATE_INCLUDE_OPEN_ORDERS = os.getenv("STATE_INCLUDE_OPEN_ORDERS", "true").lower() == "true"
 STATE_INCLUDE_RECENT_ACTIONS = os.getenv("STATE_INCLUDE_RECENT_ACTIONS", "true").lower() == "true"
 
