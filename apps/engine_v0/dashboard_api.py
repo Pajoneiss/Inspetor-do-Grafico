@@ -358,9 +358,47 @@ def api_crypto_prices():
                     "symbol": "ETH",
                     "formatted": f"${eth_val:,.2f}" if eth_val > 0 else "---"
                 }
-            },
+def get_crypto_prices():
+    """Get current crypto prices from Hyperliquid"""
+    try:
+        from data_sources import fetch_hl_prices
+        prices = fetch_hl_prices()
+        return jsonify({
+            "ok": True,
+            "prices": prices,
             "server_time_ms": int(time.time() * 1000)
         })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/economic-calendar')
+def get_economic_calendar():
+    """Get upcoming high-impact economic events"""
+    try:
+        from data_sources import fetch_economic_calendar
+        
+        # Get days ahead parameter (default 7 days)
+        days_ahead = request.args.get('days', 7, type=int)
+        days_ahead = min(days_ahead, 30)  # Max 30 days
+        
+        events = fetch_economic_calendar(days_ahead=days_ahead)
+        
+        return jsonify({
+            "ok": True,
+            "events": events,
+            "count": len(events),
+            "days_ahead": days_ahead,
+            "server_time_ms": int(time.time() * 1000)
+        })
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] Economic calendar failed: {e}")
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "events": [],
+            "count": 0
+        }), 500
 
 
 @app.route('/api/cmc/trending')

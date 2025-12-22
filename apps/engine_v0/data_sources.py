@@ -446,6 +446,173 @@ def format_external_data_for_telegram(data: Dict[str, Any]) -> str:
     return "\n".join(lines) if lines else "(dados externos indisponíveis)"
 
 
+def fetch_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any]]:
+    """
+    Fetch upcoming high-impact economic events using Finnhub (free tier)
+    
+    Returns: [{
+        'date': '2025-12-23',
+        'time': '10:00',
+        'event': 'FOMC Meeting',
+        'country': 'US',
+        'importance': 'HIGH',
+        'actual': None,
+        'estimate': '5.25%',
+        'previous': '5.00%'
+    }]
+    """
+    cache_key = "economic_calendar"
+    cached = _get_cache(cache_key)
+    if cached:
+        print(f"[CALENDAR] Using cached: {len(cached)} events")
+        return cached
+    
+    events = []
+    
+    try:
+        import httpx
+        from datetime import datetime, timedelta
+        
+        # Finnhub free tier endpoint (no API key needed for basic calendar)
+        # Alternative: can use FINNHUB_API_KEY from env if available
+        from config import os
+        finnhub_key = os.getenv("FINNHUB_API_KEY", "")
+        
+        # Calculate date range
+        today = datetime.now()
+        end_date = today + timedelta(days=days_ahead)
+        
+        # Format dates for API
+        from_date = today.strftime("%Y-%m-%d")
+        to_date = end_date.strftime("%Y-%m-%d")
+        
+        # Finnhub economic calendar endpoint
+        url = f"https://finnhub.io/api/v1/calendar/economic?from={from_date}&to={to_date}"
+        
+        if finnhub_key:
+            url += f"&token={finnhub_key}"
+        else:
+            # Use free tier (limited data, but works)
+            url += "&token=demo"
+        
+        print(f"[CALENDAR] Fetching events from {from_date} to {to_date}...")
+        
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            resp = client.get(url)
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                
+                # Filter high-impact US events
+                high_impact_events = [
+                    "FOMC", "NFP", "Non-Farm", "Payroll", "CPI", "PPI", 
+                    "GDP", "Federal Reserve", "Interest Rate", "Unemployment",
+                    "Retail Sales", "Consumer Confidence", "PMI", "ISM"
+                ]
+                
+                for item in data.get("economicCalendar", []):
+                    event_name = item.get("event", "")
+                    country = item.get("country", "")
+                    
+                    # Filter: Only US high-impact events
+                    if country != "US":
+                        continue
+                    
+                    is_important = any(keyword.lower() in event_name.lower() 
+                                      for keyword in high_impact_events)
+                    
+                    if not is_important:
+                        continue
+                    
+                    # Parse date/time
+                    event_date = item.get("date", "")
+                    event_time = item.get("time", "")
+                    
+                    events.append({
+                        "date": event_date,
+                        "time": event_time or "TBD",
+                        "event": event_name,
+                        "country": country,
+                        "importance": "HIGH",
+                        "actual": item.get("actual"),
+                        "estimate": item.get("estimate"),
+                        "previous": item.get("previous"),
+                        "impact": item.get("impact", "high")
+                    })
+                
+                # Sort by date
+                events.sort(key=lambda x: x["date"])
+                
+                # Cache for 6 hours (events don't change frequently)
+                _set_cache(cache_key, events, ttl=21600)
+                
+                print(f"[CALENDAR] Fetched {len(events)} high-impact events")
+                return events
+            
+            else:
+                print(f"[CALENDAR][WARN] API returned status {resp.status_code}")
+    
+    except Exception as e:
+        print(f"[CALENDAR][ERROR] Failed to fetch calendar: {e}")
+    
+    # Fallback: Return demo events if API fails
+    fallback_events = [
+        {
+            "date": "TBD",
+            "time": "TBD",
+            "event": "Economic Calendar Unavailable",
+            "country": "US",
+            "importance": "INFO",
+            "actual": None,
+            "estimate": None,
+            "previous": None,
+            "impact": "low"
+        }
+    ]
+    
+    return fallback_events
+
+
+def format_economic_calendar(events: List[Dict[str, Any]], max_events: int = 5) -> str:
+    """Format economic calendar for Telegram/Dashboard display"""
+    if not events or (len(events) == 1 and "Unavailable" in events[0]["event"]):
+        return "(Calendário econômico indisponível)"
+    
+    lines = []
+    for event in events[:max_events]:
+        date_str = event.get("date", "TBD")
+        time_str = event.get("time", "TBD")
+        name = event.get("event", "Unknown")
+        estimate = event.get("estimate")
+        previous = event.get("previous")
+        
+        # Format importance stars
+        stars = "🔴🔴🔴" if event.get("importance") == "HIGH" else "🟡🟡"
+        
+        # Format date (convert YYYY-MM-DD to DD/MM)
+        try:
+            from datetime import datetime
+            date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            date_display = date_obj.strftime("%d/%m")
+        except:
+            date_display = date_str
+        
+        line = f"{stars} {date_display} {time_str} - {name}"
+        
+        # Add forecast if available
+        if estimate or previous:
+            details = []
+            if estimate:
+                details.append(f"Prev: {estimate}")
+            if previous:
+                details.append(f"Ant: {previous}")
+            line += f"\n       {' | '.join(details)}"
+        
+        lines.append(line)
+    
+    return "\n".join(lines) if lines else "(sem eventos próximos)"
+
+
 # Aliases for backward compatibility
 def get_fear_greed() -> Dict[str, Any]:
     """Alias for fetch_fear_greed"""
