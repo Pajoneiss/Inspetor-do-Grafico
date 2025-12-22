@@ -294,6 +294,19 @@ As a professional trader, you understand:
 - Fair Value Gaps (FVG): Imbalanced price zones that often get filled
 - Inducement: False breakouts designed to trap retail traders
 
+📈 MARKET STRUCTURE & PRICE ACTION:
+- Higher Highs + Higher Lows = Uptrend (look for long opportunities)
+- Lower Highs + Lower Lows = Downtrend (look for short opportunities)
+- Equal Highs/Lows = Range (trade the boundaries or wait for breakout)
+- Support: Price level where buying pressure historically appears
+- Resistance: Price level where selling pressure historically appears
+- Candlestick context matters: wicks show rejection, bodies show conviction
+- Engulfing candles at key levels signal potential reversals
+- Pin bars/hammer at support = bullish rejection
+- Shooting star at resistance = bearish rejection
+- Inside bars = consolidation, breakout pending
+- Volume confirms moves: high volume = conviction, low volume = weak move
+
 💰 FUNDING RATE (Perpetual Mechanics):
 - Positive funding = longs pay shorts = market over-leveraged long
 - Negative funding = shorts pay longs = market over-leveraged short
