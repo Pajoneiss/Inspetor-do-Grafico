@@ -16,10 +16,12 @@ from config import CMC_API_KEY, CRYPTOPANIC_API_KEY, FMP_API_KEY, API_TIMEOUT_SE
 _cache: Dict[str, Dict[str, Any]] = {}
 
 # TTL settings (seconds)
-TTL_NEWS = 300      # 5 minutes
+TTL_NEWS = 300      # 5 minutes (Real-time)
+TTL_NEWS_DELAYED = 86400 # 24 hours (CryptoPanic)
 TTL_MACRO = 60      # 1 minute
 TTL_MARKET = 60     # 1 minute
 TTL_FEAR = 300      # 5 minutes
+TTL_CALENDAR = 86400 # 24 hours (FMP)
 
 
 def _get_cache(key: str) -> Optional[Any]:
@@ -117,12 +119,7 @@ def fetch_cryptopanic() -> List[Dict[str, str]]:
     Primary: CryptoCompare (Real-time). 
     Secondary: CryptoPanic (Delayed 24h on free tier).
     """
-    # Always try CryptoCompare first for REAL-TIME data
-    headlines = fetch_cryptocompare()
-    if headlines:
-        return headlines
-        
-    cache_key = "cryptopanic"
+    cache_key = "cryptopanic_trending"
     cached = _get_cache(cache_key)
     if cached:
         return cached
@@ -143,19 +140,19 @@ def fetch_cryptopanic() -> List[Dict[str, str]]:
                             "url": post.get("url", ""),
                             "source": post.get("source", {}).get("title", "CryptoPanic"),
                             "published_at": post.get("published_at", ""),
-                            "kind": post.get("kind", "news")
+                            "kind": "trending"
                         })
     except Exception as e:
         print(f"[NEWS][WARN] CryptoPanic fallback failed: {e}")
     
     if not headlines:
         headlines = [
-            {"title": "📈 Mercado crypto operando normalmente", "source": "Bot"},
-            {"title": "💹 Acompanhe Fear & Greed no resumo", "source": "Bot"}
+            {"title": "📈 Mercado crypto operando normalmente", "source": "Bot", "kind": "trending"},
+            {"title": "💹 Acompanhe Fear & Greed no resumo", "source": "Bot", "kind": "trending"}
         ]
     
     if headlines:
-        _set_cache(cache_key, headlines, TTL_NEWS)
+        _set_cache(cache_key, headlines, TTL_NEWS_DELAYED)
     return headlines
 
 
@@ -224,6 +221,10 @@ def fetch_cmc() -> Dict[str, Any]:
                     "eth_dominance": data.get("eth_dominance", 0),
                     "market_cap_change_24h": data.get("quote", {}).get("USD", {}).get("total_market_cap_yesterday_percentage_change", 0)
                 }
+                # Also get fear & greed
+                fear_data = fetch_fear_greed()
+                result["fear_greed"] = fear_data.get("value")
+                
                 _set_cache(cache_key, result, TTL_MARKET)
                 print(f"[MARKET] CMC global fetched: BTC dom={result['btc_dominance']:.1f}%")
                 return result
@@ -319,9 +320,8 @@ def fetch_cmc_gainers_losers() -> Dict[str, List[Dict[str, Any]]]:
                 print(f"[CMC] Gainers/Losers fetched: {len(gainers)} gainers, {len(losers)} losers")
                 return result
     except Exception as e:
-        print(f"[CMC][WARN] Gainers/Losers fetch failed: {e}")
-    
-    return {"gainers": [], "losers": []}
+        print(f"[CMC][WARN] Gainers/Losers fetch failed: {e}, falling back to CoinGecko")
+        return fetch_coingecko_movers()
 
 
 def fetch_hl_prices() -> Dict[str, float]:
@@ -505,22 +505,26 @@ def fetch_fmp_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any]]:
             if resp.status_code == 200:
                 data = resp.json()
                 for item in data:
-                    # Filter for relevance (e.g., US events or High impact)
-                    if item.get("country") == "US" or item.get("impact") == "High":
+                    # Filter for relevance (US events or High impact)
+                    # Use case-insensitive check for impact
+                    impact = str(item.get("impact", "Low")).lower()
+                    country = str(item.get("country", "")).upper()
+                    
+                    if country == "US" or impact == "high":
                         events.append({
                             "date": item.get("date", "").split(" ")[0],
                             "time": item.get("date", "").split(" ")[1] if " " in item.get("date", "") else "TBD",
                             "event": item.get("event", ""),
-                            "country": item.get("country", ""),
-                            "importance": item.get("impact", "Medium").upper(),
+                            "country": country,
+                            "importance": impact.upper(),
                             "actual": item.get("actual"),
                             "estimate": item.get("estimate"),
                             "previous": item.get("previous"),
-                            "impact": item.get("impact", "Medium").lower()
+                            "impact": impact
                         })
                 # Sort by date
                 events.sort(key=lambda x: x["date"])
-                _set_cache(cache_key, events, ttl=21600) # 6h
+                _set_cache(cache_key, events, ttl=TTL_CALENDAR) # 24h
     except Exception as e:
         print(f"[CALENDAR][WARN] FMP failed: {e}")
     
@@ -598,26 +602,163 @@ def fetch_coingecko_movers() -> Dict[str, List[Dict[str, Any]]]:
     """
     try:
         import httpx
+        # v15.1: Use markets endpoint for real gainers/losers if trending is not enough
+        # But markets with sorting is better for gainers/losers
+        url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=price_change_percentage_24h_desc&per_page=50&page=1&sparkline=false"
         with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
-            resp = client.get("https://api.coingecko.com/api/v3/search/trending")
+            resp = client.get(url)
             if resp.status_code == 200:
-                coins = resp.json().get("coins", [])
-                movers = []
-                for c in coins[:10]:
-                    item = c.get("item", {})
-                    price_btc = item.get("price_btc", 0)
-                    # Rough conversion to USD if we have BTC price
-                    movers.append({
-                        "name": item.get("name", ""),
-                        "symbol": item.get("symbol", ""),
-                        "percent_change_24h": 0.0,
-                        "price": price_btc
+                data = resp.json()
+                # Gainers are first 5, Losers are last 5 of the top 50 (or sorted)
+                # Let's just get top 50 and pick
+                sorted_data = sorted(data, key=lambda x: x.get("price_change_percentage_24h") or 0, reverse=True)
+                
+                gainers = []
+                for c in sorted_data[:5]:
+                    gainers.append({
+                        "name": c.get("name", ""),
+                        "symbol": (c.get("symbol", "")).upper(),
+                        "price": c.get("current_price", 0),
+                        "percent_change_24h": c.get("price_change_percentage_24h", 0)
                     })
-                return {"gainers": movers, "losers": []}
+                
+                losers = []
+                for c in sorted_data[-5:]:
+                    losers.append({
+                        "name": c.get("name", ""),
+                        "symbol": (c.get("symbol", "")).upper(),
+                        "price": c.get("current_price", 0),
+                        "percent_change_24h": c.get("price_change_percentage_24h", 0)
+                    })
+                return {"gainers": gainers, "losers": losers}
     except Exception as e:
         print(f"[MOVERS][WARN] CoinGecko failed: {e}")
     
     return {"gainers": [], "losers": []}
+
+
+def fetch_coingecko_trending() -> List[Dict[str, Any]]:
+    """
+    Fetch trending coins from CoinGecko (100% Free, No API Key)
+    Returns: [{"name": ..., "symbol": ..., "market_cap_rank": ...}, ...]
+    """
+    cache_key = "coingecko_trending"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+    
+    try:
+        import httpx
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            resp = client.get("https://api.coingecko.com/api/v3/search/trending")
+            if resp.status_code == 200:
+                data = resp.json()
+                trending = []
+                for item in data.get("coins", [])[:7]:  # Top 7
+                    coin = item.get("item", {})
+                    trending.append({
+                        "name": coin.get("name", ""),
+                        "symbol": coin.get("symbol", "").upper(),
+                        "market_cap_rank": coin.get("market_cap_rank", 0),
+                        "price_btc": coin.get("price_btc", 0)
+                    })
+                _set_cache(cache_key, trending, TTL_MARKET)
+                return trending
+    except Exception as e:
+        print(f"[TRENDING][WARN] CoinGecko trending failed: {e}")
+    
+    return []
+
+
+def fetch_defillama_tvl() -> Dict[str, Any]:
+    """
+    Fetch Total Value Locked from DefiLlama (100% Free, No API Key)
+    Returns: {"total_tvl": float, "chains": [...]}
+    """
+    cache_key = "defillama_tvl"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+    
+    try:
+        import httpx
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            resp = client.get("https://api.llama.fi/v2/chains")
+            if resp.status_code == 200:
+                chains = resp.json()
+                total_tvl = sum(chain.get("tvl", 0) for chain in chains)
+                result = {
+                    "total_tvl": total_tvl,
+                    "top_chains": sorted(chains, key=lambda x: x.get("tvl", 0), reverse=True)[:5]
+                }
+                _set_cache(cache_key, result, TTL_MARKET)
+                return result
+    except Exception as e:
+        print(f"[TVL][WARN] DefiLlama failed: {e}")
+    
+    return {"total_tvl": 0, "top_chains": []}
+
+
+def fetch_binance_funding_rate() -> Dict[str, Any]:
+    """
+    Fetch BTC funding rate from Binance Futures (100% Free, No API Key)
+    Returns: {"symbol": "BTCUSDT", "funding_rate": float, "next_funding_time": int}
+    """
+    cache_key = "binance_funding"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+    
+    try:
+        import httpx
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            resp = client.get("https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=1")
+            if resp.status_code == 200:
+                data = resp.json()
+                if data and len(data) > 0:
+                    result = {
+                        "symbol": data[0].get("symbol", "BTCUSDT"),
+                        "funding_rate": float(data[0].get("fundingRate", 0)) * 100,  # Convert to percentage
+                        "funding_time": data[0].get("fundingTime", 0)
+                    }
+                    _set_cache(cache_key, result, TTL_MARKET)
+                    return result
+    except Exception as e:
+        print(f"[FUNDING][WARN] Binance funding rate failed: {e}")
+    
+    return {"symbol": "BTCUSDT", "funding_rate": 0, "funding_time": 0}
+
+
+def fetch_binance_long_short_ratio() -> Dict[str, Any]:
+    """
+    Fetch BTC Long/Short ratio from Binance (100% Free, No API Key)
+    Returns: {"symbol": "BTCUSDT", "long_short_ratio": float, "long_account": float, "short_account": float}
+    """
+    cache_key = "binance_long_short"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+    
+    try:
+        import httpx
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            resp = client.get("https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=BTCUSDT&period=1d&limit=1")
+            if resp.status_code == 200:
+                data = resp.json()
+                if data and len(data) > 0:
+                    result = {
+                        "symbol": data[0].get("symbol", "BTCUSDT"),
+                        "long_short_ratio": float(data[0].get("longShortRatio", 0)),
+                        "long_account": float(data[0].get("longAccount", 0)) * 100,  # Convert to percentage
+                        "short_account": float(data[0].get("shortAccount", 0)) * 100,  # Convert to percentage
+                        "timestamp": data[0].get("timestamp", 0)
+                    }
+                    _set_cache(cache_key, result, TTL_MARKET)
+                    return result
+    except Exception as e:
+        print(f"[LONG_SHORT][WARN] Binance long/short ratio failed: {e}")
+    
+    return {"symbol": "BTCUSDT", "long_short_ratio": 0, "long_account": 0, "short_account": 0, "timestamp": 0}
 
 
 # Aliases for backward compatibility
@@ -627,10 +768,14 @@ def get_fear_greed() -> Dict[str, Any]:
 
 
 def get_cryptopanic_news() -> Dict[str, Any]:
-    """Alias for fetch_cryptopanic with error handling"""
+    """Dual feed: CryptoCompare (Real-time) + CryptoPanic (Trending)"""
     try:
-        headlines = fetch_cryptopanic()
-        return {"headlines": headlines}
+        realtime = fetch_cryptocompare()
+        trending = fetch_cryptopanic()
+        return {
+            "realtime": realtime,
+            "trending": trending
+        }
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": str(e), "realtime": [], "trending": []}
 

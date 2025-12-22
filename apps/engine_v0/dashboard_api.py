@@ -411,16 +411,14 @@ def get_economic_calendar():
 
 @app.route('/api/news')
 def get_news():
-    """Get crypto news from CryptoPanic"""
+    """Get crypto news (Real-time + Trending)"""
     try:
-        from data_sources import fetch_cryptopanic
-        
-        headlines = fetch_cryptopanic()
+        from data_sources import get_cryptopanic_news
+        news_data = get_cryptopanic_news()
         
         return jsonify({
             "ok": True,
-            "news": headlines,
-            "count": len(headlines),
+            **news_data,
             "server_time_ms": int(time.time() * 1000)
         })
     except Exception as e:
@@ -476,6 +474,86 @@ def get_gainers_losers():
             "error": str(e),
             "gainers": [],
             "losers": []
+        }), 500
+
+
+@app.route('/api/market-intelligence/trending')
+def api_trending_coins():
+    """Get trending coins from CoinGecko"""
+    try:
+        from data_sources import fetch_coingecko_trending
+        trending = fetch_coingecko_trending()
+        return jsonify({
+            "ok": True,
+            "data": trending,
+            "server_time_ms": int(time.time() * 1000)
+        })
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] Trending coins failed: {e}")
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "data": []
+        }), 500
+
+
+@app.route('/api/market-intelligence/tvl')
+def api_tvl():
+    """Get Total Value Locked from DefiLlama"""
+    try:
+        from data_sources import fetch_defillama_tvl
+        tvl_data = fetch_defillama_tvl()
+        return jsonify({
+            "ok": True,
+            "data": tvl_data,
+            "server_time_ms": int(time.time() * 1000)
+        })
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] TVL failed: {e}")
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "data": {"total_tvl": 0, "top_chains": []}
+        }), 500
+
+
+@app.route('/api/market-intelligence/funding')
+def api_funding_rate():
+    """Get BTC funding rate from Binance"""
+    try:
+        from data_sources import fetch_binance_funding_rate
+        funding = fetch_binance_funding_rate()
+        return jsonify({
+            "ok": True,
+            "data": funding,
+            "server_time_ms": int(time.time() * 1000)
+        })
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] Funding rate failed: {e}")
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "data": {"symbol": "BTCUSDT", "funding_rate": 0, "funding_time": 0}
+        }), 500
+
+
+@app.route('/api/market-intelligence/long-short')
+def api_long_short_ratio():
+    """Get BTC Long/Short ratio from Binance"""
+    try:
+        from data_sources import fetch_binance_long_short_ratio
+        ratio = fetch_binance_long_short_ratio()
+        return jsonify({
+            "ok": True,
+            "data": ratio,
+            "server_time_ms": int(time.time() * 1000)
+        })
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] Long/Short ratio failed: {e}")
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "data": {"symbol": "BTCUSDT", "long_short_ratio": 0, "long_account": 0, "short_account": 0, "timestamp": 0}
         }), 500
 
 
@@ -1305,6 +1383,8 @@ try:
         with open(STATE_FILE, 'r') as f:
             saved_state = json.load(f)
             _dashboard_state.update(saved_state)
-            print(f"[DASHBOARD] Loaded saved state")
+            # Clear volatile market data on startup to avoid stale UI
+            _dashboard_state["market"] = {}
+            print(f"[DASHBOARD] Loaded saved state (market data cleared)")
 except Exception as e:
     print(f"[DASHBOARD] Failed to load saved state: {e}")

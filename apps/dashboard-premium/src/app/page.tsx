@@ -140,9 +140,10 @@ const MobileAccordionCard = ({ title, icon: Icon, children, defaultOpen = false 
   );
 };
 
-const StatCard = ({ title, value, sub, icon: Icon, trend, sensitive }: { title: string; value: string; sub: string; icon: any; trend?: "up" | "down" | "neutral"; sensitive?: boolean }) => {
+const StatCard = ({ title, value, sub, subValue, icon: Icon, trend, sensitive }: { title: string; value: string; sub: string; subValue?: string; icon: React.ElementType; trend?: "up" | "down" | "neutral"; sensitive?: boolean }) => {
   const { settings } = useSettings();
   const isMobile = useIsMobile();
+  const isLoading = value === "---" || value === "$---" || value === "0.00%";
 
   // Translate titles for beginners
   const isEn = settings.language === 'en';
@@ -153,32 +154,38 @@ const StatCard = ({ title, value, sub, icon: Icon, trend, sensitive }: { title: 
   );
 
   const content = (
-    <>
+    <div className={cn("transition-all duration-500", isLoading && "opacity-50")}>
       <div className="flex justify-between items-start">
         <div className="p-2 rounded-xl bg-white/5 border border-white/10 shadow-inner group-hover:bg-primary/10 transition-colors duration-500">
           <Icon className="w-4 h-4 text-primary group-hover:scale-110 transition-transform duration-500" />
         </div>
         {trend && trend !== "neutral" && (
           <div className="flex items-center gap-2">
-            <Sparkline data={trend === "up" ? [10, 15, 12, 18, 20] : [20, 15, 18, 12, 10]} color={trend === "up" ? "#00ff9d" : "#ff3b30"} />
+            {/* Removed mock Sparkline data - only show if real data provided in future */}
             <span className={cn(
               "px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase",
               trend === "up" ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
             )}>
-              {sub}
+              {isLoading ? "..." : sub}
             </span>
           </div>
         )}
       </div>
       <div className="mt-4">
         <p className="text-white/40 text-[10px] font-extrabold tracking-[0.2em] uppercase mb-1">{displayTitle}</p>
-        <h3 className={cn(
-          "text-2xl font-extrabold tracking-tighter text-white drop-shadow-md transition-all duration-500",
-          sensitive && settings.hideSensitiveData && "blur-md select-none"
-        )}>{value}</h3>
-        <p className="text-white/30 text-[9px] font-medium mt-1 uppercase tracking-widest">{trend === "neutral" ? sub : "Atualizado em tempo real"}</p>
+        {isLoading ? (
+          <div className="h-8 w-24 bg-white/5 rounded-lg animate-pulse mb-1" />
+        ) : (
+          <h3 className={cn(
+            "text-2xl font-extrabold tracking-tighter text-white drop-shadow-md transition-all duration-500",
+            sensitive && settings.hideSensitiveData && "blur-md select-none"
+          )}>{value}</h3>
+        )}
+        <p className="text-white/30 text-[9px] font-medium mt-1 uppercase tracking-widest">
+          {isLoading ? "Buscando dados..." : (trend === "neutral" ? (subValue || sub) : "Atualizado em tempo real")}
+        </p>
       </div>
-    </>
+    </div>
   );
 
   if (isMobile) {
@@ -245,7 +252,8 @@ const MarketBar = ({ data }: { data: any }) => {
   const items = [
     { label: "S&P 500", value: formatValue(macro.sp500), color: "text-[#00ff9d]" },
     { label: "NASDAQ", value: formatValue(macro.nasdaq), color: "text-[#00ff9d]" },
-    { label: "DXY", value: formatValue(macro.dxy), color: "text-blue-400" },
+    { label: "Fear & Greed", value: (data.fear_greed ?? '---'), color: "text-yellow-400" },
+    { label: "Market Cap", value: data.market_cap ? `$${(data.market_cap / 1e12).toFixed(2)}T` : '---', color: "text-primary" },
     { label: "USD/BRL", value: macro.usd_brl && macro.usd_brl !== "N/A" ? `R$ ${parseFloat(String(macro.usd_brl)).toFixed(2)}` : '---', color: "text-green-400" },
     { label: "BTC", value: formatValue(macro.btc, '$'), color: "text-orange-400" },
     { label: "ETH", value: formatValue(macro.eth, '$'), color: "text-purple-400" },
@@ -400,7 +408,8 @@ function DashboardContent() {
   const [aiMood, setAiMood] = useState<'aggressive' | 'defensive' | 'observing'>('observing');
 
   // News tab state
-  const [newsItems, setNewsItems] = useState<Array<{ title: string; url: string; source?: string; published_at?: string }>>([]);
+  const [realtimeNews, setRealtimeNews] = useState<Array<{ title: string; url: string; source?: string; published_at?: string }>>([]);
+  const [trendingNews, setTrendingNews] = useState<Array<{ title: string; url: string; source?: string; published_at?: string }>>([]);
   const [calendarEvents, setCalendarEvents] = useState<Array<{ event: string; date: string; time?: string; importance?: string }>>([]);
   const [globalMarket, setGlobalMarket] = useState<{ market_cap?: number; volume_24h?: number; btc_dominance?: number; eth_dominance?: number; market_cap_change_24h?: number } | null>(null);
   const [topGainers, setTopGainers] = useState<Array<{ name: string; symbol: string; percent_change_24h: number }>>([]);
@@ -547,7 +556,10 @@ function DashboardContent() {
           fetch(`${API_URL}/api/cmc/global`).then(r => r.json()).catch(() => ({ ok: false })),
           fetch(`${API_URL}/api/gainers-losers`).then(r => r.json()).catch(() => ({ ok: false })),
         ]);
-        if (newsRes.ok && newsRes.news) setNewsItems(newsRes.news);
+        if (newsRes.ok) {
+          setRealtimeNews(newsRes.realtime || []);
+          setTrendingNews(newsRes.trending || []);
+        }
         if (calendarRes.ok && calendarRes.events) setCalendarEvents(calendarRes.events);
         if (marketRes.ok && marketRes.data) setGlobalMarket(marketRes.data);
         if (moversRes.ok) {
@@ -769,6 +781,28 @@ function DashboardContent() {
               </AnimatePresence>
             </div>
 
+            {/* Language Toggle */}
+            <div className="flex bg-white/5 border border-white/10 rounded-xl p-0.5 gap-0.5 mr-2">
+              <button
+                onClick={() => updateSetting('language', 'pt')}
+                className={cn(
+                  "px-2 py-1 rounded-lg text-[9px] font-black tracking-tight transition-all",
+                  settings.language === 'pt' ? "bg-primary text-black shadow-[0_0_15px_rgba(0,255,157,0.3)]" : "text-white/40 hover:text-white hover:bg-white/5"
+                )}
+              >
+                BR
+              </button>
+              <button
+                onClick={() => updateSetting('language', 'en')}
+                className={cn(
+                  "px-2 py-1 rounded-lg text-[9px] font-black tracking-tight transition-all",
+                  settings.language === 'en' ? "bg-primary text-black shadow-[0_0_15px_rgba(0,255,157,0.3)]" : "text-white/40 hover:text-white hover:bg-white/5"
+                )}
+              >
+                US
+              </button>
+            </div>
+
             <div className="h-10 w-px bg-white/10 mx-2" />
             <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl pl-1.5 pr-4 py-1.5 hover:border-primary/50 transition-all cursor-pointer">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center font-bold text-xs text-black">
@@ -821,23 +855,6 @@ function DashboardContent() {
                   icon={Activity}
                   sensitive={true}
                 />
-                <StatCard
-                  title="Fear & Greed"
-                  value={(status as any)?.market_data?.fear_greed ?? "---"}
-                  sub={(status as any)?.market_data?.fear_greed ? (Number((status as any).market_data.fear_greed) > 50 ? "Bullish" : "Bearish") : "Loading..."}
-                  subValue="Sentimento do mercado"
-                  trend={(status as any)?.market_data?.fear_greed ? (Number((status as any).market_data.fear_greed) > 50 ? "up" : "down") : undefined}
-                  icon={Zap}
-                />
-                <StatCard
-                  title="Market Cap"
-                  value={(status as any)?.market_data?.market_cap ? `$${((status as any).market_data.market_cap / 1e12).toFixed(2)}T` : "---"}
-                  sub="Crypto Global"
-                  subValue="Capitalização de mercado global"
-                  trend="neutral"
-                  icon={Globe}
-                />
-                {/* Trading Performance Card (Journal Stats) */}
                 <StatCard
                   title="Win Rate"
                   value={journalStats ? `${journalStats.win_rate.toFixed(1)}%` : "---"}
@@ -2211,15 +2228,15 @@ function DashboardContent() {
 
               {/* Main Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Crypto News */}
+                {/* Crypto News - Real-time */}
                 <GlassCard className="border border-primary/20" delay={0.2}>
                   <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
-                    <Newspaper className="w-5 h-5 text-primary" />
-                    <h2 className="text-lg font-bold">Crypto News Feed</h2>
+                    <Zap className="w-5 h-5 text-primary" />
+                    <h2 className="text-lg font-bold">Real-time News Feed</h2>
                   </div>
                   <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
-                    {newsItems.length > 0 ? (
-                      newsItems.map((item, i) => (
+                    {realtimeNews.length > 0 ? (
+                      realtimeNews.map((item, i) => (
                         <a
                           key={i}
                           href={item.url}
@@ -2229,7 +2246,7 @@ function DashboardContent() {
                         >
                           <p className="font-bold text-sm mb-2 line-clamp-2 group-hover:text-primary transition-colors">{item.title}</p>
                           <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider">
-                            <span className="text-primary">{item.source || "CryptoPanic"}</span>
+                            <span className="text-primary">{item.source || "CryptoCompare"}</span>
                             <span className="text-white/40">{item.published_at ? new Date(item.published_at).toLocaleTimeString() : ""}</span>
                           </div>
                         </a>
@@ -2238,6 +2255,38 @@ function DashboardContent() {
                       <div className="text-center py-20 opacity-20">
                         <Newspaper className="w-12 h-12 mx-auto mb-4" />
                         <p className="text-xs font-bold uppercase tracking-widest">No news available</p>
+                      </div>
+                    )}
+                  </div>
+                </GlassCard>
+
+                {/* Crypto News - Trending/Delayed */}
+                <GlassCard className="border border-indigo-500/20" delay={0.25}>
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                    <TrendingUp className="w-5 h-5 text-indigo-400" />
+                    <h2 className="text-lg font-bold">Trending & Insights (CryptoPanic)</h2>
+                  </div>
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
+                    {trendingNews.length > 0 ? (
+                      trendingNews.map((item, i) => (
+                        <a
+                          key={i}
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-indigo-500/30 transition-all group"
+                        >
+                          <p className="font-bold text-sm mb-2 line-clamp-2 group-hover:text-indigo-400 transition-colors">{item.title}</p>
+                          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider">
+                            <span className="text-indigo-400">{item.source || "CryptoPanic"}</span>
+                            <span className="text-white/40">24h+ Insights</span>
+                          </div>
+                        </a>
+                      ))
+                    ) : (
+                      <div className="text-center py-20 opacity-20">
+                        <Newspaper className="w-12 h-12 mx-auto mb-4" />
+                        <p className="text-xs font-bold uppercase tracking-widest">No trending updates</p>
                       </div>
                     )}
                   </div>

@@ -579,7 +579,7 @@ def main():
                                 },
                                 "positions": dashboard_positions,
                                 "market": {
-                                    "fear_greed": external_data.get("fear_greed", {}).get("value", 50),
+                                    "fear_greed": external_data.get("fear_greed", {}).get("value"),
                                     "btc_dominance": external_data.get("market", {}).get("btc_dominance", 0),
                                     "top_symbols": top_syms,
                                     "macro": external_data.get("macro", {}),
