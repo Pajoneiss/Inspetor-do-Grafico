@@ -1036,7 +1036,7 @@ def api_ai_ask():
     # Call OpenAI with AI identity
     try:
         response = openai_client.chat.completions.create(
-            model=os.getenv("AI_MODEL", "gpt-4o-mini"),
+            model=TG_CHAT_MODEL,
             messages=[
                 {
                     "role": "system",
@@ -1065,7 +1065,7 @@ Keep answers concise and practical."""
                     "content": question
                 }
             ],
-            temperature=0.7,
+            temperature=AI_TEMPERATURE,
             max_tokens=300
         )
         
