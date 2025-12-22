@@ -1161,7 +1161,7 @@ def fetch_trending_coins() -> Dict[str, Any]:
 def fetch_altcoin_season() -> Dict[str, Any]:
     """
     Fetch Altcoin Season Index
-    Scrapes blockchaincenter.net using requests + BeautifulSoup
+    Tries multiple sources: BlockchainCenter scraping + CoinGecko API fallback
     """
     cache_key = "altcoin_season"
     cached = _get_cache(cache_key)
@@ -1175,49 +1175,88 @@ def fetch_altcoin_season() -> Dict[str, Any]:
         "error": None
     }
     
+    # Try BlockchainCenter first
     try:
         import requests
         import re
         url = "https://www.blockchaincenter.net/en/altcoin-season-index/"
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         
         resp = requests.get(url, headers=headers, timeout=API_TIMEOUT_SECONDS, verify=False)
         if resp.status_code == 200:
             html = resp.text
-            # Primary regex: looking for the large number used in the donut chart
-            match = re.search(r'<div class="number">(\d+)</div>', html)
-            if not match:
-                # Secondary regex: looking for the value in the chartData script
-                match = re.search(r'chartData\.labels.*?\n.*?data:.*?(\d+)', html, re.DOTALL)
-            if not match:
-                # Tertiary regex: looking for any large number near "Altcoin Season Index" text
-                match = re.search(r'(\d+)\s*</div>\s*<div class="text">Altcoin Season Index', html)
             
-            if match:
-                val = int(match.group(1))
-                if val == 0:
-                    # If 0, try to find another number in the page that might be it
-                    val_match = re.search(r'The Altcoin Season Index is (\d+)', html)
-                    if val_match:
-                        val = int(val_match.group(1))
-                
-                result = {
-                    "index": val,
-                    "blockchaincenter": {
-                        "season_index": val,
-                        "formatted_season_index": str(val)
-                    },
-                    "status": "altcoin" if val >= 75 else "bitcoin" if val <= 25 else "neutral",
-                    "error": None
-                }
-                _set_cache(cache_key, result, TTL_MARKET * 10)
-                print(f"[ALTSEASON] Scraped index: {val}")
-            else:
-                print(f"[ALTSEASON][WARN] Regex failed to find index in HTML")
+            # Try multiple regex patterns
+            patterns = [
+                r'<div class="number">(\d+)</div>',  # Primary pattern
+                r'data:\s*\[(\d+)\]',  # Chart data pattern
+                r'value["\']?\s*:\s*(\d+)',  # Value property
+                r'altcoin.*?(\d{1,3})',  # Near "altcoin" text
+                r'(\d{1,3})\s*%?\s*</div>\s*<div[^>]*>.*?Altcoin',  # Before "Altcoin" text
+            ]
+            
+            for pattern in patterns:
+                match = re.search(pattern, html, re.IGNORECASE)
+                if match:
+                    val = int(match.group(1))
+                    if 0 <= val <= 100:  # Sanity check
+                        result = {
+                            "index": val,
+                            "blockchaincenter": {
+                                "season_index": val,
+                                "formatted_season_index": str(val)
+                            },
+                            "status": "altcoin" if val >= 75 else "bitcoin" if val <= 25 else "neutral",
+                            "error": None
+                        }
+                        _set_cache(cache_key, result, TTL_MARKET * 10)
+                        print(f"[ALTSEASON] Scraped index: {val}")
+                        return result
+            
+            print(f"[ALTSEASON][WARN] All regex patterns failed")
         else:
             print(f"[ALTSEASON][WARN] BlockchainCenter status: {resp.status_code}")
     except Exception as e:
         print(f"[ALTSEASON][ERROR] Scraping failed: {e}")
+    
+    # Fallback: Calculate from CoinGecko top 100
+    try:
+        import requests
+        print("[ALTSEASON] Trying CoinGecko fallback...")
+        url = "https://api.coingecko.com/api/v3/coins/markets"
+        params = {
+            "vs_currency": "usd",
+            "order": "market_cap_desc",
+            "per_page": 100,
+            "page": 1,
+            "sparkline": False,
+            "price_change_percentage": "90d"
+        }
+        resp = requests.get(url, params=params, timeout=API_TIMEOUT_SECONDS)
+        if resp.status_code == 200:
+            coins = resp.json()
+            # Count how many of top 50 altcoins outperformed BTC in last 90 days
+            btc_change = next((c["price_change_percentage_90d_in_currency"] for c in coins if c["id"] == "bitcoin"), 0)
+            altcoins = [c for c in coins[1:51] if c["id"] != "bitcoin"]  # Skip BTC
+            outperforming = sum(1 for c in altcoins if c.get("price_change_percentage_90d_in_currency", 0) > btc_change)
+            
+            # Calculate index (percentage of altcoins outperforming BTC)
+            val = int((outperforming / len(altcoins)) * 100) if altcoins else 50
+            
+            result = {
+                "index": val,
+                "blockchaincenter": {
+                    "season_index": val,
+                    "formatted_season_index": str(val)
+                },
+                "status": "altcoin" if val >= 75 else "bitcoin" if val <= 25 else "neutral",
+                "error": None
+            }
+            _set_cache(cache_key, result, TTL_MARKET * 5)  # Shorter cache for fallback
+            print(f"[ALTSEASON][FALLBACK] Calculated index from CoinGecko: {val}")
+            return result
+    except Exception as e:
+        print(f"[ALTSEASON][ERROR] CoinGecko fallback failed: {e}")
         result["error"] = str(e)
     
     return result
