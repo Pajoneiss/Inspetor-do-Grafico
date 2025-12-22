@@ -1034,7 +1034,9 @@ def fetch_trending_coins() -> Dict[str, Any]:
                         "name": coin.get("name", ""),
                         "symbol": coin.get("symbol", "").upper(),
                         "rank": coin.get("market_cap_rank", 0),
-                        "score": coin.get("score", 0)
+                        "score": coin.get("score", 0),
+                        "thumb": coin.get("thumb", ""),
+                        "small": coin.get("small", "")
                     })
                 result = {"coins": coins, "error": None}
                 _set_cache(cache_key, result, TTL_NEWS)
@@ -1056,7 +1058,8 @@ def fetch_altcoin_season() -> Dict[str, Any]:
     
     try:
         import httpx
-        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+        # SSL Verification disabled due to certificate errors on api.blockchaincenter.net
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS, verify=False) as client:
             resp = client.get("https://api.blockchaincenter.net/api/altseason/")
             if resp.status_code == 200:
                 data = resp.json()

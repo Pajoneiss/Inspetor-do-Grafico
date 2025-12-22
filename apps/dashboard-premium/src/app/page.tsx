@@ -1684,8 +1684,8 @@ function DashboardContent() {
               className="space-y-8"
             >
               <div className="flex flex-col gap-2">
-                <h2 className="text-3xl font-bold tracking-tight">Active Market Charts</h2>
-                <p className="text-muted-foreground">Real-time analysis for current fleet positions</p>
+                <h2 className="text-3xl font-bold tracking-tight">{isPt ? 'Gráficos de Mercado Ativos' : 'Active Market Charts'}</h2>
+                <p className="text-muted-foreground">{isPt ? 'Análise em tempo real das posições da frota' : 'Real-time analysis for current fleet positions'}</p>
               </div>
 
               {positions.length > 0 ? (
@@ -1723,7 +1723,7 @@ function DashboardContent() {
                               )}>
                                 {pos.unrealized_pnl >= 0 ? '+' : ''}${Number(pos.unrealized_pnl).toFixed(2)}
                               </p>
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Unrealized PnL</p>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{isPt ? 'PnL Não Realizado' : 'Unrealized PnL'}</p>
                             </div>
                           </div>
 
@@ -1748,7 +1748,7 @@ function DashboardContent() {
                           {/* AI Entry Rationale */}
                           {posTradeLog?.entry_rationale && (
                             <div className="p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                              <p className="text-[9px] font-bold text-purple-300 uppercase tracking-wider mb-1">AI Entry Reason</p>
+                              <p className="text-[9px] font-bold text-purple-300 uppercase tracking-wider mb-1">{isPt ? 'Razão de Entrada IA' : 'AI Entry Reason'}</p>
                               <p className="text-[10px] text-white/80 leading-relaxed line-clamp-2">{posTradeLog.entry_rationale}</p>
                             </div>
                           )}
@@ -1770,9 +1770,9 @@ function DashboardContent() {
                       className="absolute inset-0 bg-primary blur-3xl rounded-full"
                     />
                   </div>
-                  <h3 className="text-xl font-bold mb-2">No Active Positions</h3>
+                  <h3 className="text-xl font-bold mb-2">{isPt ? 'Nenhuma Posição Ativa' : 'No Active Positions'}</h3>
                   <p className="text-muted-foreground text-center max-w-sm px-8">
-                    Open positions will automatically appear here with real-time TradingView charts.
+                    {isPt ? 'Posições abertas aparecerão automaticamente aqui com gráficos TradingView em tempo real.' : 'Open positions will automatically appear here with real-time TradingView charts.'}
                   </p>
                 </div>
               )}
@@ -1792,8 +1792,8 @@ function DashboardContent() {
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 mb-8">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Total Value</h3>
-                      <span className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] font-bold text-white/50">Combined</span>
+                      <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{isPt ? 'Valor Total' : 'Total Value'}</h3>
+                      <span className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] font-bold text-white/50">{isPt ? 'Combinado' : 'Combined'}</span>
                     </div>
                     <div className="flex items-baseline gap-3">
                       <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter text-white drop-shadow-2xl">
@@ -1817,17 +1817,17 @@ function DashboardContent() {
                     </div>
                     <div className="flex items-center gap-6 mt-4 text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
                       <div>
-                        <span className="block text-[9px] mb-0.5">Unrealized PnL</span>
+                        <span className="block text-[9px] mb-0.5">{isPt ? 'PnL Não Realizado' : 'Unrealized PnL'}</span>
                         <span className={cn("text-white", (status?.unrealized_pnl || 0) >= 0 ? "text-[#00ff9d]" : "text-red-500")}>
                           {(status?.unrealized_pnl || 0) >= 0 ? '+' : ''}${Number(status?.unrealized_pnl || 0).toFixed(2)}
                         </span>
                       </div>
                       <div>
-                        <span className="block text-[9px] mb-0.5">Margin Usage</span>
+                        <span className="block text-[9px] mb-0.5">{isPt ? 'Uso Margem' : 'Margin Usage'}</span>
                         <span className="text-warning">{status?.margin_usage || 0}%</span>
                       </div>
                       <div>
-                        <span className="block text-[9px] mb-0.5">Leverage</span>
+                        <span className="block text-[9px] mb-0.5">{isPt ? 'Alavancagem' : 'Leverage'}</span>
                         <span className="text-primary">{(((status as any)?.total_exposure || 0) / (status?.equity || 1)).toFixed(2)}x</span>
                       </div>
                     </div>
@@ -1852,7 +1852,7 @@ function DashboardContent() {
                       ))}
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">All PnL (Combined)</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{isPt ? 'PnL Total (Combinado)' : 'All PnL (Combined)'}</p>
                       <p className={cn("text-lg font-bold", (fullAnalytics?.pnl_total || 0) >= 0 ? "text-[#00ff9d]" : "text-red-500")}>
                         {(fullAnalytics?.pnl_total || 0) >= 0 ? '+' : ''}${Number(fullAnalytics?.pnl_total || 0).toFixed(2)}
                       </p>
@@ -1875,7 +1875,7 @@ function DashboardContent() {
                       if (filteredHistory.length < 2) {
                         return (
                           <div className="absolute inset-0 flex items-center justify-center opacity-30">
-                            <p className="text-xs font-bold uppercase tracking-widest">Insufficient data for this period</p>
+                            <p className="text-xs font-bold uppercase tracking-widest">{isPt ? 'Dados insuficientes para este período' : 'Insufficient data for this period'}</p>
                           </div>
                         );
                       }
@@ -1963,7 +1963,7 @@ function DashboardContent() {
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center opacity-40">
                       <Activity className={cn("w-16 h-16 animate-pulse mb-4", (fullAnalytics?.pnl_total || 0) >= 0 ? "text-[#00ff9d]" : "text-red-500")} />
-                      <p className="text-xs font-bold uppercase tracking-widest">Syncing Blockchain History...</p>
+                      <p className="text-xs font-bold uppercase tracking-widest">{isPt ? 'Sincronizando Histórico Blockchain...' : 'Syncing Blockchain History...'}</p>
                     </div>
                   )}
                 </div>
@@ -1972,7 +1972,7 @@ function DashboardContent() {
                 {/* Position Distribution Bar */}
                 <div className="mb-8 p-5 rounded-2xl bg-black/20 border border-white/5 shadow-inner">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Live Position Distribution</p>
+                    <p className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'Distribuição de Posições (Ao Vivo)' : 'Live Position Distribution'}</p>
                     <div className="flex gap-4">
                       <div className="flex items-center gap-1.5">
                         <div className="w-1.5 h-1.5 rounded-full bg-[#00ff9d]" />
@@ -2013,7 +2013,14 @@ function DashboardContent() {
                             : "text-muted-foreground hover:text-white"
                         )}
                       >
-                        {tab}
+                        {isPt ? {
+                          'Asset Positions': 'Posições',
+                          'Open Orders': 'Ordens Abertas',
+                          'Recent Fills': 'Execuções Recentes',
+                          'Completed Trades': 'Trades Completos',
+                          'TWAP': 'TWAP',
+                          'Deposits & Withdrawals': 'Depósitos & Saques'
+                        }[tab] : tab}
                       </button>
                     ))}
                     <div className="flex-1" />
@@ -2029,13 +2036,13 @@ function DashboardContent() {
                       <table className="w-full text-left border-collapse">
                         <thead className="bg-black/40">
                           <tr>
-                            <th className="px-4 py-3 text-left text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Moeda</th>
-                            <th className="px-4 py-3 text-left text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Lado</th>
-                            <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Investimento</th>
-                            <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Preço Entrada</th>
-                            <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Preço Atual</th>
-                            <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Lucro/Prejuízo</th>
-                            <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">Status</th>
+                            <th className="px-4 py-3 text-left text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'Moeda' : 'Symbol'}</th>
+                            <th className="px-4 py-3 text-left text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'Lado' : 'Side'}</th>
+                            <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'Investimento' : 'Size (USD)'}</th>
+                            <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'Preço Entrada' : 'Entry Price'}</th>
+                            <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'Preço Atual' : 'Mark Price'}</th>
+                            <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'PnL (USD)' : 'PnL (USD)'}</th>
+                            <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'Funding' : 'Funding'}</th>
                           </tr>
                         </thead>
                         <tbody className="text-sm">
@@ -2078,7 +2085,7 @@ function DashboardContent() {
                           ) : (
                             <tr className="border-b border-white/5">
                               <td colSpan={9} className="py-12 text-center text-muted-foreground/50 text-xs uppercase tracking-widest font-bold">
-                                No active positions found in fleet
+                                {isPt ? 'Nenhuma posição ativa na frota' : 'No active positions found in fleet'}
                               </td>
                             </tr>
                           )}
@@ -2438,7 +2445,7 @@ function DashboardContent() {
                                   rainbowData.band_index >= 6 ? "bg-gradient-to-r from-red-500 to-red-300" :
                                     "bg-gradient-to-r from-yellow-500 to-orange-500"
                               )}
-                              style={{ width: `${Math.min(100, Math.max(0, (rainbowData.band_index / 8) * 100))}%` }}
+                              style={{ width: `${Math.min(100, Math.max(0, ((rainbowData.band_index ?? 4) / 8) * 100))}%` }}
                             />
                           </div>
                           <div className="flex justify-between text-[8px] text-white/20 font-black uppercase tracking-widest">
@@ -2508,15 +2515,15 @@ function DashboardContent() {
                       <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2 flex items-center gap-2">
                         <Fuel className="w-3 h-3 text-white/40" /> {isPt ? 'Gás Ethereum (Gwei)' : 'ETH Gas'}
                       </h3>
-                      {ethGasData && ethGasData.speeds ? (
+                      {ethGasData && ethGasData.standard ? (
                         <div className="space-y-2">
                           <div className="flex justify-between items-center text-xs border-b border-white/5 pb-1">
                             <span className="text-white/50">{isPt ? 'Padrão' : 'Standard'}</span>
-                            <span className="font-bold text-blue-400">{ethGasData.speeds[1]?.gasPrice || 0}</span>
+                            <span className="font-bold text-blue-400">{ethGasData.standard || 0}</span>
                           </div>
                           <div className="flex justify-between items-center text-xs">
                             <span className="text-white/50">{isPt ? 'Rápido' : 'Fast'}</span>
-                            <span className="font-bold text-green-400">{ethGasData.speeds[2]?.gasPrice || 0}</span>
+                            <span className="font-bold text-green-400">{ethGasData.fast || 0}</span>
                           </div>
                         </div>
                       ) : (
@@ -2558,7 +2565,7 @@ function DashboardContent() {
                       <div>
                         <p className="text-[10px] font-bold text-green-400 uppercase tracking-widest mb-1">{isPt ? 'Valor Total Bloqueado (DeFi)' : 'Total Value Locked'}</p>
                         <p className="text-2xl font-black text-white drop-shadow-md">
-                          {tvlData?.totalLiquidityUSD ? `$${(tvlData.totalLiquidityUSD / 1e9).toFixed(2)}B` : '---'}
+                          {tvlData?.total_tvl ? `$${(tvlData.total_tvl / 1e9).toFixed(2)}B` : '---'}
                         </p>
                       </div>
                       <Layers className="w-8 h-8 text-green-500/20" />
@@ -2573,15 +2580,15 @@ function DashboardContent() {
                         {trendingCoins.length > 0 ? (
                           trendingCoins.slice(0, 4).map((coin: any, i: number) => (
                             <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-white/5 border border-white/5">
-                              <img src={coin.item.thumb} alt={coin.item.symbol} className="w-5 h-5 rounded-full opacity-80" />
+                              <img src={coin.thumb} alt={coin.symbol} className="w-5 h-5 rounded-full opacity-80" />
                               <div className="flex flex-col">
-                                <span className="text-xs font-bold">{coin.item.name} <span className="text-[9px] text-white/40">{coin.item.symbol}</span></span>
-                                <span className="text-[9px] text-white/50">Rank #{coin.item.market_cap_rank}</span>
+                                <span className="text-xs font-bold">{coin.name} <span className="text-[9px] text-white/40">{coin.symbol}</span></span>
+                                <span className="text-[9px] text-white/50">Rank #{coin.rank}</span>
                               </div>
                             </div>
                           ))
                         ) : (
-                          <div className="text-[10px] opacity-30 uppercase col-span-2 text-center py-2">No Trending Data</div>
+                          <div className="text-[10px] opacity-30 uppercase col-span-2 text-center py-2">{isPt ? 'Sem Dados de Tendência' : 'No Trending Data'}</div>
                         )}
                       </div>
                     </div>
@@ -2622,7 +2629,7 @@ function DashboardContent() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-10 opacity-20 text-[10px] font-bold uppercase">Loading Ratios...</div>
+                    <div className="text-center py-10 opacity-20 text-[10px] font-bold uppercase">{isPt ? 'Carregando Taxas...' : 'Loading Ratios...'}</div>
                   )}
                 </GlassCard>
 
@@ -2641,8 +2648,8 @@ function DashboardContent() {
                       <MessageSquare className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold tracking-tight">AI Fleet Communication</h3>
-                      <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">Direct Neural Link with Bot Core</p>
+                      <h3 className="text-2xl font-bold tracking-tight">{isPt ? 'Comunicação Frota IA' : 'AI Fleet Communication'}</h3>
+                      <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">{isPt ? 'Link Neural Direto com Núcleo do Bot' : 'Direct Neural Link with Bot Core'}</p>
                     </div>
                   </div>
 
@@ -2650,7 +2657,7 @@ function DashboardContent() {
                     {chatMessages.length === 0 ? (
                       <div className="h-full flex flex-col items-center justify-center opacity-20">
                         <BrainCircuit className="w-16 h-16 mb-4 animate-pulse" />
-                        <p className="text-sm font-bold uppercase tracking-widest">Start a conversation...</p>
+                        <p className="text-sm font-bold uppercase tracking-widest">{isPt ? 'Inicie uma conversa...' : 'Start a conversation...'}</p>
                       </div>
                     ) : (
                       chatMessages.map((msg, i) => (
@@ -2665,7 +2672,7 @@ function DashboardContent() {
                           </div>
                           {msg.role === 'user' && (
                             <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                              <span className="text-xs font-bold">YOU</span>
+                              <span className="text-xs font-bold">{isPt ? 'VOCÊ' : 'YOU'}</span>
                             </div>
                           )}
                         </motion.div>
@@ -2688,7 +2695,7 @@ function DashboardContent() {
                   </div>
 
                   <div className="flex gap-3 pt-4 border-t border-white/5">
-                    <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && sendChatMessage()} placeholder="Ask me anything..." disabled={chatLoading} className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 focus:outline-none text-sm placeholder:text-muted-foreground" />
+                    <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && sendChatMessage()} placeholder={isPt ? "Pergunte-me qualquer coisa..." : "Ask me anything..."} disabled={chatLoading} className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 focus:outline-none text-sm placeholder:text-muted-foreground" />
                     <button onClick={sendChatMessage} disabled={chatLoading || !chatInput.trim()} className="px-6 py-3 rounded-xl bg-primary text-black font-bold flex items-center gap-2">
                       <Send className="w-4 h-4" />
                     </button>
@@ -2706,7 +2713,7 @@ function DashboardContent() {
                     <div className="p-3 rounded-2xl bg-white/10 text-white">
                       <Terminal className="w-6 h-6" />
                     </div>
-                    <h3 className="text-2xl font-bold tracking-tight">Execution Stream</h3>
+                    <h3 className="text-2xl font-bold tracking-tight">{isPt ? 'Fluxo de Execução' : 'Execution Stream'}</h3>
                   </div>
                   <div className="space-y-3 h-[450px] overflow-y-auto no-scrollbar">
                     {allThoughts?.length > 0 ? (
@@ -2719,7 +2726,7 @@ function DashboardContent() {
                         </div>
                       ))
                     ) : (
-                      <div className="text-xs text-secondary/70 italic text-center py-20">Monitoring secure neural link...</div>
+                      <div className="text-xs text-secondary/70 italic text-center py-20">{isPt ? 'Monitorando link neural seguro...' : 'Monitoring secure neural link...'}</div>
                     )}
                   </div>
                 </GlassCard>
@@ -2730,8 +2737,8 @@ function DashboardContent() {
 
         <footer className="mt-12 pt-8 border-t border-white/5 flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           <div className="flex gap-8">
-            <span>Hyperliquid API: <span className={cn(error ? "text-secondary" : "text-primary")}>{error ? "Offline" : "Connected"}</span></span>
-            <span>OpenAI gpt-4o-mini: <span className="text-primary">Operational</span></span>
+            <span>Hyperliquid API: <span className={cn(error ? "text-secondary" : "text-primary")}>{error ? (isPt ? "Offline" : "Offline") : (isPt ? "Conectado" : "Connected")}</span></span>
+            <span>OpenAI gpt-4o-mini: <span className="text-primary">{isPt ? "Operacional" : "Operational"}</span></span>
           </div>
           <div>© 2025 Ladder Labs</div>
         </footer>
