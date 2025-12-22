@@ -471,7 +471,7 @@ class TelegramBot:
         
         # External data (with timeout protection)
         try:
-            from data_sources import get_all_external_data, format_external_data_for_telegram
+            from data_sources import get_all_external_data, format_external_data_for_telegram, fetch_economic_calendar, format_economic_calendar
             
             # Run in thread to not block
             loop = asyncio.get_event_loop()
@@ -481,6 +481,17 @@ class TelegramBot:
             external_text = format_external_data_for_telegram(external_data)
             if external_text and external_text != "(dados externos indisponíveis)":
                 text += f"\n{escape_md(external_text)}\n"
+
+            # Economic calendar
+            try:
+                calendar_events = await loop.run_in_executor(pool, fetch_economic_calendar, 3) # days_ahead=3
+                calendar_str = format_economic_calendar(calendar_events, max_events=3)
+                if calendar_str:
+                    text += f"\n📅 *CALENDÁRIO ECONÔMICO (Próximos 3 dias):*\n{escape_md(calendar_str)}\n"
+            except Exception as e:
+                print(f"[TG][WARN] Economic calendar fetch failed: {e}")
+                text += f"\n📅 *CALENDÁRIO ECONÔMICO (Próximos 3 dias):*\n(indisponível)\n"
+
         except Exception as e:
             print(f"[TG][WARN] External data fetch failed: {e}")
         

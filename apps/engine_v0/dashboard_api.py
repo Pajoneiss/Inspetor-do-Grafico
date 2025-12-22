@@ -358,11 +358,12 @@ def api_crypto_prices():
                     "symbol": "ETH",
                     "formatted": f"${eth_val:,.2f}" if eth_val > 0 else "---"
                 }
-def get_crypto_prices():
-    """Get current crypto prices from Hyperliquid"""
-    try:
-        from data_sources import fetch_hl_prices
-        prices = fetch_hl_prices()
+            },
+            "server_time_ms": int(time.time() * 1000)
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
         return jsonify({
             "ok": True,
             "prices": prices,
