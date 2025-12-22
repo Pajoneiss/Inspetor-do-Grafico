@@ -927,21 +927,29 @@ def fetch_funding_rates() -> Dict[str, Any]:
             resp = client.get("https://fapi.binance.com/fapi/v1/premiumIndex")
             if resp.status_code == 200:
                 data = resp.json()
-                rates = {}
+                rates_list = []
                 total_rate, count = 0, 0
                 
                 for item in data:
                     symbol = item.get("symbol", "")
                     if symbol in symbols:
-                        rate = float(item.get("lastFundingRate", 0)) * 100
-                        rates[symbol.replace("USDT", "")] = round(rate, 4)
-                        total_rate += rate
+                        rate = float(item.get("lastFundingRate", 0))
+                        # Format for frontend: symbol and rate as string/float
+                        rates_list.append({
+                            "symbol": symbol.replace("USDT", ""),
+                            "lastFundingRate": str(rate)
+                        })
+                        rates[symbol.replace("USDT", "")] = round(rate * 100, 4)
+                        total_rate += (rate * 100)
                         count += 1
                 
+                # Sort by funding rate descending (highest to lowest) to show interesting ones
+                rates_list.sort(key=lambda x: float(x["lastFundingRate"]), reverse=True)
+
                 avg_rate = total_rate / count if count > 0 else 0
                 sentiment = "bullish" if avg_rate > 0.05 else "bearish" if avg_rate < -0.05 else "neutral"
                 
-                result = {"rates": rates, "average": round(avg_rate, 4), "sentiment": sentiment, "error": None}
+                result = {"rates": rates, "funding_rates": rates_list, "average": round(avg_rate, 4), "sentiment": sentiment, "error": None}
                 _set_cache(cache_key, result, TTL_MARKET * 5)
     except Exception as e:
         print(f"[FUNDING][WARN] Failed: {e}")
@@ -957,11 +965,12 @@ def fetch_long_short_ratio() -> Dict[str, Any]:
     if cached:
         return cached
     
-    result = {"ratios": {}, "btc_ratio": 1.0, "sentiment": "neutral", "error": None}
+    result = {"ratios": {}, "global_ratio": [], "btc_ratio": 1.0, "sentiment": "neutral", "error": None}
     
     try:
         import httpx
         ratios = {}
+        global_ratio_list = []
         
         with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
             for symbol in ["BTCUSDT", "ETHUSDT", "SOLUSDT"]:
@@ -970,8 +979,17 @@ def fetch_long_short_ratio() -> Dict[str, Any]:
                 if resp.status_code == 200:
                     data = resp.json()
                     if data:
-                        ratio = float(data[0].get("longShortRatio", 1.0))
-                        ratios[symbol.replace("USDT", "")] = round(ratio, 2)
+                        item = data[0]
+                        ratio = float(item.get("longShortRatio", 1.0))
+                        clean_symbol = symbol.replace("USDT", "")
+                        ratios[clean_symbol] = round(ratio, 2)
+                        
+                        global_ratio_list.append({
+                            "symbol": clean_symbol,
+                            "longShortRatio": str(ratio),
+                            "longAccount": item.get("longAccount", "0.5"),
+                            "shortAccount": item.get("shortAccount", "0.5")
+                        })
         
         btc_ratio = ratios.get("BTC", 1.0)
         if btc_ratio > 1.5:
@@ -985,7 +1003,7 @@ def fetch_long_short_ratio() -> Dict[str, Any]:
         else:
             sentiment = "neutral"
         
-        result = {"ratios": ratios, "btc_ratio": btc_ratio, "sentiment": sentiment, "error": None}
+        result = {"ratios": ratios, "global_ratio": global_ratio_list, "btc_ratio": btc_ratio, "sentiment": sentiment, "error": None}
         _set_cache(cache_key, result, TTL_MARKET * 5)
     except Exception as e:
         print(f"[L/S][WARN] Failed: {e}")

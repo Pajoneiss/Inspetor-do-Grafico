@@ -598,24 +598,14 @@ function DashboardContent() {
         }
 
         // New Features State Updates
-        if (halvingRes.ok) setHalvingData(halvingRes.data);
-        if (tvlRes.ok) setTvlData(tvlRes.data);
-        if (fundingRes.ok) setFundingData(fundingRes.data);
-        if (longShortRes.ok) setLongShortData(longShortRes.data);
-        if (trendingRes.ok) setTrendingCoins(trendingRes.data);
-        if (altSeasonRes.ok) setAltSeasonData(altSeasonRes.data);
-        if (gasRes.ok) setEthGasData(gasRes.data);
-        if (rainbowRes.ok) setRainbowData(rainbowRes.data);
-
-        // Set new data
-        if (results[4]?.ok) setHalvingData(results[4]);
-        if (results[5]?.ok) setTvlData(results[5]);
-        if (results[6]?.ok) setFundingData(results[6]);
-        if (results[7]?.ok) setLongShortData(results[7]);
-        if (results[8]?.ok) setTrendingCoins(results[8].coins || []);
-        if (results[9]?.ok) setAltSeasonData(results[9]);
-        if (results[10]?.ok) setEthGasData(results[10]);
-        if (results[11]?.ok) setRainbowData(results[11]);
+        if (halvingRes.ok) setHalvingData(halvingRes);
+        if (tvlRes.ok) setTvlData(tvlRes);
+        if (fundingRes.ok) setFundingData(fundingRes);
+        if (longShortRes.ok) setLongShortData(longShortRes);
+        if (trendingRes.ok) setTrendingCoins(trendingRes.coins || []);
+        if (altSeasonRes.ok) setAltSeasonData(altSeasonRes);
+        if (gasRes.ok) setEthGasData(gasRes);
+        if (rainbowRes.ok) setRainbowData(rainbowRes);
       } catch (err) {
         console.error("News data fetch error:", err);
       }
@@ -2381,7 +2371,7 @@ function DashboardContent() {
                 <GlassCard className="border border-secondary/20" delay={0.5}>
                   <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
                     <TrendingDown className="w-5 h-5 text-secondary" />
-                    <h2 className="text-lg font-bold">Top Losers (24h)</h2>
+                    <h2 className="text-lg font-bold">{isPt ? 'Maiores Baixas (24h)' : 'Top Losers (24h)'}</h2>
                   </div>
                   <div className="space-y-2">
                     {topLosers.length > 0 ? (
@@ -2402,7 +2392,7 @@ function DashboardContent() {
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-10 opacity-20 text-[10px] font-bold uppercase tracking-widest">Awaiting market data...</div>
+                      <div className="text-center py-10 opacity-20 text-[10px] font-bold uppercase tracking-widest">{isPt ? 'Aguardando dados...' : 'Awaiting market data...'}</div>
                     )}
                   </div>
                 </GlassCard>
@@ -2415,7 +2405,7 @@ function DashboardContent() {
                 <GlassCard className="border border-purple-500/20" delay={0.6}>
                   <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
                     <BarChart3 className="w-5 h-5 text-purple-400" />
-                    <h2 className="text-lg font-bold">{isPt ? 'Bitcoin Rainbow & Altseason' : 'Bitcoin Rainbow & Altseason'}</h2>
+                    <h2 className="text-lg font-bold">{isPt ? 'Gráfico Arco-íris & Altseason' : 'Bitcoin Rainbow & Altseason'}</h2>
                   </div>
 
                   <div className="space-y-6">
@@ -2438,8 +2428,8 @@ function DashboardContent() {
                       {rainbowData && (
                         <div className="space-y-3">
                           <div className="flex justify-between text-xs font-bold text-white/50">
-                            <span>BTC Price: <span className="text-white">${rainbowData.btc_price?.toLocaleString()}</span></span>
-                            <span>Fair Value: <span className="text-white">${rainbowData.log_price?.toLocaleString()}</span></span>
+                            <span>{isPt ? 'Preço BTC:' : 'BTC Price:'} <span className="text-white">${rainbowData.btc_price?.toLocaleString()}</span></span>
+                            <span>{isPt ? 'Preço Justo:' : 'Fair Value:'} <span className="text-white">${rainbowData.log_price?.toLocaleString()}</span></span>
                           </div>
                           <div className="relative h-2 bg-white/10 rounded-full overflow-hidden">
                             <div
@@ -2452,9 +2442,9 @@ function DashboardContent() {
                             />
                           </div>
                           <div className="flex justify-between text-[8px] text-white/20 font-black uppercase tracking-widest">
-                            <span>Fire Sale</span>
+                            <span>{isPt ? 'Promoção' : 'Fire Sale'}</span>
                             <span>HODL</span>
-                            <span>Bubble</span>
+                            <span>{isPt ? 'Bolha' : 'Bubble'}</span>
                           </div>
                         </div>
                       )}
@@ -2465,7 +2455,7 @@ function DashboardContent() {
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2">
                           <Gauge className="w-3 h-3 text-cyan-400" />
-                          Altcoin Season Index
+                          {isPt ? 'Índice Altcoin Season' : 'Altcoin Season Index'}
                         </h3>
                         <span className="text-xl font-black text-cyan-400">{altSeasonData?.blockchaincenter?.formatted_season_index || "---"}</span>
                       </div>
@@ -2501,14 +2491,14 @@ function DashboardContent() {
                     {/* Halving */}
                     <div className="p-4 rounded-xl bg-black/20 border border-white/5 flex flex-col justify-between relative overflow-hidden group">
                       <div className="bg-orange-500/5 absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Next BTC Halving</h3>
-                      <p className="text-xs text-white/50 mb-3">(Est: {halvingData?.next_halving_date || '---'})</p>
+                      <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">{isPt ? 'Próximo Halving BTC' : 'Next BTC Halving'}</h3>
+                      <p className="text-xs text-white/50 mb-3">({isPt ? 'Est:' : 'Est:'} {halvingData?.next_halving_date || '---'})</p>
 
                       <div className="text-center py-2">
                         <span className="text-2xl font-black text-orange-500 tracking-tighter">
                           {halvingData?.days_until_halving !== undefined ? halvingData.days_until_halving : '---'}
                         </span>
-                        <span className="text-[10px] block font-bold text-white/30 uppercase mt-1">Days Remaining</span>
+                        <span className="text-[10px] block font-bold text-white/30 uppercase mt-1">{isPt ? 'Dias Restantes' : 'Days Remaining'}</span>
                       </div>
                     </div>
 
@@ -2516,21 +2506,21 @@ function DashboardContent() {
                     <div className="p-4 rounded-xl bg-black/20 border border-white/5 flex flex-col justify-between relative overflow-hidden group">
                       <div className="bg-blue-500/5 absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                       <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <Fuel className="w-3 h-3 text-white/40" /> ETH Gas
+                        <Fuel className="w-3 h-3 text-white/40" /> {isPt ? 'Gás Ethereum (Gwei)' : 'ETH Gas'}
                       </h3>
                       {ethGasData && ethGasData.speeds ? (
                         <div className="space-y-2">
                           <div className="flex justify-between items-center text-xs border-b border-white/5 pb-1">
-                            <span className="text-white/50">Standard</span>
-                            <span className="font-bold text-blue-400">{ethGasData.speeds[1]?.gasPrice || 0} Gwei</span>
+                            <span className="text-white/50">{isPt ? 'Padrão' : 'Standard'}</span>
+                            <span className="font-bold text-blue-400">{ethGasData.speeds[1]?.gasPrice || 0}</span>
                           </div>
                           <div className="flex justify-between items-center text-xs">
-                            <span className="text-white/50">Fast</span>
-                            <span className="font-bold text-green-400">{ethGasData.speeds[2]?.gasPrice || 0} Gwei</span>
+                            <span className="text-white/50">{isPt ? 'Rápido' : 'Fast'}</span>
+                            <span className="font-bold text-green-400">{ethGasData.speeds[2]?.gasPrice || 0}</span>
                           </div>
                         </div>
                       ) : (
-                        <div className="text-center text-[10px] opacity-30 uppercase">No Data</div>
+                        <div className="text-center text-[10px] opacity-30 uppercase">{isPt ? 'Sem Dados' : 'No Data'}</div>
                       )}
                     </div>
                   </div>
@@ -2538,7 +2528,7 @@ function DashboardContent() {
                   {/* Funding Rates Mini-Table */}
                   <div className="mt-6">
                     <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
-                      <Activity className="w-3 h-3" /> Top Funding Rates (Binance)
+                      <Activity className="w-3 h-3" /> {isPt ? 'Taxas de Financiamento (Top)' : 'Top Funding Rates (Binance)'}
                     </h3>
                     {fundingData && fundingData.funding_rates ? (
                       <div className="grid grid-cols-3 gap-2">
@@ -2566,7 +2556,7 @@ function DashboardContent() {
                     {/* TVL */}
                     <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-500/10 to-transparent rounded-xl border border-green-500/20">
                       <div>
-                        <p className="text-[10px] font-bold text-green-400 uppercase tracking-widest mb-1">Total Value Locked</p>
+                        <p className="text-[10px] font-bold text-green-400 uppercase tracking-widest mb-1">{isPt ? 'Valor Total Bloqueado (DeFi)' : 'Total Value Locked'}</p>
                         <p className="text-2xl font-black text-white drop-shadow-md">
                           {tvlData?.totalLiquidityUSD ? `$${(tvlData.totalLiquidityUSD / 1e9).toFixed(2)}B` : '---'}
                         </p>
@@ -2577,7 +2567,7 @@ function DashboardContent() {
                     {/* Trending Coins (Simple List) */}
                     <div>
                       <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <Flame className="w-3 h-3 text-orange-500" /> Trending on CoinGecko
+                        <Flame className="w-3 h-3 text-orange-500" /> {isPt ? 'Em Alta no CoinGecko' : 'Trending on CoinGecko'}
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {trendingCoins.length > 0 ? (
