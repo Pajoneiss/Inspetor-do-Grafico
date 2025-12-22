@@ -12,8 +12,14 @@ AI_ENABLED = os.getenv("AI_ENABLED", "true").lower() == "true"
 
 # AI Configuration - Claude is the default trader
 AI_MODEL = os.getenv("AI_MODEL", "claude-sonnet-4-20250514")  # Claude as default
+AI_PROVIDER = os.getenv("AI_PROVIDER", "anthropic")
+AI_TEMPERATURE = float(os.getenv("AI_TEMPERATURE", "0.7"))
+AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "3000"))
 AI_LANGUAGE = os.getenv("AI_LANGUAGE", "english").lower() # 'english' or 'portuguese'
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")  # Kept for dashboard chat only
+
+# Telegram & Dashboard Chat
+TG_CHAT_MODEL = os.getenv("TG_CHAT_MODEL", "gpt-4o-mini")
 
 # External APIs - keys from Railway environment
 CMC_API_KEY = os.getenv("CMC_API_KEY", "")  # CoinMarketCap API key from env
@@ -41,6 +47,10 @@ ALLOW_SYMBOL_NOT_IN_SNAPSHOT = os.getenv("ALLOW_SYMBOL_NOT_IN_SNAPSHOT", "true")
 # ============================================================
 MIN_NOTIONAL_USD = float(os.getenv("MIN_NOTIONAL_USD", "15.0"))  # $15 minimum (exchange is $10)
 MIN_STOP_LOSS_PCT = float(os.getenv("MIN_STOP_LOSS_PCT", "1.0"))  # Minimum 1% SL distance - INFO for AI, not enforced
+DEFAULT_SL_DISTANCE = float(os.getenv("DEFAULT_SL_DISTANCE", "2.5"))  # Default 2.5% SL for dashboard viz
+DEFAULT_LEVERAGE = int(os.getenv("DEFAULT_LEVERAGE", "20"))
+MARGIN_BUFFER_FACTOR = float(os.getenv("MARGIN_BUFFER_FACTOR", "0.90"))  # 10% safety buffer
+TRIGGER_TOLERANCE_PCT = float(os.getenv("TRIGGER_TOLERANCE_PCT", "0.5"))  # 0.5% tolerance for SL/TP matching
 AUTO_CAP_LEVERAGE = os.getenv("AUTO_CAP_LEVERAGE", "true").lower() == "true"
 ORDER_SLIPPAGE = float(os.getenv("ORDER_SLIPPAGE", "0.01"))  # 1% default slippage for market orders
 
@@ -54,6 +64,10 @@ MAX_OPEN_ORDERS_PER_SYMBOL = int(os.getenv("MAX_OPEN_ORDERS_PER_SYMBOL", "6"))  
 MAX_POSITION_ADDS_PER_SYMBOL_PER_HOUR = int(os.getenv("MAX_POSITION_ADDS_PER_SYMBOL_PER_HOUR", "5"))  # Max 5 adds per hour
 STATE_INCLUDE_OPEN_ORDERS = os.getenv("STATE_INCLUDE_OPEN_ORDERS", "true").lower() == "true"
 STATE_INCLUDE_RECENT_ACTIONS = os.getenv("STATE_INCLUDE_RECENT_ACTIONS", "true").lower() == "true"
+
+# Operational Limits
+MAX_API_CONCURRENCY = int(os.getenv("MAX_API_CONCURRENCY", "3"))
+API_TIMEOUT_SECONDS = float(os.getenv("API_TIMEOUT_SECONDS", "5.0"))
 
 # ============================================================
 # 🤖 AI AUTONOMY - NO HARD LIMITS on trading decisions
@@ -72,6 +86,7 @@ HYPERLIQUID_NETWORK = os.getenv("HYPERLIQUID_NETWORK", "mainnet")
 # Telegram Configuration
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+TELEGRAM_ADMIN_IDS = os.getenv("TELEGRAM_ADMIN_IDS", "").split(",")
 ENABLE_TELEGRAM = os.getenv("ENABLE_TELEGRAM", "false").lower() == "true"
 
 # Testing Configuration
