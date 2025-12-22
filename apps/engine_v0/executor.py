@@ -1171,7 +1171,8 @@ def _execute_move_stop_to_breakeven(action: Dict[str, Any], is_paper: bool, hl_c
 def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) -> bool:
     """Execute SET_STOP_LOSS action with trigger price quantization and validation"""
     symbol = action.get("symbol", "?")
-    stop_price = action.get("stop_price", 0)
+    # Accept multiple field names for compatibility with LLM output
+    stop_price = action.get("stop_price") or action.get("stop_loss") or action.get("price") or 0
     reason = action.get("reason", "")
     
     if is_paper:
@@ -1286,7 +1287,8 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
 def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) -> bool:
     """Execute SET_TAKE_PROFIT action with trigger price quantization and idempotent check"""
     symbol = action.get("symbol", "?")
-    tp_price = action.get("tp_price", 0)
+    # Accept multiple field names for compatibility with LLM output
+    tp_price = action.get("tp_price") or action.get("take_profit") or action.get("price") or 0
     
     if is_paper:
         print(f"[PAPER] would SET_TAKE_PROFIT {symbol} tp=${tp_price:.2f}")
