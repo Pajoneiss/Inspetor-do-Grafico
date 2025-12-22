@@ -159,7 +159,10 @@ export default function NewsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white p-6 lg:p-10">
+    <div className="min-h-screen bg-[#0a0a0a] text-white p-6 lg:p-10 relative overflow-hidden">
+      {/* Animated Background with Floating Coins */}
+      <AnimatedBackground />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/10">
         <div>
