@@ -25,6 +25,7 @@ CRYPTOPANIC_API_KEY = os.getenv("CRYPTOPANIC_API_KEY", "")
 AI_CALL_INTERVAL_SECONDS = int(os.getenv("AI_CALL_INTERVAL_SECONDS", "1800"))  # 30 min default (saves ~65% API costs)
 LLM_MIN_SECONDS = int(os.getenv("LLM_MIN_SECONDS", "1800"))  # 30 min minimum between AI calls
 LLM_STATE_CHANGE_THRESHOLD = float(os.getenv("LLM_STATE_CHANGE_THRESHOLD", "0.5"))  # 0.5% change triggers AI
+PRICE_CHANGE_THRESHOLD = float(os.getenv("PRICE_CHANGE_THRESHOLD", "0.5"))  # 0.5% price move triggers AI
 VOLATILITY_TRIGGER_PCT = float(os.getenv("VOLATILITY_TRIGGER_PCT", "2.0"))  # Call AI immediately if BTC moves >2%
 MAX_ACTIONS_PER_TICK = int(os.getenv("MAX_ACTIONS_PER_TICK", "10"))  # AI can take up to 10 actions per decision
 ACTION_DEDUP_SECONDS = int(os.getenv("ACTION_DEDUP_SECONDS", "60"))  # 1 min dedup
