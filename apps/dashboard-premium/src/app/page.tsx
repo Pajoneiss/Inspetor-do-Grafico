@@ -2500,6 +2500,9 @@ function DashboardContent() {
         </footer>
       </main >
 
+      {/* Animated Background with Floating BTC/ETH Coins */}
+      <AnimatedBackground />
+
       {/* Settings Modal */}
       <SettingsModal
         isOpen={isSettingsModalOpen}
