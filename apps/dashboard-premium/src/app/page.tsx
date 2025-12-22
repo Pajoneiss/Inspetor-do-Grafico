@@ -418,6 +418,9 @@ function DashboardContent() {
 
   const { settings, updateSetting, resetSettings } = useSettings();
 
+  // Language helper
+  const isPt = settings.language === 'pt';
+
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
   const fetchData = async () => {
@@ -2192,19 +2195,19 @@ function DashboardContent() {
               className="space-y-8"
             >
               <div className="flex flex-col gap-2">
-                <h2 className="text-3xl font-bold tracking-tight">Market Intelligence</h2>
-                <p className="text-muted-foreground">Real-time global news, economic events and top movers</p>
+                <h2 className="text-3xl font-bold tracking-tight">{isPt ? 'Inteligência de Mercado' : 'Market Intelligence'}</h2>
+                <p className="text-muted-foreground">{isPt ? 'Notícias globais em tempo real, eventos econômicos e destaques' : 'Real-time global news, economic events and top movers'}</p>
               </div>
 
               {/* Global Market Stats */}
               <GlassCard className="border border-cyan-500/20" delay={0.1}>
                 <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
                   <Globe className="w-5 h-5 text-cyan-400" />
-                  <h2 className="text-lg font-bold">Global Market Overview</h2>
+                  <h2 className="text-lg font-bold">{isPt ? 'Visão Geral do Mercado' : 'Global Market Overview'}</h2>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-4 rounded-xl bg-white/5 text-center">
-                    <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">Market Cap</p>
+                    <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">{isPt ? 'Cap. de Mercado' : 'Market Cap'}</p>
                     <p className="text-2xl font-bold">{globalMarket?.market_cap ? `$${(globalMarket.market_cap / 1e12).toFixed(2)}T` : "$0.00"}</p>
                     {globalMarket?.market_cap_change_24h !== undefined && (
                       <p className={cn("text-[10px] mt-1 font-bold", globalMarket.market_cap_change_24h >= 0 ? "text-primary" : "text-secondary")}>
@@ -2213,15 +2216,15 @@ function DashboardContent() {
                     )}
                   </div>
                   <div className="p-4 rounded-xl bg-white/5 text-center">
-                    <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">24h Volume</p>
+                    <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">{isPt ? 'Volume 24h' : '24h Volume'}</p>
                     <p className="text-2xl font-bold">{globalMarket?.volume_24h ? `$${(globalMarket.volume_24h / 1e9).toFixed(2)}B` : "$0.00"}</p>
                   </div>
                   <div className="p-4 rounded-xl bg-white/5 text-center">
-                    <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">BTC Dominance</p>
+                    <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">{isPt ? 'Dominância BTC' : 'BTC Dominance'}</p>
                     <p className="text-2xl font-bold">{globalMarket?.btc_dominance?.toFixed(1) || "0.0"}%</p>
                   </div>
                   <div className="p-4 rounded-xl bg-white/5 text-center">
-                    <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">ETH Dominance</p>
+                    <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">{isPt ? 'Dominância ETH' : 'ETH Dominance'}</p>
                     <p className="text-2xl font-bold">{globalMarket?.eth_dominance?.toFixed(1) || "0.0"}%</p>
                   </div>
                 </div>
@@ -2233,7 +2236,7 @@ function DashboardContent() {
                 <GlassCard className="border border-primary/20" delay={0.2}>
                   <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
                     <Zap className="w-5 h-5 text-primary" />
-                    <h2 className="text-lg font-bold">Real-time News Feed</h2>
+                    <h2 className="text-lg font-bold">{isPt ? 'Notícias em Tempo Real' : 'Real-time News Feed'}</h2>
                   </div>
                   <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
                     {realtimeNews.length > 0 ? (
@@ -2255,7 +2258,7 @@ function DashboardContent() {
                     ) : (
                       <div className="text-center py-20 opacity-20">
                         <Newspaper className="w-12 h-12 mx-auto mb-4" />
-                        <p className="text-xs font-bold uppercase tracking-widest">No news available</p>
+                        <p className="text-xs font-bold uppercase tracking-widest">{isPt ? 'Nenhuma notícia disponível' : 'No news available'}</p>
                       </div>
                     )}
                   </div>
@@ -2265,7 +2268,7 @@ function DashboardContent() {
                 <GlassCard className="border border-yellow-500/20" delay={0.3}>
                   <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
                     <Calendar className="w-5 h-5 text-yellow-400" />
-                    <h2 className="text-lg font-bold">Global Economic Calendar</h2>
+                    <h2 className="text-lg font-bold">{isPt ? 'Calendário Econômico Global' : 'Global Economic Calendar'}</h2>
                   </div>
                   <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
                     {calendarEvents.length > 0 ? (
