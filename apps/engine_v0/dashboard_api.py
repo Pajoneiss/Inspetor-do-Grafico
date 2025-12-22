@@ -595,6 +595,88 @@ def api_cmc_gainers_losers():
         }), 500
 
 
+# ================== NEW FEATURE ENDPOINTS ==================
+
+@app.route('/api/halving')
+def api_halving():
+    """Get Bitcoin halving countdown"""
+    try:
+        from data_sources import fetch_bitcoin_halving
+        return jsonify({"ok": True, **fetch_bitcoin_halving()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/tvl')
+def api_tvl():
+    """Get DeFi Total Value Locked"""
+    try:
+        from data_sources import fetch_defi_tvl
+        return jsonify({"ok": True, **fetch_defi_tvl()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/funding')
+def api_funding():
+    """Get funding rates from Binance"""
+    try:
+        from data_sources import fetch_funding_rates
+        return jsonify({"ok": True, **fetch_funding_rates()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/long-short')
+def api_long_short():
+    """Get Long/Short ratio from Binance"""
+    try:
+        from data_sources import fetch_long_short_ratio
+        return jsonify({"ok": True, **fetch_long_short_ratio()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/trending')
+def api_trending():
+    """Get trending coins from CoinGecko"""
+    try:
+        from data_sources import fetch_trending_coins
+        return jsonify({"ok": True, **fetch_trending_coins()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/altseason')
+def api_altseason():
+    """Get altcoin season index"""
+    try:
+        from data_sources import fetch_altcoin_season
+        return jsonify({"ok": True, **fetch_altcoin_season()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/gas')
+def api_gas():
+    """Get Ethereum gas prices"""
+    try:
+        from data_sources import fetch_eth_gas
+        return jsonify({"ok": True, **fetch_eth_gas()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/rainbow')
+def api_rainbow():
+    """Get Bitcoin Rainbow Chart data"""
+    try:
+        from data_sources import fetch_rainbow_chart
+        return jsonify({"ok": True, **fetch_rainbow_chart()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route('/api/cmc/global')
 def api_cmc_global():
     """Get enhanced global metrics from CoinMarketCap"""

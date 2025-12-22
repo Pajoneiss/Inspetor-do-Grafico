@@ -827,3 +827,352 @@ def get_cryptopanic_news() -> Dict[str, Any]:
     except Exception as e:
         return {"error": str(e), "realtime": [], "trending": []}
 
+
+# ================== NEW FEATURES - Free APIs ==================
+
+def fetch_bitcoin_halving() -> Dict[str, Any]:
+    """
+    Fetch Bitcoin halving countdown data
+    API: Blockchain.com (free, no key)
+    """
+    cache_key = "btc_halving"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+    
+    result = {
+        "current_block": 0,
+        "halving_block": 1050000,
+        "blocks_remaining": 0,
+        "days_remaining": 0,
+        "percent_complete": 0,
+        "error": None
+    }
+    
+    try:
+        import httpx
+        url = "https://blockchain.info/q/getblockcount"
+        
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            resp = client.get(url)
+            if resp.status_code == 200:
+                current_block = int(resp.text.strip())
+                next_halving_block = 1050000
+                blocks_remaining = next_halving_block - current_block
+                days_remaining = (blocks_remaining * 10) / (60 * 24)
+                
+                result = {
+                    "current_block": current_block,
+                    "halving_block": next_halving_block,
+                    "blocks_remaining": max(0, blocks_remaining),
+                    "days_remaining": max(0, round(days_remaining)),
+                    "percent_complete": round((current_block % 210000) / 210000 * 100, 1),
+                    "error": None
+                }
+                _set_cache(cache_key, result, TTL_MARKET * 10)
+    except Exception as e:
+        print(f"[HALVING][WARN] Failed: {e}")
+        result["error"] = str(e)
+    
+    return result
+
+
+def fetch_defi_tvl() -> Dict[str, Any]:
+    """Fetch DeFi TVL from DefiLlama (free, no key)"""
+    cache_key = "defi_tvl"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+    
+    result = {"total_tvl": 0, "total_tvl_formatted": "$0", "chains": {}, "error": None}
+    
+    try:
+        import httpx
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            resp = client.get("https://api.llama.fi/v2/chains")
+            if resp.status_code == 200:
+                data = resp.json()
+                total_tvl = sum(c.get("tvl", 0) for c in data)
+                top_chains = sorted(data, key=lambda x: x.get("tvl", 0), reverse=True)[:5]
+                chains = {c["name"]: round(c.get("tvl", 0) / 1e9, 2) for c in top_chains}
+                
+                result = {
+                    "total_tvl": total_tvl,
+                    "total_tvl_formatted": f"${total_tvl / 1e9:.2f}B",
+                    "chains": chains,
+                    "error": None
+                }
+                _set_cache(cache_key, result, TTL_MARKET * 5)
+    except Exception as e:
+        print(f"[TVL][WARN] Failed: {e}")
+        result["error"] = str(e)
+    
+    return result
+
+
+def fetch_funding_rates() -> Dict[str, Any]:
+    """Fetch funding rates from Binance (free, no key)"""
+    cache_key = "funding_rates"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+    
+    result = {"rates": {}, "average": 0, "sentiment": "neutral", "error": None}
+    
+    try:
+        import httpx
+        symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"]
+        
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            resp = client.get("https://fapi.binance.com/fapi/v1/premiumIndex")
+            if resp.status_code == 200:
+                data = resp.json()
+                rates = {}
+                total_rate, count = 0, 0
+                
+                for item in data:
+                    symbol = item.get("symbol", "")
+                    if symbol in symbols:
+                        rate = float(item.get("lastFundingRate", 0)) * 100
+                        rates[symbol.replace("USDT", "")] = round(rate, 4)
+                        total_rate += rate
+                        count += 1
+                
+                avg_rate = total_rate / count if count > 0 else 0
+                sentiment = "bullish" if avg_rate > 0.05 else "bearish" if avg_rate < -0.05 else "neutral"
+                
+                result = {"rates": rates, "average": round(avg_rate, 4), "sentiment": sentiment, "error": None}
+                _set_cache(cache_key, result, TTL_MARKET * 5)
+    except Exception as e:
+        print(f"[FUNDING][WARN] Failed: {e}")
+        result["error"] = str(e)
+    
+    return result
+
+
+def fetch_long_short_ratio() -> Dict[str, Any]:
+    """Fetch Long/Short ratio from Binance (free, no key)"""
+    cache_key = "long_short_ratio"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+    
+    result = {"ratios": {}, "btc_ratio": 1.0, "sentiment": "neutral", "error": None}
+    
+    try:
+        import httpx
+        ratios = {}
+        
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            for symbol in ["BTCUSDT", "ETHUSDT", "SOLUSDT"]:
+                url = f"https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol={symbol}&period=1h&limit=1"
+                resp = client.get(url)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data:
+                        ratio = float(data[0].get("longShortRatio", 1.0))
+                        ratios[symbol.replace("USDT", "")] = round(ratio, 2)
+        
+        btc_ratio = ratios.get("BTC", 1.0)
+        if btc_ratio > 1.5:
+            sentiment = "very_long"
+        elif btc_ratio > 1.1:
+            sentiment = "long"
+        elif btc_ratio < 0.67:
+            sentiment = "very_short"
+        elif btc_ratio < 0.9:
+            sentiment = "short"
+        else:
+            sentiment = "neutral"
+        
+        result = {"ratios": ratios, "btc_ratio": btc_ratio, "sentiment": sentiment, "error": None}
+        _set_cache(cache_key, result, TTL_MARKET * 5)
+    except Exception as e:
+        print(f"[L/S][WARN] Failed: {e}")
+        result["error"] = str(e)
+    
+    return result
+
+
+def fetch_trending_coins() -> Dict[str, Any]:
+    """Fetch trending coins from CoinGecko (free, no key)"""
+    cache_key = "trending_coins"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+    
+    result = {"coins": [], "error": None}
+    
+    try:
+        import httpx
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            resp = client.get("https://api.coingecko.com/api/v3/search/trending")
+            if resp.status_code == 200:
+                data = resp.json()
+                coins = []
+                for item in data.get("coins", [])[:7]:
+                    coin = item.get("item", {})
+                    coins.append({
+                        "name": coin.get("name", ""),
+                        "symbol": coin.get("symbol", "").upper(),
+                        "rank": coin.get("market_cap_rank", 0),
+                        "score": coin.get("score", 0)
+                    })
+                result = {"coins": coins, "error": None}
+                _set_cache(cache_key, result, TTL_NEWS)
+    except Exception as e:
+        print(f"[TRENDING][WARN] Failed: {e}")
+        result["error"] = str(e)
+    
+    return result
+
+
+def fetch_altcoin_season() -> Dict[str, Any]:
+    """Fetch Altcoin Season Index from Blockchaincenter (free, no key)"""
+    cache_key = "altcoin_season"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+    
+    result = {"index": 50, "season": "neutral", "error": None}
+    
+    try:
+        import httpx
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            resp = client.get("https://api.blockchaincenter.net/api/altseason/")
+            if resp.status_code == 200:
+                data = resp.json()
+                index = data.get("altseasonIndex", 50)
+                season = "altcoin" if index >= 75 else "bitcoin" if index <= 25 else "neutral"
+                result = {"index": index, "season": season, "error": None}
+                _set_cache(cache_key, result, TTL_MARKET * 10)
+    except Exception as e:
+        print(f"[ALTSEASON][WARN] Failed: {e}")
+        result["error"] = str(e)
+    
+    return result
+
+
+def fetch_eth_gas() -> Dict[str, Any]:
+    """Fetch ETH gas prices from Owlracle (free, no key)"""
+    cache_key = "eth_gas"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+    
+    result = {"slow": 0, "standard": 0, "fast": 0, "instant": 0, "error": None}
+    
+    try:
+        import httpx
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            resp = client.get("https://api.owlracle.info/v4/eth/gas")
+            if resp.status_code == 200:
+                data = resp.json()
+                speeds = data.get("speeds", [])
+                if len(speeds) >= 4:
+                    result = {
+                        "slow": round(speeds[0].get("gasPrice", 0), 1),
+                        "standard": round(speeds[1].get("gasPrice", 0), 1),
+                        "fast": round(speeds[2].get("gasPrice", 0), 1),
+                        "instant": round(speeds[3].get("gasPrice", 0), 1),
+                        "error": None
+                    }
+                    _set_cache(cache_key, result, TTL_MARKET)
+    except Exception as e:
+        print(f"[GAS][WARN] Failed: {e}")
+        result["error"] = str(e)
+    
+    return result
+
+
+def fetch_rainbow_chart() -> Dict[str, Any]:
+    """
+    Fetch Bitcoin Rainbow Chart data
+    Uses logarithmic regression bands like blockchaincenter.net
+    """
+    cache_key = "rainbow_chart"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+    
+    result = {
+        "btc_price": 0,
+        "band": "neutral",
+        "band_index": 4,
+        "band_name": "HODL",
+        "bands": [],
+        "error": None
+    }
+    
+    try:
+        import httpx
+        import math
+        
+        # Get current BTC price
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            resp = client.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+            if resp.status_code == 200:
+                data = resp.json()
+                btc_price = data.get("bitcoin", {}).get("usd", 0)
+                
+                # Rainbow bands based on log regression (approximation)
+                # Days since Bitcoin genesis (Jan 3, 2009)
+                from datetime import datetime
+                genesis = datetime(2009, 1, 3)
+                days = (datetime.now() - genesis).days
+                
+                # Logarithmic regression base price
+                log_price = 10 ** (2.66167155 * math.log10(days) - 17.01831509)
+                
+                # Band multipliers (from "Fire Sale" to "Maximum Bubble")
+                band_info = [
+                    (0.4, "fire_sale", "🔥 Fire Sale"),
+                    (0.5, "buy", "💚 BUY!"),
+                    (0.65, "accumulate", "🟢 Accumulate"),
+                    (0.85, "still_cheap", "🟡 Still Cheap"),
+                    (1.1, "hodl", "🟠 HODL"),
+                    (1.4, "bubble", "🟠 Is this a bubble?"),
+                    (1.8, "fomo", "🔴 FOMO intensifies"),
+                    (2.4, "sell", "🔴 Sell. Seriously, SELL!"),
+                    (999, "max_bubble", "💀 Maximum Bubble")
+                ]
+                
+                # Determine which band current price falls into
+                price_ratio = btc_price / log_price if log_price > 0 else 1
+                
+                band = "neutral"
+                band_index = 4
+                band_name = "HODL"
+                
+                for i, (mult, b, name) in enumerate(band_info):
+                    if price_ratio < mult:
+                        band = b
+                        band_index = i
+                        band_name = name
+                        break
+                
+                # Calculate band prices for current date
+                bands = []
+                for mult, b, name in band_info[:-1]:  # Skip max_bubble
+                    bands.append({
+                        "name": name,
+                        "band": b,
+                        "price": round(log_price * mult, 0)
+                    })
+                
+                result = {
+                    "btc_price": btc_price,
+                    "log_price": round(log_price, 0),
+                    "band": band,
+                    "band_index": band_index,
+                    "band_name": band_name,
+                    "bands": bands,
+                    "error": None
+                }
+                _set_cache(cache_key, result, TTL_MARKET * 5)
+                
+    except Exception as e:
+        print(f"[RAINBOW][WARN] Failed: {e}")
+        result["error"] = str(e)
+    
+    return result
