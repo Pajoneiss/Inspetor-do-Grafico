@@ -364,14 +364,6 @@ def api_crypto_prices():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
-        return jsonify({
-            "ok": True,
-            "prices": prices,
-            "server_time_ms": int(time.time() * 1000)
-        })
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
 
 @app.route('/api/economic-calendar')
 def get_economic_calendar():
