@@ -10,6 +10,11 @@ from datetime import datetime, timezone
 import requests
 from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
+from config import (
+    TG_CHAT_MODEL,
+    HYPERLIQUID_WALLET_ADDRESS,
+    DEFAULT_SL_DISTANCE
+)
 from openai import OpenAI
 
 # State file for persistence
@@ -222,7 +227,7 @@ def api_positions():
     
     # Try to fetch real positions for leverage data if needed
     try:
-        user_address = os.getenv("WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
+        user_address = os.getenv("HYPERLIQUID_WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
         # Cache the HL clearinghouse request to avoid rate limits
         cache_key = f"hl_clearinghouse_{user_address}"
         cached_hl = _get_cache(cache_key)
@@ -505,7 +510,7 @@ def get_cached_response(key, fetch_func, ttl=API_CACHE_TTL):
 @app.route('/api/analytics')
 def api_full_analytics():
     """Get full blockchain portfolio analytics from Hyperliquid (cached 60s)"""
-    user_address = os.getenv("WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
+    user_address = os.getenv("HYPERLIQUID_WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
     
     def fetch_analytics():
         response = requests.post(
@@ -592,7 +597,7 @@ def api_meta():
 @app.route('/api/orders')
 def api_open_orders():
     """Get open orders from Hyperliquid (cached 10s)"""
-    user_address = os.getenv("WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
+    user_address = os.getenv("HYPERLIQUID_WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
     
     def fetch_orders():
         response = requests.post(
@@ -640,7 +645,7 @@ def api_open_orders():
 @app.route('/api/user/trades')
 def api_user_trades():
     """Get recent fills/trades from Hyperliquid (cached 60s)"""
-    user_address = os.getenv("WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
+    user_address = os.getenv("HYPERLIQUID_WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
     
     def fetch_trades():
         response = requests.post(
@@ -688,7 +693,7 @@ def api_user_trades():
 @app.route('/api/transfers')
 def api_transfers():
     """Get deposits and withdrawals from Hyperliquid (cached 60s)"""
-    user_address = os.getenv("WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
+    user_address = os.getenv("HYPERLIQUID_WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
     
     def fetch_transfers():
         response = requests.post(
@@ -887,7 +892,7 @@ def api_trade_logs():
             # These are dynamic placeholders that the AI will adjust in real-time
             if side.upper() == 'LONG':
                 # For LONG: SL below entry, TP above entry
-                sl_distance_pct = 0.025  # 2.5% stop loss
+                sl_distance_pct = DEFAULT_SL_DISTANCE / 100  # from config (e.g. 2.5% -> 0.025)
             
             # v13.0: Refined calculation logic for risk and targets
             entry_px = float(pos.get("entry_price", 0))

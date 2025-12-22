@@ -13,7 +13,9 @@ from eth_account import Account
 from config import (
     HYPERLIQUID_WALLET_ADDRESS,
     HYPERLIQUID_PRIVATE_KEY,
-    HYPERLIQUID_NETWORK
+    HYPERLIQUID_NETWORK,
+    MAX_API_CONCURRENCY,
+    API_TIMEOUT_SECONDS
 )
 
 
@@ -75,7 +77,7 @@ class HLClient:
         self.exchange_client: Optional[Exchange] = None
         
         # Throttling Semaphore (Limit parallel API calls)
-        self._api_semaphore = threading.Semaphore(3)
+        self._api_semaphore = threading.Semaphore(MAX_API_CONCURRENCY)
         self._last_429_time = 0
         
         # Meta cache for symbol constraints
@@ -499,7 +501,7 @@ class HLClient:
                 return {"error": "No wallet address"}
             
             import httpx
-            with httpx.Client(timeout=5.0) as client:
+            with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
                 resp = client.post(
                     f"{self.api_url}/info",
                     json={"type": "portfolio", "user": self.wallet_address}

@@ -13,6 +13,8 @@ from config import (
     AI_CALL_INTERVAL_SECONDS,
     LLM_MIN_SECONDS,
     LLM_STATE_CHANGE_THRESHOLD,
+    PRICE_CHANGE_THRESHOLD,
+    VOLATILITY_TRIGGER_PCT,
     FORCE_TEST_ORDER,
     TEST_ORDER_SIDE,
     TEST_ORDER_SIZE,
@@ -637,14 +639,17 @@ def main():
                     current_hash = f"{len(state.get('positions', {}))}_{current_equity:.1f}_{total_unpnl:.1f}_{int(current_price/100)}"
                     state_changed = current_hash != last_state_hash
                     
-                    # Wake up if: Equity changed OR State changed OR Price moved > 0.5%
-                    material_change = equity_change_pct >= LLM_STATE_CHANGE_THRESHOLD or state_changed or price_change_pct >= 0.5
+                    # Wake up if: Equity changed OR State changed OR Price moved > threshold
+                    material_change = equity_change_pct >= LLM_STATE_CHANGE_THRESHOLD or state_changed or price_change_pct >= PRICE_CHANGE_THRESHOLD
+                    
+                    # v15.1: Extreme Volatility Bypass (bypass LLM_MIN_SECONDS if price moves > VOLATILITY_TRIGGER_PCT)
+                    high_volatility = price_change_pct >= VOLATILITY_TRIGGER_PCT
                     
                     min_time_passed = time_since_last_call >= LLM_MIN_SECONDS
                     full_cooldown_passed = time_since_last_call >= AI_CALL_INTERVAL_SECONDS
                     
-                    # Call AI if: (min time passed AND material change) OR (full cooldown passed)
-                    should_call_ai = (min_time_passed and material_change) or full_cooldown_passed
+                    # Call AI if: (min time passed AND material change) OR (full cooldown passed) OR (high volatility)
+                    should_call_ai = (min_time_passed and material_change) or full_cooldown_passed or high_volatility
                     
                     if should_call_ai:
                         try:

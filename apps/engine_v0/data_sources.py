@@ -52,7 +52,7 @@ def fetch_fear_greed() -> Dict[str, Any]:
     
     try:
         import httpx
-        with httpx.Client(timeout=4.0) as client:
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
             resp = client.get("https://api.alternative.me/fng/?limit=1")
             print(f"[FEAR] API response status: {resp.status_code}")
             if resp.status_code == 200:
@@ -94,7 +94,7 @@ def fetch_cryptopanic() -> List[Dict[str, str]]:
         
         if CRYPTOPANIC_API_KEY:
             url = f"https://cryptopanic.com/api/v1/posts/?auth_token={CRYPTOPANIC_API_KEY}&public=true&kind=news"
-            with httpx.Client(timeout=4.0) as client:
+            with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
                 resp = client.get(url)
                 if resp.status_code == 200:
                     data = resp.json()
@@ -113,7 +113,7 @@ def fetch_cryptopanic() -> List[Dict[str, str]]:
             import httpx
             
             # Try CoinGecko trending for some data
-            with httpx.Client(timeout=4.0) as client:
+            with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
                 # Simple fallback - create dummy news from market status
                 headlines = [
                     {"title": "📈 Mercado crypto operando normalmente", "source": "Bot"},
@@ -143,7 +143,7 @@ def fetch_coingecko_global() -> Dict[str, Any]:
     
     try:
         import httpx
-        with httpx.Client(timeout=4.0) as client:
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
             resp = client.get("https://api.coingecko.com/api/v3/global")
             if resp.status_code == 200:
                 data = resp.json().get("data", {})
@@ -185,7 +185,7 @@ def fetch_cmc() -> Dict[str, Any]:
     try:
         import httpx
         headers = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
-        with httpx.Client(timeout=4.0, headers=headers) as client:
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS, headers=headers) as client:
             resp = client.get("https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest")
             if resp.status_code == 200:
                 data = resp.json().get("data", {})
@@ -221,7 +221,7 @@ def fetch_cmc_trending() -> List[Dict[str, Any]]:
     try:
         import httpx
         headers = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
-        with httpx.Client(timeout=4.0, headers=headers) as client:
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS, headers=headers) as client:
             resp = client.get("https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/most-visited")
             if resp.status_code == 200:
                 data = resp.json().get("data", [])
@@ -261,7 +261,7 @@ def fetch_cmc_gainers_losers() -> Dict[str, List[Dict[str, Any]]]:
     try:
         import httpx
         headers = {"X-CMC_PRO_API_KEY": CMC_API_KEY}
-        with httpx.Client(timeout=4.0, headers=headers) as client:
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS, headers=headers) as client:
             resp = client.get("https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/gainers-losers")
             if resp.status_code == 200:
                 data = resp.json().get("data", {})
@@ -300,7 +300,7 @@ def fetch_hl_prices() -> Dict[str, float]:
     """Fetch live BTC and ETH prices from Hyperliquid"""
     try:
         import httpx
-        with httpx.Client(timeout=4.0) as client:
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
             resp = client.post("https://api.hyperliquid.xyz/info", json={"type": "allMids"})
             if resp.status_code == 200:
                 data = resp.json()
@@ -344,7 +344,7 @@ def fetch_macro() -> Dict[str, Any]:
     
     try:
         import httpx
-        with httpx.Client(timeout=4.0) as client:
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
             for key, symbol in symbols.items():
                 try:
                     # Stooq provides free delayed quotes

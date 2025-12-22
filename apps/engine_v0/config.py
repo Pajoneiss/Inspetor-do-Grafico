@@ -104,39 +104,32 @@ def print_config():
     print(f"[ENV] LOOP_INTERVAL_SECONDS={LOOP_INTERVAL_SECONDS}")
     print(f"[ENV] LIVE_TRADING={LIVE_TRADING}")
     print(f"[ENV] AI_ENABLED={AI_ENABLED}")
-    print(f"[ENV] AI_MODEL={AI_MODEL}")
+    print(f"[ENV] AI_MODEL={AI_MODEL} ({AI_PROVIDER})")
     print(f"[ENV] HYPERLIQUID_NETWORK={HYPERLIQUID_NETWORK}")
     print(f"[ENV] ENABLE_TELEGRAM={ENABLE_TELEGRAM}")
-    print(f"[ENV] FORCE_TEST_ORDER={FORCE_TEST_ORDER}")
     
     # AI settings
-    print(f"[ENV] 🎯 AI TIMING:")
-    print(f"[ENV]   LLM_MIN_SECONDS={LLM_MIN_SECONDS} (cooldown)")
-    print(f"[ENV]   AI_CALL_INTERVAL_SECONDS={AI_CALL_INTERVAL_SECONDS}")
-    print(f"[ENV]   LLM_STATE_CHANGE_THRESHOLD={LLM_STATE_CHANGE_THRESHOLD}% (triggers on structure change)")
-    print(f"[ENV] 💰 TRADE SIZING:")
-    print(f"[ENV]   MIN_NOTIONAL_USD=${MIN_NOTIONAL_USD}")
-    print(f"[ENV]   MIN_STOP_LOSS_PCT={MIN_STOP_LOSS_PCT}%")
-    print(f"[ENV] 🤖 AI AUTONOMY: Full (no hold time limits, no reentry cooldown)")
+    print(f"[ENV] 🎯 AI TUNING:")
+    print(f"[ENV]   LLM_MIN_SECONDS={LLM_MIN_SECONDS}s")
+    print(f"[ENV]   AI_TEMPERATURE={AI_TEMPERATURE}")
+    print(f"[ENV]   PRICE_CHANGE_THRESHOLD={PRICE_CHANGE_THRESHOLD}%")
+    print(f"[ENV]   LLM_STATE_CHANGE_THRESHOLD={LLM_STATE_CHANGE_THRESHOLD}%")
     
-    if FORCE_TEST_ORDER:
-        print(f"[ENV] TEST_ORDER_SIDE={TEST_ORDER_SIDE}")
-        print(f"[ENV] TEST_ORDER_SIZE={TEST_ORDER_SIZE}")
-        if TEST_ORDER_SYMBOL:
-            print(f"[ENV] TEST_ORDER_SYMBOL={TEST_ORDER_SYMBOL}")
+    # Risk settings
+    print(f"[ENV] 💰 RISK & SIZING:")
+    print(f"[ENV]   DEFAULT_LEVERAGE={DEFAULT_LEVERAGE}x")
+    print(f"[ENV]   MIN_NOTIONAL_USD=${MIN_NOTIONAL_USD}")
+    print(f"[ENV]   MARGIN_BUFFER={MARGIN_BUFFER_FACTOR*100}%")
+    
+    # Operational
+    print(f"[ENV] ⚙️ OPERATIONAL:")
+    print(f"[ENV]   API_CONCURRENCY={MAX_API_CONCURRENCY}")
+    print(f"[ENV]   API_TIMEOUT={API_TIMEOUT_SECONDS}s")
     
     # Validate critical configs
     if HYPERLIQUID_WALLET_ADDRESS:
         print(f"[ENV] HYPERLIQUID_WALLET_ADDRESS=***{HYPERLIQUID_WALLET_ADDRESS[-6:]}")
-    else:
-        print("[ENV] HYPERLIQUID_WALLET_ADDRESS=NOT_SET")
-    
     if HYPERLIQUID_PRIVATE_KEY:
         print("[ENV] HYPERLIQUID_PRIVATE_KEY=***SET")
-    else:
-        print("[ENV] HYPERLIQUID_PRIVATE_KEY=NOT_SET")
-    
     if OPENAI_API_KEY:
         print("[ENV] OPENAI_API_KEY=***SET")
-    else:
-        print("[ENV] OPENAI_API_KEY=NOT_SET")

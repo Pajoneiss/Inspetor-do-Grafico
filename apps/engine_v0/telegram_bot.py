@@ -9,9 +9,13 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 # Feature flag
-ENABLE_TELEGRAM = os.environ.get("ENABLE_TELEGRAM", "true").lower() == "true"
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_ADMIN_IDS = os.environ.get("TELEGRAM_ADMIN_IDS", "").split(",")
+from config import (
+    ENABLE_TELEGRAM,
+    TELEGRAM_BOT_TOKEN,
+    TELEGRAM_ADMIN_IDS,
+    TG_CHAT_MODEL,
+    AI_TEMPERATURE
+)
 
 # Runtime state (shared with engine)
 _bot_state = {
@@ -654,13 +658,13 @@ Responda como se VOCÊ fosse o bot operando. Diga "Eu estou...", "Minha posiçã
                 await update.message.reply_text("💭 Pensando...")
                 
                 response = client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model=TG_CHAT_MODEL,
                     messages=[
                         {"role": "system", "content": "Você É o trading bot. Responda em PRIMEIRA PESSOA. Diga 'Eu tenho', 'Eu pretendo', 'Minha estratégia'. Seja direto e assertivo, sem rodeios. Max 2 parágrafos."},
                         {"role": "user", "content": context}
                     ],
                     max_tokens=300,
-                    temperature=0.7
+                    temperature=AI_TEMPERATURE
                 )
                 
                 ai_response = response.choices[0].message.content.strip()

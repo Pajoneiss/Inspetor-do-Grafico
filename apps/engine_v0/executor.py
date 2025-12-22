@@ -17,7 +17,10 @@ from config import (
     TRIGGER_DEDUP_SECONDS,
     MAX_OPEN_ORDERS_PER_SYMBOL,
     MAX_POSITION_ADDS_PER_HOUR,
-    MIN_STOP_LOSS_PCT
+    MIN_STOP_LOSS_PCT,
+    DEFAULT_LEVERAGE,
+    MARGIN_BUFFER_FACTOR,
+    TRIGGER_TOLERANCE_PCT
 )
 
 
@@ -88,8 +91,8 @@ def _trigger_matches_desired(current_px, current_sz, desired_px, desired_sz):
     if current_px is None:
         return False
     
-    # Price tolerance: 0.01% or $1 (whichever is larger)
-    px_epsilon = max(1.0, desired_px * 0.0001)
+    # Price tolerance: configurable (default 0.5%) or $1 (whichever is larger)
+    px_epsilon = max(1.0, desired_px * (TRIGGER_TOLERANCE_PCT / 100))
     
     # Size tolerance: 0.1% or minimum precision
     sz_epsilon = max(1e-8, desired_sz * 0.001)
@@ -626,7 +629,7 @@ def _pre_check_order(action: Dict[str, Any], price: float, constraints: dict, hl
     """
     symbol = action.get("symbol", "?")
     size = action.get("size", 0)
-    leverage = action.get("leverage", 20)
+    leverage = action.get("leverage", DEFAULT_LEVERAGE)
     
     # 1. Check minimum notional (Hyperliquid requires ~$10 minimum)
     notional = size * price
@@ -710,8 +713,8 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
         # Log before execution
         print(f"[LIVE] action=PLACE_ORDER payload={_format_resp(normalized)}")
         
-        # v12.5: LLM DECIDES LEVERAGE - use action value or sensible default (20x)
-        target_leverage = int(normalized.get("leverage", 20))  # LLM decides, 20x fallback
+        # v12.5: LLM DECIDES LEVERAGE - use action value or sensible default
+        target_leverage = int(normalized.get("leverage", DEFAULT_LEVERAGE))  
         margin_mode = normalized.get("margin_mode", "isolated")
         
         # 1. ALWAYS ENSURE LEVERAGE/MARGIN MODE
@@ -737,8 +740,8 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
             required_notional = current_size * price
             required_margin = required_notional / target_leverage
             
-            # Buying Power = Available Margin * Leverage * Buffer (90%)
-            buying_power = available_margin * target_leverage * 0.90
+            # Buying Power = Available Margin * Leverage * Buffer
+            buying_power = available_margin * target_leverage * MARGIN_BUFFER_FACTOR
             
             print(f"[LIVE] Margin Calc: Avail=${available_margin:.2f} Lev={target_leverage}x Power=${buying_power:.2f} Notional=${required_notional:.2f} ReqMargin=${required_margin:.2f}")
 

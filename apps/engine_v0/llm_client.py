@@ -9,6 +9,12 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
 
+from config import (
+    AI_MODEL, 
+    AI_TEMPERATURE, 
+    AI_MAX_TOKENS
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -273,8 +279,8 @@ class LLMClient:
     def _call_llm(self, prompt: str) -> str:
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=3000,
-            temperature=0.7,
+            max_tokens=AI_MAX_TOKENS,
+            temperature=AI_TEMPERATURE,
             messages=[{"role": "user", "content": prompt}]
         )
         return response.content[0].text
