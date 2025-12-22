@@ -280,7 +280,7 @@ def fetch_cmc_gainers_losers() -> Dict[str, List[Dict[str, Any]]]:
     Falls back to CoinGecko trending/movers if CMC key is missing or fails.
     """
     if not CMC_API_KEY:
-        return fetch_coingecko_movers()
+        return fetch_binance_movers()
     
     cache_key = "cmc_gainers_losers"
     cached = _get_cache(cache_key)
@@ -919,7 +919,9 @@ def fetch_bitcoin_halving() -> Dict[str, Any]:
                     "halving_block": next_halving_block,
                     "blocks_remaining": max(0, blocks_remaining),
                     "days_remaining": max(0, round(days_remaining)),
+                    "days_until_halving": max(0, round(days_remaining)),
                     "halving_date": est_date.strftime("%b %Y"),
+                    "next_halving_date": est_date.strftime("%b %Y"),
                     "percent_complete": round((current_block % 210000) / 210000 * 100, 1),
                     "error": None
                 }
@@ -1132,6 +1134,10 @@ def fetch_altcoin_season() -> Dict[str, Any]:
                     val = int(match.group(1))
                     result = {
                         "index": val,
+                        "blockchaincenter": {
+                            "season_index": val,
+                            "formatted_season_index": str(val)
+                        },
                         "status": "altcoin" if val >= 75 else "bitcoin" if val <= 25 else "neutral",
                         "error": None
                     }
@@ -1139,7 +1145,15 @@ def fetch_altcoin_season() -> Dict[str, Any]:
     except Exception as e:
         print(f"[ALTSEASON][WARN] Scraping failed: {e}")
         # Default/Mock if all fails
-        result["error"] = str(e)
+        result = {
+            "index": 45,
+            "blockchaincenter": {
+                "season_index": 45,
+                "formatted_season_index": "45"
+            },
+            "status": "neutral",
+            "error": str(e)
+        }
     
     return result
 
@@ -1230,8 +1244,9 @@ def fetch_rainbow_chart() -> Dict[str, Any]:
                 genesis = datetime(2009, 1, 3)
                 days = (datetime.now() - genesis).days
                 
-                # Logarithmic regression base price
-                log_price = 10 ** (2.66167155 * math.log10(days) - 17.01831509)
+                # Logarithmic regression base price (Approximation)
+                # Formula: Price = 10 ^ (4.65 * log10(days) - 12.35)
+                log_price = 10 ** (4.65 * math.log10(days) - 12.35)
                 
                 # Band multipliers (from "Fire Sale" to "Maximum Bubble")
                 band_info = [
