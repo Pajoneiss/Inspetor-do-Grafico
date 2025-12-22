@@ -94,8 +94,9 @@ def fetch_cryptopanic() -> List[Dict[str, str]]:
         
         if CRYPTOPANIC_API_KEY:
             print(f"[NEWS] CryptoPanic API key configured: {CRYPTOPANIC_API_KEY[:8]}...")
-            url = f"https://cryptopanic.com/api/v1/posts/?auth_token={CRYPTOPANIC_API_KEY}&public=true&kind=news"
-            print(f"[NEWS] Fetching from CryptoPanic...")
+            # Try free API endpoint first
+            url = f"https://cryptopanic.com/api/free/v1/posts/?auth_token={CRYPTOPANIC_API_KEY}&filter=rising&public=true"
+            print(f"[NEWS] Fetching from: {url[:60]}...")
             with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
                 resp = client.get(url)
                 print(f"[NEWS] CryptoPanic response status: {resp.status_code}")
@@ -104,11 +105,29 @@ def fetch_cryptopanic() -> List[Dict[str, str]]:
                     results_count = len(data.get("results", []))
                     print(f"[NEWS] CryptoPanic returned {results_count} posts")
                     for post in data.get("results", [])[:10]:
-                        headlines.append({
+                       headlines.append({
                             "title": post.get("title", "")[:100],
                             "url": post.get("url", ""),
-                            "source": post.get("source", {}).get("title", "CryptoPanic")
+                            "source": post.get("source", {}).get("title", "CryptoPanic"),
+                            "published_at": post.get("published_at", ""),
+                            "votes": post.get("votes", {})
                         })
+                elif resp.status_code == 404:
+                    # Try pro endpoint
+                    print("[NEWS][WARN] Free endpoint 404, trying pro...")
+                    url_pro = f"https://cryptopanic.com/api/v1/posts/?auth_token={CRYPTOPANIC_API_KEY}&public=true"
+                    resp_pro = client.get(url_pro)
+                    print(f"[NEWS] Pro API response: {resp_pro.status_code}")
+                    if resp_pro.status_code == 200:
+                        data = resp_pro.json()
+                        for post in data.get("results", [])[:10]:
+                            headlines.append({
+                                "title": post.get("title", "")[:100],
+                                "url": post.get("url", ""),
+                                "source": post.get("source", {}).get("title", "CryptoPanic")
+                            })
+                    else:
+                        print(f"[NEWS][ERROR] Pro API failed: {resp_pro.text[:200]}")
                 else:
                     print(f"[NEWS][WARN] CryptoPanic returned non-200: {resp.status_code} - {resp.text[:200]}")
         else:
