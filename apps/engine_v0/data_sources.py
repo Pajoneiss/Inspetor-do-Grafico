@@ -604,34 +604,57 @@ def fetch_investing_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any
             soup = BeautifulSoup(resp.text, 'html.parser')
             table = soup.find('table', {'id': 'economicCalendarData'})
             if table:
-                rows = table.find_all('tr', {'class': 'js-event-item'})
-                for row in rows[:15]: # Limit to top 15 events
-                    try:
-                        time_val = row.find('td', {'class': 'time'}).text.strip()
-                        country = row.find('td', {'class': 'flagCur'}).text.strip()
-                        sentiment_td = row.find('td', {'class': 'sentiment'})
-                        impact_count = len(sentiment_td.find_all('i', {'class': 'grayFullBullishIcon'})) if sentiment_td else 1
-                        
-                        impact = "high" if impact_count >= 3 else "medium" if impact_count == 2 else "low"
-                        event_name = row.find('td', {'class': 'event'}).text.strip()
-                        
-                        actual = row.find('td', {'class': 'act'}).text.strip() if row.find('td', {'class': 'act'}) else None
-                        forecast = row.find('td', {'class': 'fore'}).text.strip() if row.find('td', {'class': 'fore'}) else None
-                        previous = row.find('td', {'class': 'prev'}).text.strip() if row.find('td', {'class': 'prev'}) else None
-                        
-                        events.append({
-                            "date": datetime.now().strftime("%Y-%m-%d"),
-                            "time": time_val,
-                            "event": event_name,
-                            "country": country,
-                            "importance": "HIGH" if impact == "high" else "MEDIUM" if impact == "medium" else "LOW",
-                            "actual": actual if actual else None,
-                            "estimate": forecast if forecast else None,
-                            "previous": previous if previous else None,
-                            "impact": impact
-                        })
-                    except Exception as e:
+                rows = table.find_all('tr')
+                current_day = ""
+                today_str = datetime.now().strftime("%B %d, %Y") # Basic check
+                
+                for row in rows:
+                    if 'theDay' in row.get('class', []):
+                        current_day = row.text.strip()
                         continue
+                    
+                    if 'js-event-item' in row.get('class', []):
+                        # Filter: If current_day is not today or tomorrow, we might skip, 
+                        # but for now let's just ensure we have a valid date.
+                        if not current_day: continue
+                        
+                        try:
+                            time_val = row.find('td', {'class': 'time'}).text.strip()
+                            country = row.find('td', {'class': 'flagCur'}).text.strip()
+                            sentiment_td = row.find('td', {'class': 'sentiment'})
+                            
+                            # Detection of stars/bulls
+                            impact_count = 0
+                            if sentiment_td:
+                                # Count filled bullion icons
+                                impact_count = len(sentiment_td.find_all('i', {'class': 'grayFullBullishIcon'}))
+                                if impact_count == 0:
+                                    # Fallback for different Investing.com regions
+                                    impact_count = len(sentiment_td.find_all('i', {'class': 'bullishIcon'}))
+                            
+                            if impact_count == 0: impact_count = 1
+                            impact = "high" if impact_count >= 3 else "medium" if impact_count == 2 else "low"
+                            
+                            event_name = row.find('td', {'class': 'event'}).text.strip()
+                            actual = row.find('td', {'class': 'act'}).text.strip() if row.find('td', {'class': 'act'}) else None
+                            forecast = row.find('td', {'class': 'fore'}).text.strip() if row.find('td', {'class': 'fore'}) else None
+                            previous = row.find('td', {'class': 'prev'}).text.strip() if row.find('td', {'class': 'prev'}) else None
+                            
+                            event_obj = {
+                                "date": current_day,
+                                "time": time_val,
+                                "event": event_name,
+                                "country": country,
+                                "importance": "HIGH" if impact == "high" else "MEDIUM" if impact == "medium" else "LOW",
+                                "actual": actual if actual and actual != "&nbsp;" else None,
+                                "estimate": forecast if forecast and forecast != "&nbsp;" else None,
+                                "previous": previous if previous and previous != "&nbsp;" else None,
+                                "impact": impact
+                            }
+                            events.append(event_obj)
+                            if len(events) >= 20: break
+                        except Exception as e:
+                            continue
                 
                 if events:
                     _set_cache(cache_key, events, ttl=TTL_CALENDAR)
@@ -1161,12 +1184,23 @@ def fetch_altcoin_season() -> Dict[str, Any]:
         resp = requests.get(url, headers=headers, timeout=API_TIMEOUT_SECONDS, verify=False)
         if resp.status_code == 200:
             html = resp.text
+            # Primary regex: looking for the large number used in the donut chart
             match = re.search(r'<div class="number">(\d+)</div>', html)
             if not match:
+                # Secondary regex: looking for the value in the chartData script
                 match = re.search(r'chartData\.labels.*?\n.*?data:.*?(\d+)', html, re.DOTALL)
+            if not match:
+                # Tertiary regex: looking for any large number near "Altcoin Season Index" text
+                match = re.search(r'(\d+)\s*</div>\s*<div class="text">Altcoin Season Index', html)
             
             if match:
                 val = int(match.group(1))
+                if val == 0:
+                    # If 0, try to find another number in the page that might be it
+                    val_match = re.search(r'The Altcoin Season Index is (\d+)', html)
+                    if val_match:
+                        val = int(val_match.group(1))
+                
                 result = {
                     "index": val,
                     "blockchaincenter": {
@@ -1178,6 +1212,10 @@ def fetch_altcoin_season() -> Dict[str, Any]:
                 }
                 _set_cache(cache_key, result, TTL_MARKET * 10)
                 print(f"[ALTSEASON] Scraped index: {val}")
+            else:
+                print(f"[ALTSEASON][WARN] Regex failed to find index in HTML")
+        else:
+            print(f"[ALTSEASON][WARN] BlockchainCenter status: {resp.status_code}")
     except Exception as e:
         print(f"[ALTSEASON][ERROR] Scraping failed: {e}")
         result["error"] = str(e)
@@ -1195,8 +1233,7 @@ def fetch_eth_gas() -> Dict[str, Any]:
     result = {"slow": 0, "standard": 0, "fast": 0, "instant": 0, "error": None}
     
     try:
-        import requests
-        # Source 1: Owlracle (if key exists, but works sometimes without)
+        # Source 1: Owlracle (Reliable enough)
         url = "https://api.owlracle.info/v4/eth/gas"
         resp = requests.get(url, timeout=API_TIMEOUT_SECONDS)
         if resp.status_code == 200:
@@ -1213,21 +1250,25 @@ def fetch_eth_gas() -> Dict[str, Any]:
                 _set_cache(cache_key, result, TTL_MARKET)
                 return result
 
-        # Source 2: Etherscan proxy
-        resp = requests.get("https://api.etherscan.io/api?module=proxy&action=eth_gasPrice", timeout=API_TIMEOUT_SECONDS)
+        # Source 2: Etherscan Gas Tracker (Standard API)
+        resp = requests.get("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=YourApiKeyToken", timeout=API_TIMEOUT_SECONDS)
         if resp.status_code == 200:
             data = resp.json()
-            wei = int(data.get("result", "0x0"), 16)
-            gwei = wei / 1e9
-            result = {
-                "slow": round(gwei * 0.9, 1),
-                "standard": round(gwei, 1),
-                "fast": round(gwei * 1.1, 1),
-                "instant": round(gwei * 1.3, 1),
-                "error": None
-            }
-            _set_cache(cache_key, result, TTL_MARKET)
-            print(f"[GAS] Fetched from Etherscan: {gwei} Gwei")
+            res = data.get("result", {})
+            if isinstance(res, dict) and res.get("SafeGasPrice"):
+                result = {
+                    "slow": round(float(res["SafeGasPrice"]), 1),
+                    "standard": round(float(res["ProposeGasPrice"]), 1),
+                    "fast": round(float(res["FastGasPrice"]), 1),
+                    "instant": round(float(res["FastGasPrice"]) * 1.2, 1),
+                    "error": None
+                }
+                _set_cache(cache_key, result, TTL_MARKET)
+                print(f"[GAS] Fetched from Etherscan Oracle: {result['standard']} Gwei")
+                return result
+    except Exception as e:
+        print(f"[GAS][ERROR] Failed: {e}")
+        result["error"] = str(e)
     except Exception as e:
         print(f"[GAS][ERROR] Failed: {e}")
         result["error"] = str(e)

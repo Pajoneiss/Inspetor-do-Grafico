@@ -2319,19 +2319,39 @@ function DashboardContent() {
                           key={i}
                           className={cn(
                             "p-4 rounded-2xl bg-white/5 border-l-4 transition-all hover:bg-white/[0.08]",
-                            event.importance === "HIGH" ? "border-secondary" : "border-yellow-500/50"
+                            event.importance === "HIGH" ? "border-secondary shadow-[0_0_15px_rgba(255,59,48,0.1)]" : "border-yellow-500/50"
                           )}
                         >
-                          <div className="flex justify-between items-start gap-4">
-                            <p className="font-bold text-sm leading-tight">{event.event || "Unknown"}</p>
-                            <span className="text-[10px] font-mono text-white/50 whitespace-nowrap bg-black/40 px-2 py-0.5 rounded border border-white/5">
-                              {event.date !== "TBD" ? new Date(event.date).toLocaleDateString(isPt ? "pt-BR" : "en-US", { month: "short", day: "numeric" }) : "TBD"} {event.time || ""}
+                          <div className="flex justify-between items-start gap-4 mb-2">
+                            <div className="flex flex-col gap-1">
+                              <p className="font-bold text-sm leading-tight text-white/90">{event.event || "Unknown"}</p>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <span className="text-[9px] font-black bg-white/10 px-1.5 py-0.5 rounded text-white/60">{event.country}</span>
+                                <div className="flex gap-0.5">
+                                  {Array.from({ length: event.impact === 'high' ? 3 : event.impact === 'medium' ? 2 : 1 }).map((_, idx) => (
+                                    <span key={idx} className={cn("text-[10px]", event.impact === 'high' ? "text-secondary" : "text-yellow-500")}>★</span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-mono text-white/50 whitespace-nowrap bg-black/40 px-2 py-1 rounded border border-white/5">
+                              {event.date !== "TBD" ? (event.date.includes(',') ? event.date.split(',').slice(1).join(',').trim() : event.date) : "TBD"} | {event.time || ""}
                             </span>
                           </div>
-                          {(event.estimate || event.previous) && (
-                            <div className="flex gap-4 mt-3 text-[10px] font-bold uppercase tracking-widest">
-                              {event.estimate && <span className="text-white/40">{isPt ? 'Est:' : 'Est:'} <span className="text-white/80">{event.estimate}</span></span>}
-                              {event.previous && <span className="text-white/40">{isPt ? 'Ant:' : 'Prev:'} <span className="text-white/80">{event.previous}</span></span>}
+                          {(event.actual || event.estimate || event.previous) && (
+                            <div className="grid grid-cols-3 gap-2 mt-3 text-[10px] font-bold uppercase tracking-widest border-t border-white/5 pt-2">
+                              <div className="flex flex-col">
+                                <span className="text-white/30 text-[8px] mb-0.5">{isPt ? 'Atual' : 'Actual'}</span>
+                                <span className={cn("text-white", event.actual ? "text-primary" : "text-white/20")}>{event.actual || '---'}</span>
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-white/30 text-[8px] mb-0.5">{isPt ? 'Estimado' : 'Estimate'}</span>
+                                <span className="text-white/60">{event.estimate || '---'}</span>
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-white/30 text-[8px] mb-0.5">{isPt ? 'Anterior' : 'Previous'}</span>
+                                <span className="text-white/60">{event.previous || '---'}</span>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -2464,22 +2484,24 @@ function DashboardContent() {
                           <Gauge className="w-3 h-3 text-cyan-400" />
                           {isPt ? 'Índice Altcoin Season' : 'Altcoin Season Index'}
                         </h3>
-                        <span className="text-xl font-black text-cyan-400">{altSeasonData?.blockchaincenter?.formatted_season_index || "---"}</span>
+                        <span className="text-xl font-black text-cyan-400">
+                          {altSeasonData?.blockchaincenter?.season_index !== undefined ? altSeasonData.blockchaincenter.season_index : (altSeasonData?.index || "---")}
+                        </span>
                       </div>
-                      {altSeasonData && (
+                      {(altSeasonData?.blockchaincenter?.season_index !== undefined || altSeasonData?.index !== undefined) && (
                         <div className="space-y-2">
                           <div className="relative h-4 bg-white/10 rounded-full overflow-hidden border border-white/5">
                             <div
                               className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-orange-500 via-yellow-500 to-cyan-500 transition-all duration-1000"
-                              style={{ width: `${altSeasonData.blockchaincenter?.season_index || 0}%` }}
+                              style={{ width: `${altSeasonData.blockchaincenter?.season_index ?? altSeasonData.index ?? 0}%` }}
                             />
                             {/* Markers */}
                             <div className="absolute top-0 bottom-0 left-[25%] w-0.5 bg-white/30" />
                             <div className="absolute top-0 bottom-0 left-[75%] w-0.5 bg-white/30" />
                           </div>
                           <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest pt-1">
-                            <span className={cn(altSeasonData.blockchaincenter?.season_index < 25 ? "text-orange-400" : "text-white/30")}>Bitcoin Season</span>
-                            <span className={cn(altSeasonData.blockchaincenter?.season_index > 75 ? "text-cyan-400" : "text-white/30")}>Altcoin Season</span>
+                            <span className={cn((altSeasonData.blockchaincenter?.season_index ?? altSeasonData.index) < 25 ? "text-orange-400" : "text-white/30")}>Bitcoin Season</span>
+                            <span className={cn((altSeasonData.blockchaincenter?.season_index ?? altSeasonData.index) > 75 ? "text-cyan-400" : "text-white/30")}>Altcoin Season</span>
                           </div>
                         </div>
                       )}

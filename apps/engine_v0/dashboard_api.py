@@ -415,20 +415,22 @@ def get_news():
     try:
         from data_sources import get_cryptopanic_news
         news_data = get_cryptopanic_news()
-        
-        return jsonify({
-            "ok": True,
-            **news_data,
-            "server_time_ms": int(time.time() * 1000)
-        })
+        return jsonify({"ok": True, **news_data, "server_time_ms": int(time.time() * 1000)})
     except Exception as e:
-        print(f"[DASHBOARD][ERROR] News fetch failed: {e}")
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-            "news": [],
-            "count": 0
-        }), 500
+        print(f"[DASHBOARD][ERROR] News failed: {e}")
+        return jsonify({"ok": False, "error": str(e), "news": [], "count": 0}), 500
+
+@app.route('/api/economic-calendar')
+def get_economic_calendar():
+    """Get economic calendar events"""
+    try:
+        days = request.args.get('days', 7, type=int)
+        from data_sources import fetch_economic_calendar
+        events = fetch_economic_calendar(days)
+        return jsonify({"ok": True, "events": events, "count": len(events), "server_time_ms": int(time.time() * 1000)})
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] Calendar failed: {e}")
+        return jsonify({"ok": False, "error": str(e), "events": []}), 500
 
 
 @app.route('/api/market')
@@ -455,110 +457,64 @@ def get_market_overview():
 
 @app.route('/api/gainers-losers')
 def get_gainers_losers():
-    """Get top gainers and losers"""
+    """Get top gainers and losers from Binance"""
     try:
-        from data_sources import fetch_cmc_gainers_losers
-        
-        data = fetch_cmc_gainers_losers()
-        
-        # Handle None response
-        if data is None:
-            data = {}
-        
-        return jsonify({
-            "ok": True,
-            "gainers": data.get("gainers", []),
-            "losers": data.get("losers", []),
-            "server_time_ms": int(time.time() * 1000)
-        })
+        from data_sources import fetch_binance_movers
+        data = fetch_binance_movers()
+        return jsonify({"ok": True, **data, "server_time_ms": int(time.time() * 1000)})
     except Exception as e:
-        print(f"[DASHBOARD][ERROR] Gainers/Losers failed: {e}")
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-            "gainers": [],
-            "losers": []
-        }), 500
+        print(f"[DASHBOARD][ERROR] Movers failed: {e}")
+        return jsonify({"ok": False, "error": str(e), "gainers": [], "losers": []}), 500
 
 
 @app.route('/api/market-intelligence/trending')
+@app.route('/api/trending')
 def api_trending_coins():
     """Get trending coins from CoinGecko"""
     try:
-        from data_sources import fetch_coingecko_trending
-        trending = fetch_coingecko_trending()
-        return jsonify({
-            "ok": True,
-            "data": trending,
-            "server_time_ms": int(time.time() * 1000)
-        })
+        from data_sources import fetch_trending_coins
+        res = fetch_trending_coins()
+        return jsonify({"ok": True, "data": res.get("coins", []), **res})
     except Exception as e:
-        print(f"[DASHBOARD][ERROR] Trending coins failed: {e}")
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-            "data": []
-        }), 500
-
+        print(f"[DASHBOARD][ERROR] Trending failed: {e}")
+        return jsonify({"ok": False, "error": str(e), "data": []}), 500
 
 @app.route('/api/market-intelligence/tvl')
+@app.route('/api/tvl')
 def api_market_intelligence_tvl():
-    """Get Total Value Locked from DefiLlama"""
+    """Get TVL from DefiLlama"""
     try:
-        from data_sources import fetch_defillama_tvl
-        tvl_data = fetch_defillama_tvl()
-        return jsonify({
-            "ok": True,
-            "data": tvl_data,
-            "server_time_ms": int(time.time() * 1000)
-        })
+        from data_sources import fetch_defi_tvl
+        res = fetch_defi_tvl()
+        return jsonify({"ok": True, "data": res, **res})
     except Exception as e:
         print(f"[DASHBOARD][ERROR] TVL failed: {e}")
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-            "data": {"total_tvl": 0, "top_chains": []}
-        }), 500
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.route('/api/market-intelligence/funding')
+@app.route('/api/funding')
 def api_funding_rate():
-    """Get BTC funding rate from Binance"""
+    """Get funding rates from Binance"""
     try:
-        from data_sources import fetch_binance_funding_rate
-        funding = fetch_binance_funding_rate()
-        return jsonify({
-            "ok": True,
-            "data": funding,
-            "server_time_ms": int(time.time() * 1000)
-        })
+        from data_sources import fetch_funding_rates
+        res = fetch_funding_rates()
+        return jsonify({"ok": True, "data": res, **res})
     except Exception as e:
-        print(f"[DASHBOARD][ERROR] Funding rate failed: {e}")
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-            "data": {"symbol": "BTCUSDT", "funding_rate": 0, "funding_time": 0}
-        }), 500
-
+        print(f"[DASHBOARD][ERROR] Funding failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route('/api/market-intelligence/long-short')
+@app.route('/api/long-short')
 def api_long_short_ratio():
-    """Get BTC Long/Short ratio from Binance"""
+    """Get Long/Short ratios from Binance"""
     try:
-        from data_sources import fetch_binance_long_short_ratio
-        ratio = fetch_binance_long_short_ratio()
-        return jsonify({
-            "ok": True,
-            "data": ratio,
-            "server_time_ms": int(time.time() * 1000)
-        })
+        from data_sources import fetch_long_short_ratio
+        res = fetch_long_short_ratio()
+        return jsonify({"ok": True, "data": res, **res})
     except Exception as e:
-        print(f"[DASHBOARD][ERROR] Long/Short ratio failed: {e}")
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-            "data": {"symbol": "BTCUSDT", "long_short_ratio": 0, "long_account": 0, "short_account": 0, "timestamp": 0}
-        }), 500
+        print(f"[DASHBOARD][ERROR] Long/Short failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.route('/api/cmc/trending')
@@ -595,89 +551,15 @@ def api_cmc_gainers_losers():
         }), 500
 
 
-# ================== NEW FEATURE ENDPOINTS ==================
-
-@app.route('/api/halving')
-def api_halving():
-    """Get Bitcoin halving countdown"""
-    try:
-        from data_sources import fetch_bitcoin_halving
-        return jsonify({"ok": True, **fetch_bitcoin_halving()})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@app.route('/api/tvl')
-def api_tvl():
-    """Get DeFi Total Value Locked"""
-    try:
-        from data_sources import fetch_defi_tvl
-        return jsonify({"ok": True, **fetch_defi_tvl()})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@app.route('/api/funding')
-def api_funding():
-    """Get funding rates from Binance"""
-    try:
-        from data_sources import fetch_funding_rates
-        return jsonify({"ok": True, **fetch_funding_rates()})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@app.route('/api/long-short')
-def api_long_short():
-    """Get Long/Short ratio from Binance"""
-    try:
-        from data_sources import fetch_long_short_ratio
-        return jsonify({"ok": True, **fetch_long_short_ratio()})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@app.route('/api/trending')
-def api_trending():
-    """Get trending coins from CoinGecko"""
-    try:
-        from data_sources import fetch_trending_coins
-        return jsonify({"ok": True, **fetch_trending_coins()})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@app.route('/api/altseason')
-def api_altseason():
-    """Get altcoin season index"""
-    try:
-        from data_sources import fetch_altcoin_season
-        return jsonify({"ok": True, **fetch_altcoin_season()})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@app.route('/api/gas')
-def api_gas():
-    """Get Ethereum gas prices"""
-    try:
-        from data_sources import fetch_eth_gas
-        return jsonify({"ok": True, **fetch_eth_gas()})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@app.route('/api/rainbow')
-def api_rainbow():
-    """Get Bitcoin Rainbow Chart data"""
-    try:
-        from data_sources import fetch_rainbow_chart
-        return jsonify({"ok": True, **fetch_rainbow_chart()})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
 @app.route('/api/cmc/global')
+def api_cmc_global():
+    """Get global market data (Market Cap, Dominance)"""
+    try:
+        from data_sources import fetch_cmc
+        data = fetch_cmc()
+        return jsonify({"ok": True, "data": data})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 def api_cmc_global():
     """Get enhanced global metrics from CoinMarketCap"""
     try:
