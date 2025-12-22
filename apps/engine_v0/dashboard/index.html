@@ -455,6 +455,30 @@
                     </div>
                 </div>
             </div>
+
+            <!-- CryptoPanic News Card -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">📰 Crypto News</span>
+                </div>
+                <div id="newsContainer">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Economic Calendar Card -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">📅 Economic Calendar</span>
+                </div>
+                <div id="calendarContainer">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -617,13 +641,86 @@
             }
         }
 
+        // Update crypto news
+        async function updateNews() {
+            try {
+                // Fetch from data_sources via telegram summary endpoint or create new one
+                const newsContainer = document.getElementById('newsContainer');
+
+                // For now, use placeholder - you can integrate CryptoPanic API
+                const newsHTML = `
+                    <div class="market-item">
+                        <span class="market-label">🔴 BTC breaks key resistance</span>
+                    </div>
+                    <div class="market-item">
+                        <span class="market-label">📈 Institutional inflows surge</span>
+                    </div>
+                    <div class="market-item">
+                        <span class="market-label">⚠️ Fed hints at rate changes</span>
+                    </div>
+                    <div style="text-align: center; margin-top: 12px; font-size: 12px; color: var(--text-secondary);">
+                        Configure CRYPTOPANIC_API_KEY for live news
+                    </div>
+                `;
+
+                newsContainer.innerHTML = newsHTML;
+            } catch (e) {
+                console.error('News error:', e);
+                document.getElementById('newsContainer').innerHTML =
+                    '<div class="empty-state">News unavailable</div>';
+            }
+        }
+
+        // Update economic calendar
+        async function updateCalendar() {
+            try {
+                const res = await fetch(`${API_BASE}/api/economic-calendar?days=7`);
+                const json = await res.json();
+                const container = document.getElementById('calendarContainer');
+
+                if (json.ok && json.events && json.events.length > 0) {
+                    const eventsHTML = json.events.slice(0, 5).map(event => {
+                        const stars = event.importance === 'HIGH' ? '🔴🔴🔴' : '🟡🟡';
+                        const date = event.date === 'TBD' ? 'TBD' :
+                            new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        const time = event.time || 'TBD';
+                        const eventName = event.event || 'Unknown';
+
+                        let details = '';
+                        if (event.estimate) details += `Est: ${event.estimate}`;
+                        if (event.previous) details += ` | Prev: ${event.previous}`;
+
+                        return `
+                            <div class="market-item" style="flex-direction: column; align-items: flex-start; padding: 16px 0;">
+                                <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 4px;">
+                                    <span style="font-weight: 600;">${stars} ${eventName}</span>
+                                    <span style="color: var(--text-secondary); font-size: 12px;">${date} ${time}</span>
+                                </div>
+                                ${details ? `<div style="font-size: 12px; color: var(--text-secondary);">${details}</div>` : ''}
+                            </div>
+                        `;
+                    }).join('');
+
+                    container.innerHTML = eventsHTML || '<div class="empty-state">No upcoming events</div>';
+                } else {
+                    container.innerHTML = '<div class="empty-state">Calendar unavailable</div>';
+                }
+            } catch (e) {
+                console.error('Calendar error:', e);
+                document.getElementById('calendarContainer').innerHTML =
+                    '<div class="empty-state">Calendar unavailable</div>';
+            }
+        }
+
         // Initial load
         async function init() {
             await Promise.all([
                 updateStatus(),
                 updatePositions(),
                 updateActivity(),
-                updateMarket()
+                updateMarket(),
+                updateNews(),
+                updateCalendar()
             ]);
 
             // Refresh every 5 seconds
@@ -631,6 +728,8 @@
             setInterval(updatePositions, 10000);
             setInterval(updateActivity, 10000);
             setInterval(updateMarket, 30000);
+            setInterval(updateNews, 60000);  // News every 1 min
+            setInterval(updateCalendar, 300000);  // Calendar every 5 min
         }
 
         init();
