@@ -310,10 +310,8 @@ def main():
                         candles_by_symbol = {}
                         indicators_by_symbol = {}
                         
-                        # Optimized timeframe config: covers all scales without API spam
+                        # v17: Optimized timeframes for H4 swing trading (removed 1m/5m noise)
                         TIMEFRAMES_CONFIG = {
-                            "1m": 60,   # 1 hour - micro confirmation
-                            "5m": 60,   # 5 hours - scalp setups
                             "15m": 60,  # 15 hours - entry precision
                             "1h": 60,   # 2.5 days - swing structure
                             "4h": 60,   # 10 days - intermediate trend
@@ -330,9 +328,9 @@ def main():
                             if s in snapshot_symbols and s not in scan_candidates:
                                 scan_candidates.append(s)
                         
-                        # Fill remaining slots with top snapshot symbols
+                        # v17: Fill remaining slots with top snapshot symbols (limit 2 total for cost)
                         for s in snapshot_symbols:
-                            if len(scan_candidates) >= 4:
+                            if len(scan_candidates) >= 2:
                                 break
                             if s not in scan_candidates:
                                 scan_candidates.append(s)
