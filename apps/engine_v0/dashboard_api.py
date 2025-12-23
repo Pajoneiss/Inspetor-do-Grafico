@@ -505,6 +505,54 @@ def api_long_short_ratio():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route('/api/halving')
+def api_halving():
+    """Get Bitcoin halving data"""
+    try:
+        from data_sources import fetch_bitcoin_halving
+        res = fetch_bitcoin_halving()
+        return jsonify({"ok": True, "data": res, **res})
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] Halving failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/altseason')
+def api_altseason():
+    """Get Altcoin Season Index"""
+    try:
+        from data_sources import fetch_altcoin_season
+        res = fetch_altcoin_season()
+        return jsonify({"ok": True, "data": res, **res})
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] Altseason failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/rainbow')
+def api_rainbow():
+    """Get Bitcoin Rainbow Chart data"""
+    try:
+        from data_sources import fetch_rainbow_chart
+        res = fetch_rainbow_chart()
+        return jsonify({"ok": True, "data": res, **res})
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] Rainbow failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/gas')
+def api_eth_gas():
+    """Get ETH Gas prices"""
+    try:
+        from data_sources import fetch_eth_gas
+        res = fetch_eth_gas()
+        return jsonify({"ok": True, "data": res, **res})
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] Gas failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route('/api/cmc/trending')
 def api_cmc_trending():
     """Get trending coins from CoinMarketCap"""
