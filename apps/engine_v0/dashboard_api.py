@@ -13,7 +13,8 @@ from flask_cors import CORS
 from config import (
     TG_CHAT_MODEL,
     HYPERLIQUID_WALLET_ADDRESS,
-    DEFAULT_SL_DISTANCE
+    DEFAULT_SL_DISTANCE,
+    AI_TEMPERATURE
 )
 from openai import OpenAI
 
