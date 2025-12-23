@@ -445,10 +445,10 @@ def get_market_overview():
 
 @app.route('/api/gainers-losers')
 def get_gainers_losers():
-    """Get top gainers and losers from Binance"""
+    """Get top gainers and losers (CoinGecko > Binance)"""
     try:
-        from data_sources import fetch_binance_movers
-        data = fetch_binance_movers()
+        from data_sources import fetch_cmc_gainers_losers
+        data = fetch_cmc_gainers_losers()
         return jsonify({"ok": True, **data, "server_time_ms": int(time.time() * 1000)})
     except Exception as e:
         print(f"[DASHBOARD][ERROR] Movers failed: {e}")
