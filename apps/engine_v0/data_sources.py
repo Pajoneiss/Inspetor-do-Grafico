@@ -8,6 +8,8 @@ import time
 import json
 from typing import Dict, Any, Optional, List
 from datetime import datetime
+import requests
+import re
 
 # Import API keys from config
 from config import CMC_API_KEY, CRYPTOPANIC_API_KEY, FMP_API_KEY, API_TIMEOUT_SECONDS
@@ -852,19 +854,26 @@ def fetch_binance_funding_rate() -> Dict[str, Any]:
         return cached
     
     try:
-        import httpx
-        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
-            resp = client.get("https://fapi.binance.com/fapi/v1/fundingRate?symbol=BTCUSDT&limit=1")
-            if resp.status_code == 200:
-                data = resp.json()
-                if data and len(data) > 0:
-                    result = {
-                        "symbol": data[0].get("symbol", "BTCUSDT"),
-                        "funding_rate": float(data[0].get("fundingRate", 0)) * 100,  # Convert to percentage
-                        "funding_time": data[0].get("fundingTime", 0)
-                    }
-                    _set_cache(cache_key, result, TTL_MARKET)
-                    return result
+        import requests
+        import time
+        # Binance futures public endpoint (no auth needed)
+        endpoint = "https://fapi.binance.com/fapi/v1/premiumIndex"
+        resp = requests.get(endpoint, params={"symbol": "BTCUSDT"}, timeout=API_TIMEOUT_SECONDS)
+        
+        if resp.status_code == 451:
+            print("[FUNDING][WARN] Binance returned 451 (Geoblocked). Returning placeholder.")
+            return {"symbol": "BTCUSDT", "funding_rate": 0.0001, "funding_time": int(time.time() * 1000) + 28800000, "error": "Geoblocked"}
+            
+        if resp.status_code == 200:
+            data = resp.json()
+            if data and len(data) > 0:
+                result = {
+                    "symbol": data[0].get("symbol", "BTCUSDT"),
+                    "funding_rate": float(data[0].get("lastFundingRate", 0)) * 100,  # Convert to percentage
+                    "funding_time": data[0].get("nextFundingTime", 0)
+                }
+                _set_cache(cache_key, result, TTL_MARKET)
+                return result
     except Exception as e:
         print(f"[FUNDING][WARN] Binance funding rate failed: {e}")
     
@@ -1186,13 +1195,15 @@ def fetch_altcoin_season() -> Dict[str, Any]:
         if resp.status_code == 200:
             html = resp.text
             
-            # Try multiple regex patterns
+            # Try multiple regex patterns to find the index (0-100)
+            # Order matters: try specific UI elements first before generic JSON values
             patterns = [
-                r'<div class="number">(\d+)</div>',  # Primary pattern
-                r'data:\s*\[(\d+)\]',  # Chart data pattern
-                r'value["\']?\s*:\s*(\d+)',  # Value property
-                r'altcoin.*?(\d{1,3})',  # Near "altcoin" text
-                r'(\d{1,3})\s*%?\s*</div>\s*<div[^>]*>.*?Altcoin',  # Before "Altcoin" text
+                r'Altcoin Season <b>\((\d+)\)</b>', # Button text found in HTML
+                r'Altcoin Season Index: (\d+)', # Title often contains it
+                r'class="number">(\d+)</div>', # Main circle number
+                r'<div[^>]*>Altcoin Season Index</div>\s*<div[^>]*>(\d+)</div>',
+                r'data:\s*\[(\d+)\]',
+                r'value["\']?\s*:\s*(\d+)' # Generic value (last resort)
             ]
             
             for pattern in patterns:
@@ -1305,9 +1316,6 @@ def fetch_eth_gas() -> Dict[str, Any]:
                 _set_cache(cache_key, result, TTL_MARKET)
                 print(f"[GAS] Fetched from Etherscan Oracle: {result['standard']} Gwei")
                 return result
-    except Exception as e:
-        print(f"[GAS][ERROR] Failed: {e}")
-        result["error"] = str(e)
     except Exception as e:
         print(f"[GAS][ERROR] Failed: {e}")
         result["error"] = str(e)

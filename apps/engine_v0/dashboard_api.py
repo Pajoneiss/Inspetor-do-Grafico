@@ -596,20 +596,6 @@ def api_cmc_global():
         return jsonify({"ok": True, "data": data})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
-def api_cmc_global():
-    """Get enhanced global metrics from CoinMarketCap"""
-    try:
-        from data_sources import fetch_cmc
-        data = fetch_cmc()
-        return jsonify({
-            "ok": True,
-            "data": data
-        })
-    except Exception as e:
-        return jsonify({
-            "ok": False,
-            "error": str(e)
-        }), 500
 
 
 @app.route('/api/health')
