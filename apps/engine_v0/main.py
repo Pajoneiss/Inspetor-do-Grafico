@@ -649,11 +649,12 @@ def main():
                     min_time_passed = time_since_last_call >= LLM_MIN_SECONDS
                     full_cooldown_passed = time_since_last_call >= AI_CALL_INTERVAL_SECONDS
                     
-                    # v16: Candle Close Sync - trigger AI at hourly boundaries (new candle open)
+                    # v16: Candle Close Sync - trigger AI at 4h boundaries only (00:00, 04:00, 08:00, 12:00, 16:00, 20:00 UTC)
                     current_hour = datetime.utcnow().hour
-                    candle_close_trigger = (current_hour != last_candle_hour) and (last_candle_hour != -1)
+                    is_4h_boundary = (current_hour % 4 == 0)
+                    candle_close_trigger = is_4h_boundary and (current_hour != last_candle_hour) and (last_candle_hour != -1)
                     if candle_close_trigger:
-                        print(f"[LLM] 🕐 Candle close detected! Hour {last_candle_hour} → {current_hour} (UTC)")
+                        print(f"[LLM] 🕐 4H Candle close detected! Hour {last_candle_hour} → {current_hour} (UTC)")
                     
                     # Call AI if: (min time passed AND material change) OR (full cooldown passed) OR (high volatility) OR (candle close)
                     should_call_ai = (min_time_passed and material_change) or full_cooldown_passed or high_volatility or candle_close_trigger
