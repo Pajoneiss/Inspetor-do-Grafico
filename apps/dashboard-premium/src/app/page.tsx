@@ -2243,7 +2243,7 @@ function DashboardContent() {
 
               {/* Global Market Stats */}
               <GlassCard className="border border-cyan-500/20" delay={0.1}>
-                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-cyan-500/30">
                   <Globe className="w-5 h-5 text-cyan-400" />
                   <h2 className="text-lg font-bold">{isPt ? 'Visão Geral do Mercado' : 'Global Market Overview'}</h2>
                 </div>
@@ -2276,7 +2276,7 @@ function DashboardContent() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Crypto News - Real-time */}
                 <GlassCard className="border border-primary/20" delay={0.2}>
-                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-primary/30">
                     <Zap className="w-5 h-5 text-primary" />
                     <h2 className="text-lg font-bold">{isPt ? 'Notícias em Tempo Real' : 'Real-time News Feed'}</h2>
                   </div>
@@ -2308,7 +2308,7 @@ function DashboardContent() {
 
                 {/* Economic Calendar */}
                 <GlassCard className="border border-yellow-500/20" delay={0.3}>
-                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-yellow-500/30">
                     <Calendar className="w-5 h-5 text-yellow-400" />
                     <h2 className="text-lg font-bold">{isPt ? 'Calendário Econômico Global' : 'Global Economic Calendar'}</h2>
                   </div>
@@ -2367,7 +2367,7 @@ function DashboardContent() {
 
                 {/* Top Movers */}
                 <GlassCard className="border border-primary/20" delay={0.4}>
-                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-primary/30">
                     <TrendingUp className="w-5 h-5 text-primary" />
                     <h2 className="text-lg font-bold">Top Gainers (24h)</h2>
                   </div>
@@ -2396,7 +2396,7 @@ function DashboardContent() {
                 </GlassCard>
 
                 <GlassCard className="border border-secondary/20" delay={0.5}>
-                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-secondary/30">
                     <TrendingDown className="w-5 h-5 text-secondary" />
                     <h2 className="text-lg font-bold">{isPt ? 'Maiores Baixas (24h)' : 'Top Losers (24h)'}</h2>
                   </div>
@@ -2430,7 +2430,7 @@ function DashboardContent() {
 
                 {/* 1. Rainbow Chart & Altcoin Season */}
                 <GlassCard className="border border-purple-500/20" delay={0.6}>
-                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-purple-500/30">
                     <BarChart3 className="w-5 h-5 text-purple-400" />
                     <h2 className="text-lg font-bold">{isPt ? 'Gráfico Arco-íris & Altseason' : 'Bitcoin Rainbow & Altseason'}</h2>
                   </div>
@@ -2511,7 +2511,7 @@ function DashboardContent() {
 
                 {/* 2. Halving & ETH Gas */}
                 <GlassCard className="border border-blue-500/20" delay={0.7}>
-                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-blue-500/30">
                     <Timer className="w-5 h-5 text-blue-400" />
                     <h2 className="text-lg font-bold">{isPt ? 'Halving & Network Stats' : 'Halving & Network Stats'}</h2>
                   </div>
@@ -2576,7 +2576,7 @@ function DashboardContent() {
 
                 {/* 3. DeFi TVL & Trending */}
                 <GlassCard className="border border-green-500/20" delay={0.8}>
-                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-green-500/30">
                     <Layers className="w-5 h-5 text-green-400" />
                     <h2 className="text-lg font-bold">{isPt ? 'DeFi & Trending' : 'DeFi & Trending'}</h2>
                   </div>
@@ -2619,7 +2619,7 @@ function DashboardContent() {
 
                 {/* 4. Long/Short Ratio */}
                 <GlassCard className="border border-pink-500/20" delay={0.9}>
-                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3 mb-6 pb-4 border-b border-pink-500/30">
                     <Activity className="w-5 h-5 text-pink-400" />
                     <h2 className="text-lg font-bold">{isPt ? 'Sentimento Futuros' : 'Futures Sentiment'}</h2>
                   </div>
