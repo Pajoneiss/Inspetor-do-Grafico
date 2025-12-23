@@ -129,6 +129,7 @@ def main():
     last_external_fetch = 0  # For data_sources throttle
     external_data = {}
     last_ai_price = 0.0 # Track price for volatility trigger
+    last_candle_hour = -1  # v16: Track last hour for candle close sync
 
     
     try:
@@ -648,8 +649,14 @@ def main():
                     min_time_passed = time_since_last_call >= LLM_MIN_SECONDS
                     full_cooldown_passed = time_since_last_call >= AI_CALL_INTERVAL_SECONDS
                     
-                    # Call AI if: (min time passed AND material change) OR (full cooldown passed) OR (high volatility)
-                    should_call_ai = (min_time_passed and material_change) or full_cooldown_passed or high_volatility
+                    # v16: Candle Close Sync - trigger AI at hourly boundaries (new candle open)
+                    current_hour = datetime.utcnow().hour
+                    candle_close_trigger = (current_hour != last_candle_hour) and (last_candle_hour != -1)
+                    if candle_close_trigger:
+                        print(f"[LLM] 🕐 Candle close detected! Hour {last_candle_hour} → {current_hour} (UTC)")
+                    
+                    # Call AI if: (min time passed AND material change) OR (full cooldown passed) OR (high volatility) OR (candle close)
+                    should_call_ai = (min_time_passed and material_change) or full_cooldown_passed or high_volatility or candle_close_trigger
                     
                     if should_call_ai:
                         try:
@@ -682,6 +689,7 @@ def main():
                             last_state_hash = current_hash
                             last_equity = current_equity
                             last_ai_price = current_price
+                            last_candle_hour = current_hour  # v16: Update candle hour after AI call
                             
                             # Execute actions from LLM
                             actions = decision.get("actions", [])
@@ -708,7 +716,11 @@ def main():
                             traceback.print_exc()
                     else:
                         remaining = LLM_MIN_SECONDS - time_since_last_call if not min_time_passed else AI_CALL_INTERVAL_SECONDS - time_since_last_call
-                        print(f"[LLM] skipped (cooldown {max(0, remaining):.0f}s, state_changed={state_changed})")
+                        # v16: Update candle hour even when skipping (for initialization)
+                        if last_candle_hour == -1:
+                            last_candle_hour = current_hour
+                            print(f"[LLM] 🕐 Initialized candle hour tracking: {current_hour}h UTC")
+                        print(f"[LLM] skipped (cooldown {max(0, remaining):.0f}s, state_changed={state_changed}, hour={current_hour}h)")
             
             # BLOCO 4: Test Trade Request Processing (from Telegram)
             if TELEGRAM_AVAILABLE and llm:
