@@ -659,19 +659,23 @@ def fetch_investing_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any
                             forecast = row.find('td', {'class': 'fore'}).text.strip() if row.find('td', {'class': 'fore'}) else None
                             previous = row.find('td', {'class': 'prev'}).text.strip() if row.find('td', {'class': 'prev'}) else None
                             
+                            # FILTER: Only include HIGH impact (3-star) events
+                            if impact != "high":
+                                continue
+                            
                             event_obj = {
                                 "date": current_day,
                                 "time": time_val,
                                 "event": event_name,
                                 "country": country,
-                                "importance": "HIGH" if impact == "high" else "MEDIUM" if impact == "medium" else "LOW",
+                                "importance": "HIGH",
                                 "actual": actual if actual and actual != "&nbsp;" else None,
                                 "estimate": forecast if forecast and forecast != "&nbsp;" else None,
                                 "previous": previous if previous and previous != "&nbsp;" else None,
                                 "impact": impact
                             }
                             events.append(event_obj)
-                            if len(events) >= 20: break
+                            if len(events) >= 30: break  # Increased limit for high-impact events
                         except Exception as e:
                             continue
                 
