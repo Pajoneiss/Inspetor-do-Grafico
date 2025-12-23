@@ -626,8 +626,10 @@ def fetch_investing_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any
                 today_str = datetime.now().strftime("%B %d, %Y") # Basic check
                 
                 for row in rows:
-                    if 'theDay' in row.get('class', []):
-                        current_day = row.text.strip()
+                    # Fix: Check for td with class 'theDay' inside the row
+                    day_td = row.find('td', {'class': 'theDay'})
+                    if day_td:
+                        current_day = day_td.text.strip()
                         continue
                     
                     if 'js-event-item' in row.get('class', []):
