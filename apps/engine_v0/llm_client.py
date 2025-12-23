@@ -268,6 +268,17 @@ class LLMClient:
             self._log_quality(decision)
             return decision
         except Exception as e:
+            error_str = str(e)
+            if "credit balance" in error_str.lower() or "overloaded" in error_str.lower():
+                print(f"[LLM] ⚠️  API LIMITATION: {error_str} -> Using NEUTRAL fallback")
+                return {
+                    "actions": [],
+                    "summary": "AI in Neutral/Sleep Mode (API Credit Limit / Overload)",
+                    "confidence": 0.0,
+                    "reasoning": "External AI provider unavailable. Holding current positions.",
+                    "thesis": {"bias": "NEUTRAL", "key_levels": [], "invalidation": "API recovery"}
+                }
+            
             logger.error(f"[LLM] Error: {e}", exc_info=True)
             return {
                 "actions": [],

@@ -321,9 +321,18 @@ def fetch_cmc_gainers_losers() -> Dict[str, List[Dict[str, Any]]]:
                 _set_cache(cache_key, result, TTL_MARKET)
                 print(f"[CMC] Gainers/Losers fetched: {len(gainers)} gainers, {len(losers)} losers")
                 return result
+
     except Exception as e:
         print(f"[CMC][WARN] Gainers/Losers fetch failed: {e}, falling back to Binance")
-        return fetch_binance_movers()
+        
+        # Fallback 1: Binance
+        binance_res = fetch_binance_movers()
+        if binance_res.get("gainers"):
+            return binance_res
+            
+        # Fallback 2: CoinGecko
+        print("[CMC] Binance fallback failed/empty, trying CoinGecko...")
+        return fetch_coingecko_movers()
 
 def fetch_binance_movers() -> Dict[str, List[Dict[str, Any]]]:
     """
@@ -605,6 +614,11 @@ def fetch_investing_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any
         if resp.status_code == 200:
             soup = BeautifulSoup(resp.text, 'html.parser')
             table = soup.find('table', {'id': 'economicCalendarData'})
+            if not table:
+                print("[CALENDAR][WARN] Table 'economicCalendarData' not found in HTML")
+                # Try finding any table with class 'genTbl'
+                table = soup.find('table', {'class': 'genTbl'})
+            
             if table:
                 rows = table.find_all('tr')
                 current_day = ""
@@ -1297,8 +1311,9 @@ def fetch_eth_gas() -> Dict[str, Any]:
                     "instant": round(speeds[3].get("gasPrice", 0), 1),
                     "error": None
                 }
-                _set_cache(cache_key, result, TTL_MARKET)
-                return result
+                if result["standard"] > 0:
+                    _set_cache(cache_key, result, TTL_MARKET)
+                    return result
 
         # Source 2: Etherscan Gas Tracker (Standard API)
         resp = requests.get("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=YourApiKeyToken", timeout=API_TIMEOUT_SECONDS)
@@ -1313,9 +1328,36 @@ def fetch_eth_gas() -> Dict[str, Any]:
                     "instant": round(float(res["FastGasPrice"]) * 1.2, 1),
                     "error": None
                 }
-                _set_cache(cache_key, result, TTL_MARKET)
-                print(f"[GAS] Fetched from Etherscan Oracle: {result['standard']} Gwei")
-                return result
+                if result["standard"] > 0:
+                    _set_cache(cache_key, result, TTL_MARKET)
+                    print(f"[GAS] Fetched from Etherscan Oracle: {result['standard']} Gwei")
+                    return result
+
+        # Source 3: Beaconcha.in (Free)
+        try:
+            resp = requests.get("https://beaconcha.in/api/v1/execution/gasnow", timeout=API_TIMEOUT_SECONDS)
+            if resp.status_code == 200:
+                data = resp.json()
+                data = data.get("data", {})
+                if data:
+                    result = {
+                        "slow": round(float(data.get("slow", 0)) / 1e9, 1),
+                        "standard": round(float(data.get("standard", 0)) / 1e9, 1),
+                        "fast": round(float(data.get("fast", 0)) / 1e9, 1),
+                        "instant": round(float(data.get("rapid", 0)) / 1e9, 1),
+                        "error": None
+                    }
+                    _set_cache(cache_key, result, TTL_MARKET)
+                    print(f"[GAS] Fetched from Beaconcha.in: {result['standard']} Gwei")
+                    return result
+        except Exception:
+             pass
+
+        # Fallback Hardcoded (Prevent 0)
+        if result["standard"] == 0:
+             print("[GAS][WARN] All sources failed. Using static fallback.")
+             result = {"slow": 10, "standard": 15, "fast": 20, "instant": 25, "error": "fallback"}
+             return result
     except Exception as e:
         print(f"[GAS][ERROR] Failed: {e}")
         result["error"] = str(e)

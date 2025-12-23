@@ -79,6 +79,8 @@ class HLClient:
         # Throttling Semaphore (Limit parallel API calls)
         self._api_semaphore = threading.Semaphore(MAX_API_CONCURRENCY)
         self._last_429_time = 0
+        self._last_request_time = 0
+        self._min_request_gap = 0.2  # 200ms gap between requests
         
         # Meta cache for symbol constraints
         self._meta_cache = None
@@ -155,7 +157,26 @@ class HLClient:
                 print(f"[HL][ERROR] Failed to initialize clients: {e}")
                 traceback.print_exc()
                 return
-    
+    def _wait_for_rate_limit(self):
+        """Enforce strict rate limiting between requests"""
+        try:
+            current_time = time.time()
+            time_since_last = current_time - self._last_request_time
+            
+            # If 429 received recently, wait longer
+            if current_time - self._last_429_time < 10:
+                time.sleep(1.0)
+            
+            # Enforce minimum gap
+            elif time_since_last < self._min_request_gap:
+                sleep_time = self._min_request_gap - time_since_last
+                time.sleep(sleep_time)
+            
+            self._last_request_time = time.time()
+            
+        except Exception:
+            pass  # Ensure throttling never crashes the bot
+
     def get_account_summary(self) -> Dict[str, Any]:
         """
         Get account summary with equity, margin, and positions count
@@ -177,6 +198,7 @@ class HLClient:
                 time.sleep(1)
 
             with self._api_semaphore:
+                self._wait_for_rate_limit()
                 # Get user state from Hyperliquid
                 user_state = self.info_client.user_state(self.wallet_address)
             
@@ -229,6 +251,7 @@ class HLClient:
                 return []
             
             with self._api_semaphore:
+                self._wait_for_rate_limit()
                 user_state = self.info_client.user_state(self.wallet_address)
             
             if not user_state:
@@ -282,6 +305,7 @@ class HLClient:
                 time.sleep(0.5)
 
             with self._api_semaphore:
+                self._wait_for_rate_limit()
                 # Get all mid prices
                 all_mids = self.info_client.all_mids()
             
@@ -474,6 +498,7 @@ class HLClient:
             if not self.info_client or not self.wallet_address:
                 return []
             
+            self._wait_for_rate_limit()
             user_fills = self.info_client.user_fills(self.wallet_address)
             
             if not user_fills:
@@ -501,6 +526,7 @@ class HLClient:
                 return {"error": "No wallet address"}
             
             import httpx
+            self._wait_for_rate_limit()
             with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
                 resp = client.post(
                     f"{self.api_url}/info",
@@ -555,6 +581,7 @@ class HLClient:
                 return []
             
             # Use MCP info_client.open_orders
+            self._wait_for_rate_limit()
             open_orders_response = self.info_client.open_orders(self.wallet_address)
             
             if not open_orders_response:
@@ -624,6 +651,7 @@ class HLClient:
             # Try positional args first (most common)
             try:
                 with self._api_semaphore:
+                    self._wait_for_rate_limit()
                     candles = self.info_client.candles_snapshot(symbol, interval, start_ms, now_ms)
                 if candles:
                     # Cache the result
@@ -639,6 +667,7 @@ class HLClient:
             
             # Fallback: try with named params
             try:
+                self._wait_for_rate_limit()
                 candles = self.info_client.candles_snapshot(
                     coin=symbol, 
                     interval=interval, 
@@ -687,6 +716,7 @@ class HLClient:
             
             # Use MCP info_client.l2_snapshot
             with self._api_semaphore:
+                self._wait_for_rate_limit()
                 snapshot = self.info_client.l2_snapshot(symbol)
             
             if not snapshot:
@@ -785,6 +815,7 @@ class HLClient:
                     return cached_data
             
             # Fetch fresh data
+            self._wait_for_rate_limit()
             meta_and_ctxs = self.info_client.meta_and_asset_ctxs()
             
             if not meta_and_ctxs:
