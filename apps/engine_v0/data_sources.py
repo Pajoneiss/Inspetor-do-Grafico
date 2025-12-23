@@ -282,7 +282,7 @@ def fetch_cmc_gainers_losers() -> Dict[str, List[Dict[str, Any]]]:
     Falls back to CoinGecko trending/movers if CMC key is missing or fails.
     """
     if not CMC_API_KEY:
-        return fetch_binance_movers()
+        return fetch_coingecko_movers()
     
     cache_key = "cmc_gainers_losers"
     cached = _get_cache(cache_key)
@@ -325,14 +325,15 @@ def fetch_cmc_gainers_losers() -> Dict[str, List[Dict[str, Any]]]:
     except Exception as e:
         print(f"[CMC][WARN] Gainers/Losers fetch failed: {e}, falling back to Binance")
         
-        # Fallback 1: Binance
-        binance_res = fetch_binance_movers()
-        if binance_res.get("gainers"):
-            return binance_res
-            
-        # Fallback 2: CoinGecko
-        print("[CMC] Binance fallback failed/empty, trying CoinGecko...")
-        return fetch_coingecko_movers()
+        # Fallback 1: CoinGecko (User Preference)
+        print("[CMC] Fetch failed, trying CoinGecko...")
+        cg_res = fetch_coingecko_movers()
+        if cg_res.get("gainers"):
+            return cg_res
+
+        # Fallback 2: Binance
+        print("[CMC] CoinGecko failed/empty, trying Binance...")
+        return fetch_binance_movers()
 
 def fetch_binance_movers() -> Dict[str, List[Dict[str, Any]]]:
     """
@@ -693,10 +694,49 @@ def fetch_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any]]:
         if events:
             return events
 
-    # Fallback to Investing.com scraper/parser
     events = fetch_investing_economic_calendar(days_ahead)
     if events:
         return events
+        
+    # User-requested "Mandatory Function": Return realistic fallback/sample data
+    from datetime import datetime
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    
+    return [
+        {
+            "date": today_str,
+            "time": "14:00",
+            "event": "FOMC Meeting Minutes (Sample)",
+            "country": "US",
+            "importance": "HIGH",
+            "actual": None,
+            "estimate": None,
+            "previous": None,
+            "impact": "high"
+        },
+        {
+            "date": today_str,
+            "time": "15:30",
+            "event": "Initial Jobless Claims (Sample)",
+            "country": "US",
+            "importance": "MEDIUM",
+            "actual": "220K",
+            "estimate": "218K",
+            "previous": "215K",
+            "impact": "medium"
+        },
+        {
+            "date": today_str,
+            "time": "16:00",
+            "event": "Crude Oil Inventories (Sample)",
+            "country": "US",
+            "importance": "LOW",
+            "actual": None,
+            "estimate": "-1.5M",
+            "previous": "-2.1M",
+            "impact": "low"
+        }
+    ]
         
     # Final Fallback message
     return [
