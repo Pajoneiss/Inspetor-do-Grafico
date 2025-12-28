@@ -892,11 +892,11 @@ function DashboardContent() {
               <div className="mt-8 mb-8">
                 <UnifiedOverviewCard
                   status={status || {}}
-                  history={pnlHistory}
+                  history={pnlHistory || []}
                   period={pnlPeriod}
                   setPeriod={setPnlPeriod}
-                  journalStats={journalStats}
-                  sessionInfo={sessionInfo}
+                  journalStats={journalStats || {}}
+                  sessionInfo={sessionInfo || {}}
                   isPt={isPt}
                   isLoading={!status}
                 />
