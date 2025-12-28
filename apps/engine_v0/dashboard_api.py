@@ -622,7 +622,8 @@ def api_pnl():
         with _state_lock:
             current_equity = _dashboard_state.get("account", {}).get("equity", 0)
         
-        history = get_pnl_history(current_equity=current_equity)
+        period = request.args.get('period', '24H')
+        history = get_pnl_history(current_equity=current_equity, period=period)
         
         # Helper to safely extract numeric PNL value
         def safe_pnl(window_key):

@@ -4,7 +4,7 @@ Trading bot engine with multi-symbol Hyperliquid integration and AI decisions
 """
 import time
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from config import (
     LOOP_INTERVAL_SECONDS,
     SYMBOL,
@@ -648,7 +648,7 @@ def main():
                     full_cooldown_passed = time_since_last_call >= AI_CALL_INTERVAL_SECONDS
                     
                     # v16: Candle Close Sync - trigger AI at 4h boundaries only (00:00, 04:00, 08:00, 12:00, 16:00, 20:00 UTC)
-                    current_hour = datetime.utcnow().hour
+                    current_hour = datetime.now(timezone.utc).hour
                     is_4h_boundary = (current_hour % 4 == 0)
                     candle_close_trigger = is_4h_boundary and (current_hour != last_candle_hour) and (last_candle_hour != -1)
                     if candle_close_trigger:

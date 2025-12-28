@@ -12,7 +12,7 @@ _pnl_cache: Optional[Dict[str, Any]] = None
 _pnl_cache_time: float = 0
 PNL_CACHE_TTL = 120  # 2 minutes
 HISTORY_FILE = os.path.join(os.path.dirname(__file__), "pnl_history.json")
-MAX_HISTORY_POINTS = 100  # Keep last 100 points
+MAX_HISTORY_POINTS = 1000  # Keep last 1000 points
 
 # Global hl_client reference (set by main.py)
 _hl_client_ref = None
@@ -130,34 +130,92 @@ def save_pnl_snapshot(equity: float):
         print(f"[PNL] Failed to save history: {e}")
 
 
-def get_pnl_history(hl_client=None, current_equity: float = 0) -> List[Dict[str, Any]]:
+def get_pnl_history(hl_client=None, current_equity: float = 0, period: str = '24H') -> List[Dict[str, Any]]:
     """
     Get historical equity points for the chart.
     Reads from pnl_history.json if available, otherwise generates fallback.
+    
+    Args:
+        hl_client: Hyperliquid client (optional)
+        current_equity: Current equity value (optional)
+        period: Time window to filter ('24H', '7D', '30D', 'ALL')
     """
     import json
+    
+    points = []
+    
     if os.path.exists(HISTORY_FILE):
         try:
             with open(HISTORY_FILE, 'r') as f:
-                history = json.load(f)
-                if history:
-                    # Format time for chart (HH:mm)
-                    for point in history:
-                        if 'time' in point and 'T' in point['time']:
-                            # Convert ISO to brief time
-                            try:
-                                dt = datetime.fromisoformat(point['time'].replace('Z', '+00:00'))
-                                point['time'] = dt.strftime("%H:%M")
-                            except:
-                                pass
-                    return history
+                raw_history = json.load(f)
+                if raw_history:
+                    now = datetime.now(timezone.utc)
+                    cutoff_time = now
+                    
+                    # Determine cutoff based on period
+                    if period == '24H':
+                        cutoff_time = now - timedelta(hours=24)
+                    elif period == '7D':
+                        cutoff_time = now - timedelta(days=7)
+                    elif period == '30D':
+                        cutoff_time = now - timedelta(days=30)
+                    else: # ALL
+                        cutoff_time = datetime.min.replace(tzinfo=timezone.utc)
+                    
+                    filtered_history = []
+                    for point in raw_history:
+                        try:
+                            # Parse time
+                            # Handle different ISO formats just in case
+                            t_str = point['time'].replace('Z', '+00:00')
+                            dt = datetime.fromisoformat(t_str)
+                            
+                            if dt >= cutoff_time:
+                                # Format for display
+                                if period == '24H':
+                                    display_time = dt.strftime("%H:%M")
+                                else:
+                                    display_time = dt.strftime("%d/%m") # Date for longer periods
+                                    
+                                filtered_history.append({
+                                    "time": display_time,
+                                    "value": point['value'],
+                                    "full_time": point['time'] # Keep full time for sorting/checking
+                                })
+                        except Exception as e:
+                            continue
+                            
+                    points = filtered_history
         except Exception as e:
-            print(f"[PNL] Error reading history file: {e}")
+            print(f"[PNL] Error reading/filtering history file: {e}")
 
-    # Fallback to generated if no file exists yet
+    # If we have real points, return them
+    if points:
+        return points
+
+    # Fallback to generated if no file exists yet (Mock Data)
     pnl_data = get_pnl_windows(hl_client)
-    pnl_24h = pnl_data.get("24h", {}).get("pnl", 0)
     
+    # Adjust fallback generation based on period
+    pnl_val = 0
+    hours = 24
+    
+    if period == '7D':
+        pnl_val = pnl_data.get("7d", {}).get("pnl", 0)
+        hours = 24 * 7
+    elif period == '30D':
+        pnl_val = pnl_data.get("30d", {}).get("pnl", 0)
+        hours = 24 * 30
+    elif period == 'ALL':
+        pnl_val = pnl_data.get("allTime", {}).get("pnl", 0)
+        hours = 24 * 60 # Mock 60 days for all time
+    else:
+        pnl_val = pnl_data.get("24h", {}).get("pnl", 0)
+        hours = 24
+        
+    if not isinstance(pnl_val, (int, float)):
+        pnl_val = 0
+
     # Use provided equity or try to fetch it
     equity = current_equity
     if equity == 0:
@@ -173,20 +231,32 @@ def get_pnl_history(hl_client=None, current_equity: float = 0) -> List[Dict[str,
     if equity == 0:
         equity = 100 # Default fallback for empty accounts
         
-    start_equity = equity - pnl_24h
+    start_equity = equity - pnl_val
     points = []
     now = datetime.now(timezone.utc)
     
-    # Generate 24 points for the last 24 hours
-    for i in range(25):
-        hour_ago = now - timedelta(hours=(24-i))
-        # Simple linear progression with some noise
-        progress = i / 24.0
-        noise = (i % 3 - 1) * (abs(pnl_24h) * 0.05)
-        val = start_equity + (pnl_24h * progress) + noise
+    # Generate points (more points for longer periods)
+    num_points = 25
+    if period != '24H':
+        num_points = 50
         
+    for i in range(num_points + 1):
+        step = i / float(num_points)
+        time_offset = hours * (1 - step)
+        point_time = now - timedelta(hours=time_offset)
+        
+        # Simple linear progression with some noise
+        noise = (i % 3 - 1) * (abs(pnl_val) * 0.05) if pnl_val != 0 else (i % 3 - 1) * 0.1
+        val = start_equity + (pnl_val * step) + noise
+        
+        # Format
+        if period == '24H':
+            t_fmt = "%H:%M"
+        else:
+            t_fmt = "%d/%m"
+            
         points.append({
-            "time": hour_ago.strftime("%H:%M"),
+            "time": point_time.strftime(t_fmt),
             "value": round(val, 2)
         })
         

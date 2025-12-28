@@ -6,7 +6,7 @@ Claude-only with complete market intelligence and full autonomy
 import os
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
 from config import (
@@ -25,29 +25,21 @@ def _format_candles_multi_tf(candles_by_symbol: Dict) -> str:
     
     lines = []
     for symbol, timeframes in candles_by_symbol.items():
-        lines.append(f"\n{symbol}:")
+        parts = []
         for tf, candles in timeframes.items():
             if candles and len(candles) >= 3:
-                last_3 = candles[-3:]
-                changes = []
-                for c in last_3:
-                    try:
-                        o = float(c.get('o', c.get('open', 0)) or 0)
-                        close = float(c.get('c', c.get('close', 0)) or 0)
-                        if o and close:
-                            pct = ((close - o) / o) * 100
-                            changes.append(f"{pct:+.2f}%")
-                    except (ValueError, TypeError):
-                        continue
-                last_c = last_3[-1]
+                # Dense format: 1h:90000[+1.2%]
                 try:
-                    last_close = float(last_c.get('c', last_c.get('close', 0)) or 0)
-                except (ValueError, TypeError):
-                    last_close = 0
-                if last_close:
-                    lines.append(f"  {tf}: ${last_close:.2f} [{' '.join(changes)}]")
+                    c = candles[-1]
+                    close = float(c.get('c', c.get('close', 0)) or 0)
+                    op = float(c.get('o', c.get('open', 0)) or 0)
+                    pct = ((close - op) / op) * 100 if op else 0
+                    parts.append(f"{tf}:${close:.0f}[{pct:+.1f}%]")
+                except: continue
+        if parts:
+            lines.append(f"{symbol}: " + " | ".join(parts))
     
-    return "\n".join(lines) if lines else "(no candle data)"
+    return "\n".join(lines) if lines else "(no data)"
 
 
 def _format_funding(funding_by_symbol: Dict) -> str:
@@ -60,10 +52,10 @@ def _format_funding(funding_by_symbol: Dict) -> str:
         rate = data.get("funding_rate", 0) if isinstance(data, dict) else 0
         oi = data.get("open_interest", 0) if isinstance(data, dict) else 0
         rate_pct = rate * 100 if rate < 1 else rate
-        oi_str = f"${oi/1e6:.1f}M" if oi > 1e6 else f"${oi/1e3:.0f}K" if oi > 1e3 else f"${oi:.0f}"
-        lines.append(f"  {symbol}: rate={rate_pct:+.4f}% | OI={oi_str}")
+        oi_str = f"${oi/1e6:.1f}M" if oi > 1e6 else f"${oi/1e3:.0f}K"
+        lines.append(f"{symbol}: rate={rate_pct:+.4f}% OI={oi_str}")
     
-    return "\n".join(lines) if lines else "(no funding data)"
+    return " | ".join(lines) if lines else "(no funding)"
 
 
 def _format_orderbook(orderbook_by_symbol: Dict) -> str:
@@ -73,36 +65,23 @@ def _format_orderbook(orderbook_by_symbol: Dict) -> str:
     
     lines = []
     for symbol, book in orderbook_by_symbol.items():
-        if not book:
-            continue
+        if not book: continue
         try:
-            bids = book.get("bids", []) if isinstance(book, dict) else []
-            asks = book.get("asks", []) if isinstance(book, dict) else []
+            bids = book.get("bids", []) or []
+            asks = book.get("asks", []) or []
             
-            # Handle both formats: list of lists [[price, size], ...] or list of dicts
-            bid_vol = 0
-            for b in bids[:5]:
-                if isinstance(b, (list, tuple)) and len(b) >= 2:
-                    bid_vol += float(b[1])  # [price, size]
-                elif isinstance(b, dict):
-                    bid_vol += float(b.get("sz", b.get("size", 0)) or 0)
-            
-            ask_vol = 0
-            for a in asks[:5]:
-                if isinstance(a, (list, tuple)) and len(a) >= 2:
-                    ask_vol += float(a[1])
-                elif isinstance(a, dict):
-                    ask_vol += float(a.get("sz", a.get("size", 0)) or 0)
+            # Simplified calc
+            bid_vol = sum(float(b[1]) if isinstance(b, list) else float(b.get("sz", 0)) for b in bids[:5])
+            ask_vol = sum(float(a[1]) if isinstance(a, list) else float(a.get("sz", 0)) for a in asks[:5])
             
             total = bid_vol + ask_vol
             if total > 0:
                 bid_pct = (bid_vol / total) * 100
-                imbalance = "BID HEAVY" if bid_pct > 60 else "ASK HEAVY" if bid_pct < 40 else "BALANCED"
-                lines.append(f"  {symbol}: {imbalance} (bids {bid_pct:.0f}%)")
-        except (TypeError, ValueError, AttributeError):
-            continue
+                imb = "BID+" if bid_pct > 60 else "ASK+" if bid_pct < 40 else "BAL"
+                lines.append(f"{symbol}:{imb}({bid_pct:.0f}%)")
+        except: continue
     
-    return "\n".join(lines) if lines else "(no orderbook data)"
+    return " | ".join(lines) if lines else "(no ob)"
 
 
 def _format_indicators(indicators_by_symbol: Dict, prices: Dict) -> str:
@@ -112,29 +91,15 @@ def _format_indicators(indicators_by_symbol: Dict, prices: Dict) -> str:
     
     lines = []
     for symbol, ind in indicators_by_symbol.items():
-        if not ind:
-            continue
+        if not ind: continue
         price = prices.get(symbol, 0)
-        ema9 = ind.get("ema_9", 0)
-        ema21 = ind.get("ema_21", 0)
-        ema50 = ind.get("ema_50", 0)
-        rsi = ind.get("rsi_14", 50)
-        macd = ind.get("macd_hist", 0)
-        atr_pct = ind.get("atr_pct", 0)
+        ema9, ema21, ema50 = ind.get("ema_9", 0), ind.get("ema_21", 0), ind.get("ema_50", 0)
+        rsi, macd, atr = ind.get("rsi_14", 50), ind.get("macd_hist", 0), ind.get("atr_pct", 0)
         
-        # EMA alignment
-        if ema9 > ema21 > ema50:
-            ema_status = "BULLISH ALIGNED"
-        elif ema9 < ema21 < ema50:
-            ema_status = "BEARISH ALIGNED"
-        else:
-            ema_status = "MIXED"
-        
-        lines.append(f"  {symbol} @ ${price:.2f}:")
-        lines.append(f"    EMA: 9=${ema9:.2f} | 21=${ema21:.2f} | 50=${ema50:.2f} [{ema_status}]")
-        lines.append(f"    RSI: {rsi:.1f} | MACD: {macd:+.2f} | ATR: {atr_pct:.2f}%")
+        status = "BULL" if ema9>ema21>ema50 else "BEAR" if ema9<ema21<ema50 else "MIX"
+        lines.append(f"{symbol}(${price:.0f}): EMA[{status}] 9={ema9:.0f} 21={ema21:.0f} 50={ema50:.0f} | RSI={rsi:.1f} MACD={macd:.2f} ATR={atr:.2f}%")
     
-    return "\n".join(lines) if lines else "(no indicator data)"
+    return "\n".join(lines) if lines else "(no indicators)"
 
 
 def _format_positions(positions: Dict, position_details: Dict) -> str:
@@ -202,15 +167,11 @@ def _format_recent_trades(recent_fills: list) -> str:
 
 def _get_session() -> str:
     """Get current trading session"""
-    hour = datetime.utcnow().hour
-    if 0 <= hour < 8:
-        return "ASIA (00:00-08:00 UTC) - Lower volume, range-bound tendency"
-    elif 8 <= hour < 14:
-        return "LONDON (08:00-14:00 UTC) - High volatility, trend initiation"
-    elif 14 <= hour < 21:
-        return "NEW YORK (14:00-21:00 UTC) - Highest volume, trend continuation/reversal"
-    else:
-        return "LATE NY/ASIA TRANSITION (21:00-00:00 UTC) - Decreasing volume"
+    h = datetime.now(timezone.utc).hour
+    if 0 <= h < 8: return "ASIA (Range/Accum)"
+    elif 8 <= h < 14: return "LONDON (Vol/Trend)"
+    elif 14 <= h < 21: return "NY (Vol/Rev)"
+    return "LATE NY (Low Vol)"
 
 
 class LLMClient:
@@ -342,218 +303,53 @@ class LLMClient:
         # News summary
         news_str = "\n".join([f"  - {n.get('title', n) if isinstance(n, dict) else n}" for n in news[:3]]) if news else "(no news)"
         
-        return f"""You are an elite professional cryptocurrency trader operating on Hyperliquid perpetuals.
+        return f"""You are an elite autonomous crypto trader using SMC, ICT, and Price Action.
+You have ABSOLUTE CONTROL. You decide WHAT, WHEN, HOW MUCH to trade.
+System executes your decisions immediately.
+Edge is critical. No edge = NO trade. Quality > Quantity.
 
-═══════════════════════════════════════════════════════════════════════════════
-🎯 YOUR COMPLETE AUTONOMY
-═══════════════════════════════════════════════════════════════════════════════
+# ACCOUNT
+Equity: ${equity:.2f} | BP: ${buying_power:.2f} | Session: {session_str}
 
-You have ABSOLUTE CONTROL over ALL trading decisions. There are NO restrictions.
-You decide:
-• WHAT to trade (any symbol in the scan)
-• WHEN to trade (now, wait for confirmation, or skip)
-• HOW MUCH to trade (position sizing based on your conviction)
-• LEVERAGE (any amount you deem appropriate for the setup)
-• STOP LOSS & TAKE PROFIT (based on market structure, not arbitrary percentages)
-• HOLD DURATION (scalp seconds, swing hours/days - you decide)
-• MULTIPLE POSITIONS (if you see opportunities, take them)
-• POSITION MANAGEMENT (add, reduce, close partial, move stops, hedge)
+# MARKET
+Sentiment: {fear_greed}({fg_class}) | BTC.D: {btc_dom}%
+News: {news_str}
 
-You are the trader. The system executes YOUR decisions. Period.
-
-═══════════════════════════════════════════════════════════════════════════════
-🧠 PROFESSIONAL TRADING INTELLIGENCE
-═══════════════════════════════════════════════════════════════════════════════
-
-As a professional trader, you understand:
-
-📊 SMART MONEY CONCEPTS (SMC/ICT):
-- Order Blocks: Institutional accumulation/distribution zones where price often reacts
-- Liquidity: Resting orders above swing highs (buy stops) and below swing lows (sell stops)
-- Break of Structure (BOS): Continuation signal when HH/HL or LL/LH breaks
-- Change of Character (CHoCH): Reversal signal when structure shifts
-- Fair Value Gaps (FVG): Imbalanced price zones that often get filled
-- Inducement: False breakouts designed to trap retail traders
-
-📈 MARKET STRUCTURE & PRICE ACTION:
-- Higher Highs + Higher Lows = Uptrend (look for long opportunities)
-- Lower Highs + Lower Lows = Downtrend (look for short opportunities)
-- Equal Highs/Lows = Range (trade the boundaries or wait for breakout)
-- Support: Price level where buying pressure historically appears
-- Resistance: Price level where selling pressure historically appears
-- Candlestick context matters: wicks show rejection, bodies show conviction
-- Engulfing candles at key levels signal potential reversals
-- Pin bars/hammer at support = bullish rejection
-- Shooting star at resistance = bearish rejection
-- Inside bars = consolidation, breakout pending
-- Volume confirms moves: high volume = conviction, low volume = weak move
-
-💰 FUNDING RATE (Perpetual Mechanics):
-- Positive funding = longs pay shorts = market over-leveraged long
-- Negative funding = shorts pay longs = market over-leveraged short
-- Extreme funding often precedes squeezes against the crowded side
-- Use funding to gauge sentiment and potential mean reversion
-
-📈 OPEN INTEREST (OI):
-- OI rising + price rising = new longs, strong bullish
-- OI falling + price rising = shorts closing, weaker bullish
-- OI rising + price falling = new shorts, strong bearish
-- OI falling + price falling = longs closing, weaker bearish
-- OI + Breakout = confirmation of institutional participation
-
-📕 ORDERBOOK ANALYSIS:
-- Bid heavy = buying pressure, potential support
-- Ask heavy = selling pressure, potential resistance
-- Large orders appearing/disappearing = smart money activity
-- Thin orderbook = potential for fast moves
-
-⏰ SESSION DYNAMICS:
-- Asia: Range-bound, accumulation phase
-- London: Volatility spike, trend initiation
-- New York: Highest volume, trend continuation or reversal
-- Session overlaps: Maximum volatility opportunities
-
-🔥 ANTI-FAKEOUT AWARENESS:
-- True breakouts have volume confirmation
-- True breakouts have OI expansion
-- Fakeouts wick and return
-- Patience prevents trapped entries
-
-📍 PREMIUM/DISCOUNT ZONES (ICT OTE):
-- Measure the swing high to swing low range
-- Premium Zone: Above 50% midpoint - ideal for SHORTS
-- Discount Zone: Below 50% midpoint - ideal for LONGS
-- "Buy in discount, sell in premium" - institutional pricing
-- Optimal Trade Entry (OTE): 61.8%-78.6% retracement of the move
-
-📊 RISK/REWARD CALCULATION:
-- ALWAYS calculate R:R before entering any trade
-- Entry price → Stop Loss distance = RISK
-- Entry price → Take Profit distance = REWARD
-- R:R = Reward / Risk (e.g., 2:1 means reward is 2x the risk)
-- Professional standard: minimum 2:1 R:R for swings, 1.5:1 for scalps
-- Never enter a trade where potential loss exceeds potential gain
-
-🔗 BTC CORRELATION & DOMINANCE:
-- When BTC dumps, ALTS dump HARDER (higher beta)
-- When BTC pumps, alts may lag initially then outperform
-- BTC.D rising = money flowing INTO BTC, alts underperform
-- BTC.D falling = money flowing INTO ALTS, altseason conditions
-- Trade alts when BTC is stable/ranging for best alt performance
-- In high fear/crash conditions, reduce or avoid alt exposure
-
-📈 POSITION MANAGEMENT MASTERY:
-- ADDING: Only add to winners, never to losers. Add when thesis strengthens.
-- REDUCING: Take partials at key levels. Reduce before major resistance/support.
-- MOVING STOPS: Move to breakeven after price moves 1-2x your stop distance
-- TRAILING: Trail stops below/above structure, not arbitrary percentages
-- HEDGING: If uncertain but want exposure, consider smaller size or hedge
-- EXIT: Close when thesis invalidates, not when scared. Have a plan.
-
-🧘 PSYCHOLOGICAL DISCIPLINE:
-- NO REVENGE TRADING: After a loss, do NOT immediately re-enter to "make it back"
-- NO FOMO: If you missed the entry, wait for the next setup. There's always another.
-- NO OVERTRADING: Quality > Quantity. Fewer, higher-conviction trades win.
-- NO CHASING: If price moved significantly, the entry is gone. Wait for retest.
-- PATIENCE: The best traders wait. Sitting on hands is a valid strategy.
-- DETACHMENT: You are executing a system, not gambling. No emotional attachment.
-
-
-═══════════════════════════════════════════════════════════════════════════════
-📊 CURRENT ACCOUNT STATUS
-═══════════════════════════════════════════════════════════════════════════════
-
-💵 Equity: ${equity:.2f}
-💰 Buying Power: ${buying_power:.2f}
-⏰ Session: {session_str}
-
-═══════════════════════════════════════════════════════════════════════════════
-📈 MARKET SENTIMENT
-═══════════════════════════════════════════════════════════════════════════════
-
-😱 Fear & Greed Index: {fear_greed} ({fg_class})
-₿ BTC Dominance: {f"{btc_dom:.1f}%" if isinstance(btc_dom, (int, float)) else str(btc_dom)}
-
-📰 Recent News:
-{news_str}
-
-═══════════════════════════════════════════════════════════════════════════════
-🔍 SYMBOL SCAN (by opportunity score)
-═══════════════════════════════════════════════════════════════════════════════
-
+# SCAN
 {briefs_str}
 
-═══════════════════════════════════════════════════════════════════════════════
-📊 TECHNICAL INDICATORS
-═══════════════════════════════════════════════════════════════════════════════
-
+# INDICATORS
 {indicators_str}
 
-═══════════════════════════════════════════════════════════════════════════════
-💰 FUNDING & OPEN INTEREST
-═══════════════════════════════════════════════════════════════════════════════
-
+# FUNDING & ORDERBOOK
 {funding_str}
-
-═══════════════════════════════════════════════════════════════════════════════
-📕 ORDERBOOK IMBALANCE
-═══════════════════════════════════════════════════════════════════════════════
-
 {orderbook_str}
 
-═══════════════════════════════════════════════════════════════════════════════
-🕯️ MULTI-TIMEFRAME CANDLES
-═══════════════════════════════════════════════════════════════════════════════
-
+# CANDLES
 {candles_str}
 
-═══════════════════════════════════════════════════════════════════════════════
-📍 OPEN POSITIONS
-═══════════════════════════════════════════════════════════════════════════════
-
+# POSITIONS
 {positions_str}
 
-═══════════════════════════════════════════════════════════════════════════════
-📜 RECENT TRADE HISTORY (learn from your performance)
-═══════════════════════════════════════════════════════════════════════════════
-
+# HISTORY
 {trades_str}
 
-═══════════════════════════════════════════════════════════════════════════════
-🎯 YOUR DECISION
-═══════════════════════════════════════════════════════════════════════════════
-
-Analyze the data above and make your trading decision. You have complete autonomy.
-
-Return ONLY valid JSON (no markdown):
-
+# DECISION
+Analyze data. Return JSON ONLY.
 {{
   "actions": [
     {{
-      "type": "PLACE_ORDER" | "CLOSE_POSITION" | "CLOSE_PARTIAL" | "SET_STOP_LOSS" | "SET_TAKE_PROFIT" | "MOVE_STOP_TO_BREAKEVEN" | "ADD_TO_POSITION" | "NO_TRADE",
-      "symbol": "BTC",
-      "side": "LONG" | "SHORT",
-      "size": <your calculated size in asset units>,
-      "orderType": "MARKET" | "LIMIT",
-      "price": <null for market, or your limit price>,
-      "leverage": <your chosen leverage>,
-      "stop_loss": <your stop price>,
-      "take_profit": <your target price>,
-      "reason": "specific justification citing data"
+      "type": "PLACE_ORDER"|"CLOSE_POSITION"|"CLOSE_PARTIAL"|"SET_STOP_LOSS"|"SET_TAKE_PROFIT"|"MOVE_STOP_TO_BREAKEVEN"|"ADD_TO_POSITION"|"NO_TRADE",
+      "symbol": "BTC", "side": "LONG"|"SHORT", "size": <amt>, "orderType": "MARKET"|"LIMIT", "price": <limit_px>, 
+      "leverage": <int>, "stop_loss": <px>, "take_profit": <px>, "reason": "brief justification"
     }}
   ],
-  "summary": "Clear, specific description of what you're doing and why",
-  "confidence": <0.0-1.0 based on setup quality>,
-  "reasoning": "Detailed analysis citing specific data points",
-  "next_triggers": ["what would make you act differently next tick"],
-  "thesis": {{
-    "bias": "LONG" | "SHORT" | "NEUTRAL",
-    "key_levels": ["important price levels"],
-    "invalidation": "what proves your thesis wrong"
-  }}
-}}
-
-Remember: You are a professional. Cite specific data. No vague language. Act with conviction when the edge is there. Wait patiently when it's not. You decide everything."""
+  "summary": "Brief explanation",
+  "confidence": <0.0-1.0>,
+  "reasoning": "Data-driven analysis",
+  "next_triggers": ["events to watch"],
+  "thesis": {{ "bias": "LONG"|"SHORT"|"NEUTRAL", "key_levels": ["px"], "invalidation": "condition" }}
+}}"""
 
     def _parse_decision(self, response: str) -> Dict[str, Any]:
         """Parse JSON response from Claude"""
