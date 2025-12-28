@@ -332,25 +332,40 @@ const TradingViewChart = ({ symbol, theme = 'dark' }: { symbol: string, theme?: 
 };
 
 // --- Error Boundary ---
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+// --- Error Boundary ---
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null, info: any }> {
   constructor(props: any) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null, info: null };
   }
-  static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch(error: any, errorInfo: any) { console.error("UI Crash:", error, errorInfo); }
+  static getDerivedStateFromError(error: any) { return { hasError: true, error }; }
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("UI Crash:", error, errorInfo);
+    this.setState({ info: errorInfo });
+  }
   render() {
     if (this.state.hasError) {
       return (
-        <div className="h-screen flex flex-col items-center justify-center bg-black text-white p-10 text-center">
-          <div className="w-20 h-20 rounded-full bg-secondary/20 flex items-center justify-center mb-6">
-            <Shield className="w-10 h-10 text-secondary" />
+        <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white p-10 text-center font-mono">
+          <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center mb-6 animate-pulse">
+            <Shield className="w-10 h-10 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold mb-2 uppercase tracking-tighter">System Malfunction</h1>
-          <p className="text-muted-foreground max-w-md mb-8">A client-side exception occurred. The neural link with the fleet has been interrupted.</p>
+          <h1 className="text-3xl font-bold mb-2 uppercase tracking-tighter text-red-500">System Malfunction</h1>
+          <p className="text-muted-foreground max-w-md mb-8">CRITICAL FAILURE DETECTED</p>
+
+          <div className="w-full max-w-3xl bg-black/50 border border-red-500/30 rounded-xl p-6 mb-8 text-left overflow-x-auto shadow-[0_0_30px_rgba(239,68,68,0.1)]">
+            <p className="text-red-400 font-bold mb-2">ERROR:</p>
+            <p className="text-red-300 mb-4 whitespace-pre-wrap break-all">{this.state.error?.toString() || 'Unknown Error'}</p>
+
+            <p className="text-red-400 font-bold mb-2 text-xs">STACK TRACE:</p>
+            <pre className="text-[10px] text-red-white/50 whitespace-pre-wrap font-mono">
+              {this.state.info?.componentStack || 'No stack trace available'}
+            </pre>
+          </div>
+
           <button
             onClick={() => window.location.reload()}
-            className="px-8 py-4 rounded-2xl bg-primary text-black font-bold uppercase tracking-widest hover:neon-glow transition-all"
+            className="px-8 py-4 rounded-xl bg-red-600 text-white font-bold uppercase tracking-widest hover:bg-red-700 transition-all shadow-[0_0_20px_rgba(220,38,38,0.5)]"
           >
             Re-initialize System
           </button>
