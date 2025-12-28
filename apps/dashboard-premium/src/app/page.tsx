@@ -817,7 +817,7 @@ function DashboardContent() {
                         ))
                       ) : (
                         // Fallback mock data if real history is empty/loading
-                        fullAnalytics?.history?.slice(-5).reverse().map((h: any, i: number) => {
+                        (fullAnalytics?.history || []).slice(-5).reverse().map((h: any, i: number) => {
                           const isWin = (h.value - (fullAnalytics?.history?.[fullAnalytics.history.length - i - 2]?.value || h.value)) >= 0;
                           return (
                             <div key={i} className="flex items-center justify-between text-xs">
