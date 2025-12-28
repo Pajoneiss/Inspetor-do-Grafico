@@ -236,22 +236,26 @@ export default function UnifiedOverviewCard({ status, history, period, setPeriod
                                 </filter>
                             </defs>
 
-                            <path
-                                d={`${chartPath} L 800 150 L 0 150 Z`}
-                                fill="url(#chartFill)"
-                                className="transition-all duration-500"
-                            />
+                            {chartPath && (
+                                <path
+                                    d={`${chartPath} L 800 150 L 0 150 Z`}
+                                    fill="url(#chartFill)"
+                                    className="transition-all duration-500"
+                                />
+                            )}
 
-                            <path
-                                d={chartPath}
-                                fill="none"
-                                stroke={pnlValue >= 0 ? "#00ff9d" : "#ef4444"}
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                filter="url(#glow)"
-                                className="transition-all duration-500"
-                            />
+                            {chartPath && (
+                                <path
+                                    d={chartPath}
+                                    fill="none"
+                                    stroke={pnlValue >= 0 ? "#00ff9d" : "#ef4444"}
+                                    strokeWidth="3"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    filter="url(#glow)"
+                                    className="transition-all duration-500"
+                                />
+                            )}
                         </svg>
                     ) : (
                         <div className="h-full flex items-center justify-center opacity-30">
