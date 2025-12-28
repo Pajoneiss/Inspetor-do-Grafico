@@ -809,7 +809,7 @@ function DashboardContent() {
                       {status?.data?.pnl_history_recent && status.data.pnl_history_recent.length > 0 ? (
                         status.data.pnl_history_recent.map((item: any, idx: number) => (
                           <div key={idx} className="flex items-center justify-between text-xs">
-                            <span className="font-mono text-white/60">{new Date(item.timestamp).toLocaleDateString()} {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span className="font-mono text-white/60">{safeDate(item.timestamp).toLocaleDateString()} {safeDate(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             <span className={cn("font-bold", item.pnl >= 0 ? "text-primary" : "text-red-400")}>
                               {item.pnl >= 0 ? "WIN" : "LOSS"}
                             </span>
@@ -821,7 +821,7 @@ function DashboardContent() {
                           const isWin = (h.value - (fullAnalytics?.history?.[fullAnalytics.history.length - i - 2]?.value || h.value)) >= 0;
                           return (
                             <div key={i} className="flex items-center justify-between text-xs">
-                              <span className="font-mono text-white/60">{new Date(h.time).toLocaleDateString()}</span>
+                              <span className="font-mono text-white/60">{safeDate(h.time).toLocaleDateString()}</span>
                               <span className={cn("font-bold", isWin ? "text-primary" : "text-red-400")}>
                                 {isWin ? "WIN" : "LOSS"}
                               </span>
