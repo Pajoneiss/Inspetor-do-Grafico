@@ -965,6 +965,188 @@ def add_trade_log(log: dict):
     _trade_logs = _trade_logs[:50]
 
 
+# AI Analysis Cache (60s TTL per symbol)
+_ai_analysis_cache = {}
+AI_ANALYSIS_CACHE_TTL = 60
+
+
+def generate_ai_trade_analysis(position: dict) -> dict:
+    """
+    Generate real-time AI analysis for a position using GPT-4o-mini.
+    Returns a structured trade log with strategy, risk management, and notes.
+    """
+    global _ai_analysis_cache
+    
+    symbol = position.get('symbol', 'UNKNOWN')
+    cache_key = f"ai_analysis_{symbol}"
+    
+    # Check cache first
+    if cache_key in _ai_analysis_cache:
+        cached_data, cached_time = _ai_analysis_cache[cache_key]
+        if time.time() - cached_time < AI_ANALYSIS_CACHE_TTL:
+            print(f"[AI_ANALYSIS] Cache hit for {symbol}")
+            return cached_data
+    
+    # No OpenAI client available
+    if not openai_client:
+        print(f"[AI_ANALYSIS] OpenAI client not available, returning minimal log")
+        return _create_minimal_log(position)
+    
+    # Extract position data
+    side = position.get('side', 'LONG')
+    entry_price = float(position.get('entry_price', 0))
+    mark_price = float(position.get('mark_price', entry_price))
+    size = float(position.get('size', 0))
+    leverage = int(position.get('leverage', 1))
+    pnl = float(position.get('unrealized_pnl', 0))
+    
+    # Get current equity for risk calculations
+    with _state_lock:
+        equity = float(_dashboard_state.get("account", {}).get("equity", 100))
+    
+    # Build the AI prompt
+    prompt = f"""You are a professional crypto derivatives trader analyzing an active position.
+
+POSITION DATA:
+- Symbol: {symbol}
+- Side: {side}
+- Entry Price: ${entry_price:,.2f}
+- Current Mark Price: ${mark_price:,.2f}
+- Size: {size}
+- Leverage: {leverage}x
+- Unrealized PnL: ${pnl:,.2f}
+- Account Equity: ${equity:,.2f}
+
+Analyze this position and provide your professional assessment. You must respond with ONLY valid JSON (no markdown, no code blocks, just raw JSON) in this exact format:
+
+{{
+  "strategy": {{
+    "name": "Name of the strategy used (be specific, e.g. 'Breakout Retest', 'EMA Cross', 'Support Bounce')",
+    "timeframe": "Primary timeframe (e.g. '4H', '1H', '15m')",
+    "setup_quality": 7.5,
+    "confluence_factors": ["Factor 1", "Factor 2", "Factor 3"]
+  }},
+  "entry_rationale": "Brief explanation of why this entry was made (1-2 sentences)",
+  "risk_management": {{
+    "stop_loss": {entry_price * (0.97 if side == 'LONG' else 1.03):.2f},
+    "stop_loss_reason": "Why this stop loss level (reference market structure)",
+    "take_profit_1": {entry_price * (1.03 if side == 'LONG' else 0.97):.2f},
+    "tp1_reason": "Why this TP1 level",
+    "take_profit_2": {entry_price * (1.06 if side == 'LONG' else 0.94):.2f},
+    "tp2_reason": "Why this TP2 level",
+    "risk_usd": 0.00,
+    "risk_pct": 0.00
+  }},
+  "confidence": 0.75,
+  "ai_notes_pt": "Portuguese analysis paragraph (3-4 sentences)",
+  "ai_notes_en": "English analysis paragraph (3-4 sentences)",
+  "expected_outcome": "Short quote about expected outcome"
+}}
+
+IMPORTANT:
+- Base stop_loss and take_profit on realistic market structure, not arbitrary percentages
+- Be specific in confluence_factors (e.g. "RSI oversold bounce from 28", not just "RSI")
+- Confidence should reflect actual setup quality (0.6-0.95 range)
+- Calculate risk_usd as: |entry_price - stop_loss| * size / entry_price
+- Calculate risk_pct as: risk_usd / equity * 100"""
+
+    try:
+        print(f"[AI_ANALYSIS] Generating analysis for {symbol}...")
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a professional crypto derivatives trader. Respond ONLY with valid JSON, no markdown."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=1000
+        )
+        
+        raw_response = response.choices[0].message.content.strip()
+        
+        # Clean response if wrapped in code blocks
+        if raw_response.startswith("```"):
+            lines = raw_response.split("\n")
+            raw_response = "\n".join(lines[1:-1])
+        
+        # Parse JSON
+        ai_data = json.loads(raw_response)
+        
+        # Build complete trade log
+        trade_log = {
+            'id': f'ai-{symbol}-{int(time.time())}',
+            'symbol': symbol,
+            'action': 'HOLDING',
+            'side': side,
+            'entry_price': entry_price,
+            'mark_price': mark_price,
+            'size': size,
+            'leverage': leverage,
+            'strategy': ai_data.get('strategy', {}),
+            'entry_rationale': ai_data.get('entry_rationale', 'AI-generated analysis'),
+            'risk_management': ai_data.get('risk_management', {}),
+            'confidence': ai_data.get('confidence', 0.75),
+            'ai_notes': f"🇧🇷 {ai_data.get('ai_notes_pt', '')}\n\n🇺🇸 {ai_data.get('ai_notes_en', '')}",
+            'expected_outcome': ai_data.get('expected_outcome', 'Monitoring position.'),
+            'generated_at': datetime.now(timezone.utc).isoformat(),
+            'source': 'gpt-4o-mini'
+        }
+        
+        # Cache the result
+        _ai_analysis_cache[cache_key] = (trade_log, time.time())
+        
+        # Also add to trade logs history
+        add_trade_log(trade_log.copy())
+        
+        print(f"[AI_ANALYSIS] Successfully generated analysis for {symbol}")
+        return trade_log
+        
+    except json.JSONDecodeError as e:
+        print(f"[AI_ANALYSIS] JSON parse error for {symbol}: {e}")
+        print(f"[AI_ANALYSIS] Raw response: {raw_response[:500]}")
+        return _create_minimal_log(position)
+    except Exception as e:
+        print(f"[AI_ANALYSIS] Error generating analysis for {symbol}: {e}")
+        return _create_minimal_log(position)
+
+
+def _create_minimal_log(position: dict) -> dict:
+    """Create a minimal trade log when AI is unavailable"""
+    symbol = position.get('symbol', 'UNKNOWN')
+    side = position.get('side', 'LONG')
+    entry_price = float(position.get('entry_price', 0))
+    
+    return {
+        'id': f'min-{symbol}-{int(time.time())}',
+        'symbol': symbol,
+        'action': 'HOLDING',
+        'side': side,
+        'entry_price': entry_price,
+        'mark_price': position.get('mark_price', entry_price),
+        'size': position.get('size', 0),
+        'leverage': position.get('leverage', 1),
+        'strategy': {
+            'name': 'Manual Entry',
+            'timeframe': 'N/A',
+            'setup_quality': 5.0,
+            'confluence_factors': ['Manual entry - awaiting AI analysis']
+        },
+        'entry_rationale': 'Position opened manually. AI analysis pending.',
+        'risk_management': {
+            'stop_loss': entry_price * (0.95 if side == 'LONG' else 1.05),
+            'stop_loss_reason': 'Default risk management',
+            'take_profit_1': entry_price * (1.05 if side == 'LONG' else 0.95),
+            'tp1_reason': 'Default target',
+            'risk_usd': 0,
+            'risk_pct': 0
+        },
+        'confidence': 0.5,
+        'ai_notes': '⚠️ AI analysis unavailable. Please ensure OpenAI API key is configured.',
+        'expected_outcome': 'Awaiting AI analysis.',
+        'source': 'fallback'
+    }
+
+
 def update_trade_log(symbol: str, update_data: dict):
     """Update existing trade log for a symbol (for SL/TP changes)"""
     global _trade_logs
@@ -1057,99 +1239,42 @@ def api_ai_thoughts():
 def api_trade_logs():
     """Get detailed AI trade logs with strategy, TP/SL, breakeven plans"""
     limit = request.args.get('limit', 20, type=int)
+    force_refresh = request.args.get('refresh', 'false').lower() == 'true'
     
+    # Get existing logs from history
     response_logs = _trade_logs[:limit]
     
-    # If no real logs, generate synthetic from active positions
-    if not response_logs:
-        with _state_lock:
-            active_positions = _dashboard_state.get("positions", [])
-            equity = float(_dashboard_state.get("account", {}).get("equity", 100))
+    # Get active positions
+    with _state_lock:
+        active_positions = _dashboard_state.get("positions", [])
+    
+    # If we have active positions but no logs for them, generate AI analysis
+    if active_positions:
+        existing_symbols = {log.get('symbol') for log in response_logs}
         
         for pos in active_positions:
             symbol = pos.get('symbol', 'UNKNOWN')
-            side = pos.get('side', 'LONG')
-            entry = pos.get('entry_price', 0)
-            size = pos.get('size', 0)
-            leverage = pos.get('leverage', 1)
-            pnl = pos.get('unrealized_pnl', 0)
             
-            # Calculate illustrative risk management levels based on entry and side
-            # These are dynamic placeholders that the AI will adjust in real-time
-            if side.upper() == 'LONG':
-                # For LONG: SL below entry, TP above entry
-                sl_distance_pct = DEFAULT_SL_DISTANCE / 100  # from config (e.g. 2.5% -> 0.025)
+            # Check if we already have a recent log for this symbol
+            has_recent_log = symbol in existing_symbols
             
-            # v13.0: Refined calculation logic for risk and targets
-            entry_px = float(pos.get("entry_price", 0))
-            mark_px = float(pos.get("mark_price", 0))
-            side = pos.get("side", "LONG")
-            
-            # Simple illustrative stop/tp if not present
-            # Ensure SL/TP are not 0 if entry_px is valid
-            sl = float(pos.get("stop_loss") or (entry_px * 0.95 if side == "LONG" else entry_px * 1.05))
-            tp = float(pos.get("take_profit") or (entry_px * 1.05 if side == "LONG" else entry_px * 0.95))
-            tp2 = float(entry_px * 1.08 if side == "LONG" else entry_px * 0.92)
-            
-            # Risk calculation
-            risk_usd = abs(entry_px - sl) * float(pos.get("size", 0)) / entry_px if entry_px > 0 else 0
-            risk_pct = (risk_usd / equity * 100) if equity > 0 else 0
-
-            # Dynamic AI Notes - Long & Bilingual
-            pt_note = (
-                f"Análise de Posição ({symbol}): Mantendo viés {'altista' if side == 'LONG' else 'baixista'} com base na estrutura de mercado atual. "
-                f"O preço de entrada em ${entry_px:,.2f} foi definido seguindo a confluência de indicadores de momentum. "
-                f"Nossa gestão de risco está travada com um Stop Loss em ${sl:,.2f}, representando um risco controlado de {risk_pct:.2f}% do capital. "
-                f"O alvo primário (TP1) está posicionado em ${tp:,.2f}, onde buscaremos realizar lucros parciais e reduzir a exposição."
-            )
-            en_note = (
-                f"Position Analysis ({symbol}): Maintaining {'bullish' if side == 'LONG' else 'bearish'} bias based on current market structure. "
-                f"Entry at ${entry_px:,.2f} execution followed momentum indicator confluence. "
-                f"Risk management is secured with a Stop Loss at ${sl:,.2f}, representing a controlled risk of {risk_pct:.2f}% of equity. "
-                f"Primary target (TP1) is set at ${tp:,.2f} for partial profit taking and exposure reduction."
-            )
-
-            synthetic_log = {
-                'id': f'synth-{symbol}',
-                'symbol': symbol,
-                'action': 'HOLDING', # Changed from ENTRY to HOLDING for active positions
-                'side': side,
-                'entry_price': entry_px,
-                'mark_price': mark_px,
-                'size': pos.get("size", 0),
-                'leverage': pos.get("leverage", 1),
-                'strategy': {
-                    'name': 'AI Master Strategy',
-                    'timeframe': '4H/1H Confluence',
-                    'setup_quality': 8.5,
-                    'confluence_factors': [
-                        "Market Structure Alignment", 
-                        "Trend Momentum Confirmation",
-                        "Volume Profile Validation"
-                    ]
-                },
-                'entry_rationale': f"Automated {side} position based on AI multi-timeframe analysis.",
-                'risk_management': {
-                    'stop_loss': sl,
-                    'stop_loss_reason': 'Market structure invalidation',
-                    'risk_usd': round(risk_usd, 2),
-                    'risk_pct': round(risk_pct, 2),
-                    'take_profit_1': tp,
-                    'tp1_reason': 'Resistance/Support Target',
-                    'tp1_size_pct': 50,
-                    'take_profit_2': tp2,
-                    'tp2_reason': 'Secondary Expansion',
-                    'tp2_size_pct': 50
-                },
-                'confidence': 0.85,
-                'ai_notes': f"{pt_note}\n\n{en_note}",
-                'expected_outcome': 'Looking for continuation towards primary targets with trailing stop active.'
-            }
-            response_logs.append(synthetic_log)
+            # Generate fresh analysis if no log exists or refresh is forced
+            if not has_recent_log or force_refresh:
+                print(f"[API] Generating AI analysis for {symbol} (force_refresh={force_refresh})")
+                ai_log = generate_ai_trade_analysis(pos)
+                
+                # If this is a new analysis (not from cache), add to response
+                if ai_log.get('source') == 'gpt-4o-mini' or not has_recent_log:
+                    # Remove old log for same symbol if exists
+                    response_logs = [log for log in response_logs if log.get('symbol') != symbol]
+                    response_logs.insert(0, ai_log)
+    
+    # Sort by timestamp (most recent first)
+    response_logs.sort(key=lambda x: x.get('generated_at', x.get('timestamp', '')), reverse=True)
     
     return jsonify({
         "ok": True,
-        "data": response_logs,
+        "data": response_logs[:limit],
         "server_time_ms": int(time.time() * 1000)
     })
 
