@@ -542,6 +542,19 @@ function DashboardContent() {
     }
   };
 
+  const fetchHistory = async () => {
+    if (!API_URL) return;
+    try {
+      const res = await fetch(`${API_URL}/api/pnl/history?period=${pnlPeriod}`);
+      const data = await res.json();
+      if (data.ok && Array.isArray(data.data)) setPnlHistory(data.data);
+    } catch (e) { console.error(e); }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, [pnlPeriod]);
+
   useEffect(() => {
     setMounted(true);
     fetchData();
@@ -558,19 +571,6 @@ function DashboardContent() {
       }
     };
     fetchCryptoPrices();
-
-    // Fetch history when period changes
-    useEffect(() => {
-      const fetchHistory = async () => {
-        if (!API_URL) return;
-        try {
-          const res = await fetch(`${API_URL}/api/pnl/history?period=${pnlPeriod}`);
-          const data = await res.json();
-          if (data.ok && Array.isArray(data.data)) setPnlHistory(data.data);
-        } catch (e) { console.error(e); }
-      };
-      fetchHistory();
-    }, [pnlPeriod]);
 
     // Fetch News tab data when active
     const fetchNewsData = async () => {
