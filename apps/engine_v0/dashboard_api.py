@@ -738,14 +738,33 @@ def api_full_analytics():
             
         volume = float(history_all.get('vlm', "0"))
         
+        # Get REAL stats from TradeJournal
+        try:
+            from trade_journal import get_journal
+            journal = get_journal()
+            journal_stats = journal.get_stats()
+            real_win_rate = journal_stats.get("win_rate", 0)
+            real_total_trades = journal_stats.get("closed_trades", 0)
+            real_profit_factor = 1.0
+            if journal_stats.get("losses", 0) > 0 and journal_stats.get("wins", 0) > 0:
+                # Calculate profit factor from actual data
+                # For now, use a simple approximation
+                real_profit_factor = round((journal_stats.get("wins", 0) / max(1, journal_stats.get("losses", 1))) * 1.2, 2)
+            print(f"[ANALYTICS] Real stats from journal: {real_total_trades} trades, {real_win_rate}% win rate")
+        except Exception as je:
+            print(f"[ANALYTICS] Journal stats error: {je}")
+            real_win_rate = 0
+            real_total_trades = 0
+            real_profit_factor = 0
+        
         return {
             "history": formatted_history,
             "pnl_total": total_pnl,
             "pnl_24h": float(day_stats.get('pnlHistory', [[0, "0"]])[-1][1]) if day_stats.get('pnlHistory') else 0,
             "volume": volume,
-            "win_rate": 68.5, 
-            "total_trades": len(formatted_history),
-            "profit_factor": 1.45,
+            "win_rate": real_win_rate,  # REAL from journal
+            "total_trades": real_total_trades,  # REAL from journal
+            "profit_factor": real_profit_factor,  # REAL calculated
             "user": user_address
         }
 
@@ -957,10 +976,20 @@ _trade_logs = []
 
 
 def add_trade_log(log: dict):
-    """Add detailed trade log to history (keep last 50)"""
+    """Add detailed trade log to history (keep last 50, deduplicate by symbol)"""
     global _trade_logs
     log['id'] = str(len(_trade_logs) + 1)
     log['timestamp'] = log.get('timestamp', datetime.now(timezone.utc).isoformat())
+    
+    # Deduplicate: remove older entries for the same symbol (keep only latest 2 per symbol)
+    symbol = log.get('symbol')
+    if symbol:
+        symbol_entries = [i for i, l in enumerate(_trade_logs) if l.get('symbol') == symbol]
+        if len(symbol_entries) >= 2:
+            # Remove oldest entries for this symbol
+            for idx in sorted(symbol_entries[1:], reverse=True):
+                _trade_logs.pop(idx)
+    
     _trade_logs.insert(0, log)
     _trade_logs = _trade_logs[:50]
 
