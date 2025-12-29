@@ -216,13 +216,13 @@ const MarketBar = ({ data }: { data: { market_cap?: number; fear_greed?: number 
 
   return (
     <div className="relative mb-8 overflow-hidden w-full py-4 border-y border-white/5 bg-gradient-to-r from-transparent via-white/5 to-transparent">
-      <div
-        className="flex items-center gap-12 whitespace-nowrap overflow-x-auto no-scrollbar"
-      >
-        {items.concat(items).concat(items).map((item, i) => (
+      {/* Scroll Container */}
+      <div className="flex w-max animate-marquee gap-12 hover:[animation-play-state:paused]">
+        {/* Create 4 copies for smooth infinite loop */}
+        {[...items, ...items, ...items, ...items].map((item, i) => (
           <div key={i} className="flex items-center gap-2.5">
-            <span className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.2em]">{item.label}</span>
-            <span className={cn("text-[11px] font-bold tracking-tight", item.color)}>{item.value}</span>
+            <span className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.2em] whitespace-nowrap">{item.label}</span>
+            <span className={cn("text-[11px] font-bold tracking-tight whitespace-nowrap", item.color)}>{item.value}</span>
           </div>
         ))}
       </div>
