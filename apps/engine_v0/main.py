@@ -696,6 +696,35 @@ def main():
                                 # Tag all actions as coming from LLM
                                 for action in actions:
                                     action["source"] = "LLM"
+                                    
+                                    # INJECT MARKET DATA FOR TRADE JOURNAL
+                                    sym = action.get("symbol")
+                                    if sym:
+                                        # 1. Indicators
+                                        inds = state.get("indicators_by_symbol", {}).get(sym, {})
+                                        action["_rsi"] = inds.get("rsi_14", 50)
+                                        action["_trend"] = inds.get("trend", "UNKNOWN")
+                                        action["_bos"] = inds.get("bos_status", "UNKNOWN") # check key in executor (it expects _bos)
+                                        action["_choch"] = inds.get("choch_detected", False)
+                                        action["_atr_pct"] = inds.get("atr_pct", 0)
+                                        action["_relative_volume"] = inds.get("relative_volume", 1.0)
+                                        
+                                        # 2. Funding/OI
+                                        funding = state.get("funding_by_symbol", {}).get(sym, {})
+                                        if isinstance(funding, dict):
+                                            # HL API usually returns string values
+                                            try:
+                                                action["_funding_rate"] = float(funding.get("fundingRate", 0))
+                                                action["_open_interest"] = float(funding.get("openInterest", 0))
+                                            except:
+                                                pass
+                                    
+                                    # 3. Decision Context
+                                    if "reason" not in action:
+                                        action["reason"] = decision.get("summary", "AI Decision")
+                                    if "confidence" not in action:
+                                        action["confidence"] = decision.get("confidence", 0)
+
                                 execute(actions, live_trading=LIVE_TRADING, hl_client=hl)
                             
                             # Log actions to dashboard

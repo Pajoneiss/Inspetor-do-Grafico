@@ -1101,6 +1101,26 @@ def generate_ai_trade_analysis(position: dict) -> dict:
     with _state_lock:
         equity = float(_dashboard_state.get("account", {}).get("equity", 100))
     
+    # Retrieve TradeJournal data (v17 FIX)
+    journal_trade = None
+    journal_context = ""
+    try:
+        from trade_journal import get_journal
+        journal = get_journal()
+        journal_trade = journal.get_trade_by_symbol(symbol)
+        
+        if journal_trade:
+            entry = journal_trade.get("entry", {})
+            snapshot = journal_trade.get("market_snapshot_entry", {})
+            journal_context = f"""
+ORIGINAL ENTRY DECISION:
+- Rationale: "{entry.get("reason", "N/A")}"
+- Initial Confidence: {entry.get("confidence", "N/A")}
+- Market Context: RSI={snapshot.get("rsi_14", "N/A")}, Trend={snapshot.get("ema_trend", "N/A")}
+"""
+    except Exception as je:
+        print(f"[AI_ANALYSIS] Journal lookup failed: {je}")
+
     # Build the AI prompt
     prompt = f"""You are a professional crypto derivatives trader analyzing an active position.
 
@@ -1113,17 +1133,18 @@ POSITION DATA:
 - Leverage: {leverage}x
 - Unrealized PnL: ${pnl:,.2f}
 - Account Equity: ${equity:,.2f}
+{journal_context}
 
 Analyze this position and provide your professional assessment. You must respond with ONLY valid JSON (no markdown, no code blocks, just raw JSON) in this exact format:
 
 {{
   "strategy": {{
-    "name": "Name of the strategy used (be specific, e.g. 'Breakout Retest', 'EMA Cross', 'Support Bounce')",
+    "name": "Name of the strategy used (align with rationale if provided)",
     "timeframe": "Primary timeframe (e.g. '4H', '1H', '15m')",
     "setup_quality": 7.5,
     "confluence_factors": ["Factor 1", "Factor 2", "Factor 3"]
   }},
-  "entry_rationale": "Brief explanation of why this entry was made (1-2 sentences)",
+  "entry_rationale": "Explanation of the trade (incorporate original rationale if available)",
   "risk_management": {{
     "stop_loss": {entry_price * (0.97 if side == 'LONG' else 1.03):.2f},
     "stop_loss_reason": "Why this stop loss level (reference market structure)",
@@ -1245,6 +1266,32 @@ def _create_minimal_log(position: dict) -> dict:
     side = position.get('side', 'LONG')
     entry_price = float(position.get('entry_price', 0))
     
+    # Defaults
+    rationale = 'Position opened manually. AI analysis pending.'
+    strategy_name = 'Manual Entry'
+    confidence = 0.5
+    confluence = ['Manual entry - awaiting AI analysis']
+    
+    # Try to hydrate from Journal
+    try:
+        from trade_journal import get_journal
+        jt = get_journal().get_trade_by_symbol(symbol)
+        if jt:
+            entry = jt.get("entry", {})
+            rationale = entry.get("reason", rationale)
+            confidence = float(entry.get("confidence", confidence))
+            strategy_name = "AI Strategy (Cached)"
+            
+            snapshot = jt.get("market_snapshot_entry", {})
+            confluence = [
+                f"Trend: {snapshot.get('ema_trend', 'N/A')}",
+                f"RSI: {snapshot.get('rsi_14', 'N/A')}"
+            ]
+            if snapshot.get("bos_status") in ["UP", "DOWN"]:
+                confluence.append(f"Structure: {snapshot.get('bos_status')}")
+    except Exception as e:
+        print(f"[DASHBOARD] Failed to hydrate minimal log: {e}")
+
     return {
         'id': f'min-{symbol}-{int(time.time())}',
         'symbol': symbol,
@@ -1255,12 +1302,12 @@ def _create_minimal_log(position: dict) -> dict:
         'size': position.get('size', 0),
         'leverage': position.get('leverage', 1),
         'strategy': {
-            'name': 'Manual Entry',
+            'name': strategy_name,
             'timeframe': 'N/A',
             'setup_quality': 5.0,
-            'confluence_factors': ['Manual entry - awaiting AI analysis']
+            'confluence_factors': confluence
         },
-        'entry_rationale': 'Position opened manually. AI analysis pending.',
+        'entry_rationale': rationale,
         'risk_management': {
             'stop_loss': entry_price * (0.95 if side == 'LONG' else 1.05),
             'stop_loss_reason': 'Default risk management',
@@ -1269,8 +1316,8 @@ def _create_minimal_log(position: dict) -> dict:
             'risk_usd': 0,
             'risk_pct': 0
         },
-        'confidence': 0.5,
-        'ai_notes': '⚠️ AI analysis unavailable. Please ensure OpenAI API key is configured.',
+        'confidence': confidence,
+        'ai_notes': '⚠️ AI analysis unavailable. Showing cached entry data.',
         'expected_outcome': 'Awaiting AI analysis.',
         'source': 'fallback'
     }

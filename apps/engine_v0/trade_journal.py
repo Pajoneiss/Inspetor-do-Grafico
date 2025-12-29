@@ -146,7 +146,7 @@ class TradeJournal:
         self._open_trades[symbol] = trade_id
         self._save()
         
-        print(f"[JOURNAL] 📝 Entry recorded: {trade_id} | {symbol} {side} @ ${entry_price:.2f}")
+        print(f"[JOURNAL] [ENTRY] Entry recorded: {trade_id} | {symbol} {side} @ ${entry_price:.2f}")
         return trade_id
     
     def record_exit(
@@ -218,7 +218,7 @@ class TradeJournal:
         del self._open_trades[symbol]
         self._save()
         
-        win_emoji = "✅" if pnl_usd > 0 else "❌"
+        win_emoji = "[WIN]" if pnl_usd > 0 else "[LOSS]"
         print(f"[JOURNAL] {win_emoji} Exit recorded: {trade_id} | {symbol} | PnL: ${pnl_usd:.2f} ({pnl_pct:.2f}%)")
         
         return trade
