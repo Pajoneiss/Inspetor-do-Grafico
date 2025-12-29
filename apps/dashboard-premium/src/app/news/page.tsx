@@ -70,11 +70,7 @@ export default function NewsPage() {
           fetch(`${API_URL}/api/news`).then(r => r.json()).catch(() => ({ ok: false })),
           fetch(`${API_URL}/api/economic-calendar?days=7`).then(r => r.json()).catch(() => ({ ok: false })),
           fetch(`${API_URL}/api/cmc/global`).then(r => r.json()).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/api/gainers-losers`).then(r => r.json()).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/api/market-intelligence/trending`).then(r => r.json()).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/api/market-intelligence/tvl`).then(r => r.json()).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/api/market-intelligence/funding`).then(r => r.json()).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/api/market-intelligence/long-short`).then(r => r.json()).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/api/gainers-losers`).then(r => r.json()).catch(() => ({ ok: false }))
         ]);
 
         if (newsRes.ok) {

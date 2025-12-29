@@ -526,7 +526,6 @@ function DashboardContent() {
     }
   };
 
-<<<<<<< HEAD
   const fetchHistory = useCallback(async () => {
     if (!API_URL) return;
     try {
