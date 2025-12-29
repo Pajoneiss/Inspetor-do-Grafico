@@ -1533,7 +1533,7 @@ function DashboardContent() {
                 </div>
               </div>
             )}
-          </motion.div>
+          </div>
         )}
 
         {activeTab === 'charts' && (
@@ -2064,7 +2064,7 @@ function DashboardContent() {
               </div>
 
             </GlassCard>
-          </motion.div>
+          </div>
         )}
 
 
@@ -2565,7 +2565,7 @@ function DashboardContent() {
                   </button>
                 </div>
               </GlassCard>
-            </motion.div>
+            </div>
           )
         }
 
