@@ -46,43 +46,12 @@ interface Mover {
   percent_change_24h: number;
 }
 
-interface TrendingCoin {
-  name: string;
-  symbol: string;
-  market_cap_rank: number;
-  price_btc: number;
-}
-
-interface TVLData {
-  total_tvl: number;
-  top_chains: any[];
-}
-
-interface FundingRate {
-  symbol: string;
-  funding_rate: number;
-  funding_time: number;
-}
-
-interface LongShortRatio {
-  symbol: string;
-  long_short_ratio: number;
-  long_account: number;
-  short_account: number;
-  timestamp: number;
-}
-
 export default function NewsPage() {
   const [realtimeNews, setRealtimeNews] = useState<NewsItem[]>([]);
-  const [trendingNews, setTrendingNews] = useState<NewsItem[]>([]);
   const [calendar, setCalendar] = useState<CalendarEvent[]>([]);
   const [market, setMarket] = useState<MarketData | null>(null);
   const [gainers, setGainers] = useState<Mover[]>([]);
   const [losers, setLosers] = useState<Mover[]>([]);
-  const [trending, setTrending] = useState<TrendingCoin[]>([]);
-  const [tvl, setTvl] = useState<TVLData | null>(null);
-  const [funding, setFunding] = useState<FundingRate | null>(null);
-  const [longShort, setLongShort] = useState<LongShortRatio | null>(null);
   const [loading, setLoading] = useState(true);
   const { settings } = useSettings();
   const isPt = settings.language === 'pt';
@@ -97,7 +66,7 @@ export default function NewsPage() {
       }
 
       try {
-        const [newsRes, calendarRes, marketRes, moversRes, trendingRes, tvlRes, fundingRes, longShortRes] = await Promise.all([
+        const [newsRes, calendarRes, marketRes, moversRes] = await Promise.all([
           fetch(`${API_URL}/api/news`).then(r => r.json()).catch(() => ({ ok: false })),
           fetch(`${API_URL}/api/economic-calendar?days=7`).then(r => r.json()).catch(() => ({ ok: false })),
           fetch(`${API_URL}/api/cmc/global`).then(r => r.json()).catch(() => ({ ok: false })),
@@ -110,7 +79,7 @@ export default function NewsPage() {
 
         if (newsRes.ok) {
           if (newsRes.realtime) setRealtimeNews(newsRes.realtime);
-          if (newsRes.trending) setTrendingNews(newsRes.trending);
+          // newsRes.trending removed as unused
           // Fallback if backend doesn't have dual fields yet
           if (!newsRes.realtime && !newsRes.trending && newsRes.news) {
             setRealtimeNews(newsRes.news);
@@ -125,10 +94,7 @@ export default function NewsPage() {
         }
 
         // Market Intelligence Data
-        if (trendingRes.ok && trendingRes.data) setTrending(trendingRes.data);
-        if (tvlRes.ok && tvlRes.data) setTvl(tvlRes.data);
-        if (fundingRes.ok && fundingRes.data) setFunding(fundingRes.data);
-        if (longShortRes.ok && longShortRes.data) setLongShort(longShortRes.data);
+        // Market Intelligence Data removed as unused in UI
       } catch (err) {
         console.error("News fetch error:", err);
       } finally {

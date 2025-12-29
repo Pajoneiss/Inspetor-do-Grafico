@@ -1,7 +1,7 @@
 'use client';
 
-import { X, Sun, Moon, Palette, Type, Zap, Globe, DollarSign, Hash, Clock, Calendar, RefreshCw, BarChart2, Brain, Bell, Volume2, AlertTriangle, TrendingUp, Target, Eye, EyeOff, RotateCcw } from 'lucide-react';
-import { Settings, defaultSettings } from '../hooks/useSettings';
+import { X, Sun, Moon, Palette, Zap, Globe, Bell, RotateCcw, BarChart2 } from 'lucide-react';
+import { Settings } from '../hooks/useSettings';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -59,7 +59,7 @@ const Slider = ({ value, onChange, min, max, label, suffix = '' }: { value: numb
 );
 
 // Section component
-const Section = ({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) => (
+const Section = ({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) => (
     <div className="space-y-4">
         <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">
             <Icon className="w-4 h-4" />
@@ -190,7 +190,7 @@ export default function SettingsModal({ isOpen, onClose, settings, updateSetting
                         />
                         <Select
                             value={settings.timezone}
-                            onChange={(v) => updateSetting('timezone', v as any)}
+                            onChange={(v) => updateSetting('timezone', v as 'auto' | 'UTC' | 'America/Sao_Paulo' | 'America/New_York' | 'Europe/London')}
                             options={[
                                 { value: 'auto', label: 'Auto (Local)' },
                                 { value: 'UTC', label: 'UTC' },
@@ -226,7 +226,7 @@ export default function SettingsModal({ isOpen, onClose, settings, updateSetting
                         />
                         <Select
                             value={settings.chartDefaultPeriod}
-                            onChange={(v) => updateSetting('chartDefaultPeriod', v as any)}
+                            onChange={(v) => updateSetting('chartDefaultPeriod', v as '24H' | '7D' | '30D' | 'ALL')}
                             options={[
                                 { value: '24H', label: '24 Hours' },
                                 { value: '7D', label: '7 Days' },

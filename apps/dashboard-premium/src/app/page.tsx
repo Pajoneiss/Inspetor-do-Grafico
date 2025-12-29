@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Timer,
   Gauge,
-  ChevronDown,
   BrainCircuit,
   MessageSquare,
   Globe,
@@ -25,16 +24,13 @@ import {
   Target,
   Shield,
   CheckCircle,
-  Copy,
-  ExternalLink,
   ChevronRight,
   ChevronLeft,
-  Search,
-  Filter,
   Send,
   Terminal,
   Newspaper,
-  UserCircle
+  UserCircle,
+  History as HistoryIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SettingsModal from "@/components/SettingsModal";
@@ -42,27 +38,33 @@ import { useSettings } from "@/hooks/useSettings";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import UnifiedOverviewCard from "@/components/UnifiedOverviewCard";
 import Link from "next/link";
+import Image from "next/image";
 
 // --- Hooks ---
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-  return isMobile;
-};
+// useIsMobile removed
 
 // --- Types ---
-interface DashboardData {
+export interface DashboardData {
   equity: number;
   unrealized_pnl: number;
   buying_power: number;
   positions_count: number;
   margin_usage: number;
   last_update: string;
+  pnl_24h: number;
+  pnl_history_recent?: { timestamp: string; pnl: number }[];
+  market_data?: {
+    macro?: {
+      sp500?: number | string;
+      nasdaq?: number | string;
+      usd_brl?: number | string;
+      btc?: number | string;
+      eth?: number | string;
+    };
+    fear_greed?: number | string;
+    market_cap?: number;
+  };
+  total_exposure?: number;
 }
 
 interface Position {
@@ -72,14 +74,89 @@ interface Position {
   entry_price: number;
   mark_price: number;
   unrealized_pnl: number;
+  leverage?: number;
+  stop_loss?: number;
+  take_profit?: number;
+  margin_used?: number;
 }
 
 interface AIThought {
+  id?: string;
   timestamp: string;
   emoji?: string;
   summary: string;
+  thought?: string;
   confidence: number;
-  actions?: any[];
+  actions?: string[];
+}
+
+interface TradeLog {
+  id?: string;
+  symbol: string;
+  side: string;
+  entry_price: number;
+  expected_outcome?: string;
+  confidence: number;
+  strategy?: {
+    name: string;
+    timeframe: string;
+    confluence_factors: string[];
+    setup_quality?: string;
+  };
+  entry_rationale?: string;
+  risk_management?: {
+    stop_loss: number;
+    take_profit_1: number;
+    take_profit_2: number;
+    tp1_size_pct: number;
+    tp2_size_pct: number;
+    risk_usd: number;
+    risk_pct: number;
+    stop_loss_reason?: string;
+    tp1_reason?: string;
+    tp2_reason?: string;
+  };
+  ai_notes?: string;
+}
+
+interface HalvingData { ok: boolean; days_until_halving?: number; next_halving_date?: string; days_to_next?: number; next_date?: string; current_block?: number; halving_block?: number }
+interface TvlData { ok: boolean; total_tvl: number; total_change_24h?: number }
+interface FundingData { ok: boolean; symbol: string; funding_rate: number; funding_time: number; funding_rates?: { symbol: string; lastFundingRate: string }[] }
+interface LongShortData { ok: boolean; symbol: string; global_ratio: { symbol: string; longShortRatio: string; longAccount: string; shortAccount: string }[] }
+interface AltSeasonData { ok: boolean; altseason_index?: number; is_altseason?: boolean; index?: number; blockchaincenter?: { season_index: number } }
+interface EthGasData { ok: boolean; fast: number; standard: number; slow: number }
+interface RainbowData { ok: boolean; price?: number; band_index?: number; band_name?: string; band?: string; btc_price?: number; log_price?: number }
+
+interface FullAnalytics {
+  history: Array<{ time: string | number; value: number }>;
+  pnl_24h?: number;
+  pnl_total?: number;
+}
+
+interface OrderInfo {
+  symbol: string;
+  type: string;
+  side: string;
+  price: number;
+  size: number;
+  trigger_px?: number;
+}
+
+interface FillInfo {
+  timestamp?: string;
+  symbol: string;
+  side: string;
+  price: number;
+  size: number;
+  value: number;
+  closed_pnl?: number;
+}
+
+interface TransferInfo {
+  timestamp?: string;
+  type: string;
+  amount: number;
+  status: string;
 }
 
 // --- Components ---
@@ -100,128 +177,18 @@ const GlassCard = ({ children, className, delay = 0 }: { children: React.ReactNo
 );
 
 // Mobile Accordion Card - iPhone folder style
-const MobileAccordionCard = ({ title, icon: Icon, children, defaultOpen = false }: { title: string; icon: any; children: React.ReactNode; defaultOpen?: boolean }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+// MobileAccordionCard removed
 
-  return (
-    <div className="glass-card rounded-2xl overflow-hidden border border-white/10 transition-all duration-300">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-white/5 to-transparent active:bg-white/10 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-primary/20">
-            <Icon className="w-5 h-5 text-primary" />
-          </div>
-          <span className="text-sm font-bold text-white">{title}</span>
-        </div>
-        <div style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-          <ChevronDown className="w-5 h-5 text-white/40" />
-        </div>
-      </button>
-      {isOpen && (
-        <div className="overflow-hidden animate-in slide-in-from-top-2 duration-200">
-          <div className="p-4 pt-0">{children}</div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const StatCard = ({ title, value, sub, subValue, icon: Icon, trend, sensitive }: { title: string; value: string; sub: string; subValue?: string; icon: React.ElementType; trend?: "up" | "down" | "neutral"; sensitive?: boolean }) => {
-  const { settings } = useSettings();
-  const isMobile = useIsMobile();
-  const isLoading = value === "---" || value === "$---" || value === "0.00%";
-
-  // Translate titles for beginners
-  const isEn = settings.language === 'en';
-  const displayTitle = isEn ? title : (
-    title === "Equity" ? "Seu Patrimônio" :
-      title === "Unrealized PnL" ? "Lucro/Prejuízo" :
-        title === "Open Positions" ? "Posições Ativas" : title
-  );
-
-  const content = (
-    <div className={cn("transition-all duration-500", isLoading && "opacity-50")}>
-      <div className="flex justify-between items-start">
-        <div className="p-2 rounded-xl bg-white/5 border border-white/10 shadow-inner group-hover:bg-primary/10 transition-colors duration-500">
-          <Icon className="w-4 h-4 text-primary group-hover:scale-110 transition-transform duration-500" />
-        </div>
-        {trend && trend !== "neutral" && (
-          <div className="flex items-center gap-2">
-            {/* Removed mock Sparkline data - only show if real data provided in future */}
-            <span className={cn(
-              "px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase",
-              trend === "up" ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
-            )}>
-              {isLoading ? "..." : sub}
-            </span>
-          </div>
-        )}
-      </div>
-      <div className="mt-4">
-        <p className="text-white/40 text-[10px] font-extrabold tracking-[0.2em] uppercase mb-1">{displayTitle}</p>
-        {isLoading ? (
-          <div className="h-8 w-24 bg-white/5 rounded-lg animate-pulse mb-1" />
-        ) : (
-          <h3 className={cn(
-            "text-2xl font-extrabold tracking-tighter text-white drop-shadow-md transition-all duration-500",
-            sensitive && settings.hideSensitiveData && "blur-md select-none"
-          )}>{value}</h3>
-        )}
-        <p className="text-white/30 text-[9px] font-medium mt-1 uppercase tracking-widest">
-          {isLoading ? "Buscando dados..." : (trend === "neutral" ? (subValue || sub) : "Atualizado em tempo real")}
-        </p>
-      </div>
-    </div>
-  );
-
-  if (isMobile) {
-    return (
-      <MobileAccordionCard title={displayTitle} icon={Icon} defaultOpen={title === "Equity"}>
-        {content}
-      </MobileAccordionCard>
-    );
-  }
-
-  return (
-    <GlassCard className="flex flex-col gap-1.5">
-      {content}
-    </GlassCard>
-  );
-};
+// StatCard and Sparkline removed as they were not used or were replaced by UnifiedOverviewCard
 
 
-const Sparkline = ({ data, color = "#00ff9d" }: { data: number[]; color?: string }) => {
-  if (!data || data.length < 2) return null;
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const range = max - min || 1;
-  const points = data.map((d, i) => {
-    const x = (i / (data.length - 1)) * 60;
-    const y = 20 - ((d - min) / range) * 16 - 2;
-    return `${x},${y}`;
-  }).join(' ');
+// Sparkline removed
 
-  return (
-    <svg width="60" height="20" viewBox="0 0 60 20" className="opacity-50">
-      <polyline
-        fill="none"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points={points}
-      />
-    </svg>
-  );
-};
-
-const MarketBar = ({ data }: { data: any }) => {
+const MarketBar = ({ data }: { data: { market_cap?: number; fear_greed?: number | string; macro?: Record<string, number | string | null | undefined> } }) => {
   if (!data || !data.macro) return null;
   const { macro } = data;
 
-  const formatValue = (val: any, prefix = '', suffix = '') => {
+  const formatValue = (val: number | string | null | undefined, prefix = '', suffix = '') => {
     if (val === null || val === undefined || val === "N/A" || val === "---") return '---';
     // Try to parse string numbers
     let numVal = val;
@@ -271,8 +238,9 @@ const TradingViewChart = ({ symbol, theme = 'dark' }: { symbol: string, theme?: 
     let script = document.getElementById(scriptId) as HTMLScriptElement;
 
     const initWidget = () => {
-      if ((window as any).TradingView) {
-        new (window as any).TradingView.widget({
+      const gWindow = (window as unknown as { TradingView?: { widget: new (p: Record<string, unknown>) => void } });
+      if (gWindow.TradingView) {
+        new gWindow.TradingView.widget({
           "autosize": true,
           "symbol": symbol.includes(':') ? symbol : `BINANCE:${symbol}USDT.P`,
           "interval": "15",
@@ -310,17 +278,38 @@ const TradingViewChart = ({ symbol, theme = 'dark' }: { symbol: string, theme?: 
   );
 };
 
+// Helper to safely parse dates, returning null for invalid dates
+const safeDate = (dateString: string | number | Date | null | undefined): Date | null => {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  return isNaN(date.getTime()) ? null : date;
+};
+
 // --- Error Boundary ---
 // --- Error Boundary ---
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null, info: any }> {
-  constructor(props: any) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+  info: React.ErrorInfo | null;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null, info: null };
   }
-  static getDerivedStateFromError(error: any) { return { hasError: true, error }; }
-  componentDidCatch(error: any, errorInfo: any) {
-    console.error("UI Crash:", error, errorInfo);
-    this.setState({ info: errorInfo });
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error, info: null };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Dashboard Crash:", error, errorInfo);
+    (this as unknown as { setState: (p: { info: React.ErrorInfo }) => void }).setState({ info: errorInfo });
   }
   render() {
     if (this.state.hasError) {
@@ -375,20 +364,19 @@ function DashboardContent() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'charts' | 'analytics' | 'news' | 'chat' | 'logs'>('overview');
   const [activeFleetTab, setActiveFleetTab] = useState<'Asset Positions' | 'Open Orders' | 'Recent Fills' | 'Completed Trades' | 'TWAP' | 'Deposits & Withdrawals'>('Asset Positions');
-  const [pnlData, setPnlData] = useState<any>(null);
-  const [pnlHistory, setPnlHistory] = useState<any[]>([]);
+  const [pnlHistory, setPnlHistory] = useState<{ time: string | number; value: number }[]>([]);
   const [pnlPeriod, setPnlPeriod] = useState<'24H' | '7D' | '30D' | 'ALL'>('24H');
   const [chatMessages, setChatMessages] = useState<{ role: string, content: string }[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [tradeLog, setTradeLog] = useState<any>(null);
-  const [_trade_logs, _setTradeLogs] = useState<any[]>([]);
+  const [tradeLog, setTradeLog] = useState<TradeLog | null>(null);
+  const [_trade_logs, _setTradeLogs] = useState<TradeLog[]>([]);
   const [viewAllModalOpen, setViewAllModalOpen] = useState(false);
-  const [fullAnalytics, setFullAnalytics] = useState<any>(null);
-  const [openOrders, setOpenOrders] = useState<any[]>([]);
-  const [recentFills, setRecentFills] = useState<any[]>([]);
-  const [transfers, setTransfers] = useState<any[]>([]);
-  const [cryptoPrices, setCryptoPrices] = useState<{ btc: any, eth: any } | null>(null);
+  const [fullAnalytics, setFullAnalytics] = useState<FullAnalytics | null>(null);
+  const [openOrders, setOpenOrders] = useState<OrderInfo[]>([]);
+  const [recentFills, setRecentFills] = useState<FillInfo[]>([]);
+  const [transfers, setTransfers] = useState<TransferInfo[]>([]);
+  const [cryptoPrices, setCryptoPrices] = useState<{ btc: { price: number }, eth: { price: number } } | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [aiNotesLang, setAiNotesLang] = useState<'pt' | 'en'>('pt'); // Language toggle for AI Strategy Core
 
@@ -410,20 +398,19 @@ function DashboardContent() {
 
   // News tab state
   const [realtimeNews, setRealtimeNews] = useState<Array<{ title: string; url: string; source?: string; published_at?: string }>>([]);
-  const [trendingNews, setTrendingNews] = useState<Array<{ title: string; url: string; source?: string; published_at?: string }>>([]);
-  const [calendarEvents, setCalendarEvents] = useState<Array<{ event: string; date: string; time?: string; importance?: string }>>([]);
+  const [calendarEvents, setCalendarEvents] = useState<Array<{ event: string; country: string; impact: string; importance?: string; date: string; time?: string; actual?: string; estimate?: string; previous?: string }>>([]);
   const [globalMarket, setGlobalMarket] = useState<{ market_cap?: number; volume_24h?: number; btc_dominance?: number; eth_dominance?: number; market_cap_change_24h?: number } | null>(null);
   const [topGainers, setTopGainers] = useState<Array<{ name: string; symbol: string; percent_change_24h: number }>>([]);
   const [topLosers, setTopLosers] = useState<Array<{ name: string; symbol: string; percent_change_24h: number }>>([]);
   // New Market Intelligence States
-  const [halvingData, setHalvingData] = useState<any>(null);
-  const [tvlData, setTvlData] = useState<any>(null);
-  const [fundingData, setFundingData] = useState<any>(null);
-  const [longShortData, setLongShortData] = useState<any>(null);
-  const [trendingCoins, setTrendingCoins] = useState<any[]>([]);
-  const [altSeasonData, setAltSeasonData] = useState<any>(null);
-  const [ethGasData, setEthGasData] = useState<any>(null);
-  const [rainbowData, setRainbowData] = useState<any>(null);
+  const [halvingData, setHalvingData] = useState<HalvingData | null>(null);
+  const [tvlData, setTvlData] = useState<TvlData | null>(null);
+  const [fundingData, setFundingData] = useState<FundingData | null>(null);
+  const [longShortData, setLongShortData] = useState<LongShortData | null>(null);
+  const [trendingCoins, setTrendingCoins] = useState<Array<{ thumb: string; symbol: string; name: string; rank: number }>>([]);
+  const [altSeasonData, setAltSeasonData] = useState<AltSeasonData | null>(null);
+  const [ethGasData, setEthGasData] = useState<EthGasData | null>(null);
+  const [rainbowData, setRainbowData] = useState<RainbowData | null>(null);
 
   const { settings, updateSetting, resetSettings } = useSettings();
 
@@ -432,15 +419,15 @@ function DashboardContent() {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!API_URL) return;
 
     try {
       const [statusRes, posRes, thoughtRes, allThoughtRes, pnlRes, historyRes, tradeLogsRes, fullAnalyticsRes, ordersRes, fillsRes, transfersRes] = await Promise.all([
         fetch(`${API_URL}/api/status`).then(r => r.json()),
         fetch(`${API_URL}/api/positions`).then(r => r.json()),
-        fetch(`${API_URL}/api/ai/thoughts`).then(r => r.json()), // Filtered for overview
-        fetch(`${API_URL}/api/ai/thoughts?include_all=true`).then(r => r.json()), // Full for logs
+        fetch(`${API_URL}/api/ai/thoughts`).then(r => r.json()),
+        fetch(`${API_URL}/api/ai/thoughts?include_all=true`).then(r => r.json()),
         fetch(`${API_URL}/api/pnl`).then(r => r.json()),
         fetch(`${API_URL}/api/pnl/history?period=${pnlPeriod}`).then(r => r.json()),
         fetch(`${API_URL}/api/ai/trade-logs`).then(r => r.json()),
@@ -452,36 +439,33 @@ function DashboardContent() {
 
       if (statusRes.ok) setStatus(statusRes.data);
       if (posRes.ok) setPositions(posRes.data);
-      if (allThoughtRes.ok) setAllThoughts(allThoughtRes.data); // Full logs for Execution tab
+      if (allThoughtRes.ok) setAllThoughts(allThoughtRes.data);
       if (thoughtRes.ok) setThoughts(thoughtRes.data);
-      if (pnlRes.ok) setPnlData(pnlRes.data);
+      if (pnlRes.ok) { /* setPnlData(pnlRes.data); - pnlData removed as unused */ }
       if (historyRes.ok && Array.isArray(historyRes.data)) setPnlHistory(historyRes.data);
       if (tradeLogsRes.ok && tradeLogsRes.data && tradeLogsRes.data.length > 0) {
         setTradeLog(tradeLogsRes.data[0]);
-        _setTradeLogs(tradeLogsRes.data); // Save ALL logs for chart headers and multi-card display
+        _setTradeLogs(tradeLogsRes.data);
       }
       if (fullAnalyticsRes.ok) setFullAnalytics(fullAnalyticsRes.data);
       if (ordersRes.ok && Array.isArray(ordersRes.data)) setOpenOrders(ordersRes.data);
       if (fillsRes.ok && Array.isArray(fillsRes.data)) setRecentFills(fillsRes.data);
       if (transfersRes.ok && Array.isArray(transfersRes.data)) setTransfers(transfersRes.data);
 
-      // Fetch journal stats for Trading Performance widget
       try {
         const journalRes = await fetch(`${API_URL}/api/journal/stats`).then(r => r.json());
         if (journalRes.ok && journalRes.data) {
           setJournalStats(journalRes.data);
         }
-      } catch (e) { /* Journal stats optional */ }
+      } catch { /* Journal stats optional */ }
 
-      // Fetch session info for Session Badge
       try {
         const sessionRes = await fetch(`${API_URL}/api/session`).then(r => r.json());
         if (sessionRes.ok && sessionRes.data) {
           setSessionInfo(sessionRes.data);
         }
-      } catch (e) { /* Session info optional */ }
+      } catch { /* Session info optional */ }
 
-      // Determine AI mood from latest thought
       if (thoughtRes.ok && thoughtRes.data && thoughtRes.data.length > 0) {
         const latestThought = thoughtRes.data[0];
         const summary = (latestThought.summary || '').toLowerCase();
@@ -501,7 +485,7 @@ function DashboardContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_URL, pnlPeriod, loading]);
 
 
   const sendChatMessage = async () => {
@@ -542,96 +526,99 @@ function DashboardContent() {
     }
   };
 
-  const fetchHistory = async () => {
+<<<<<<< HEAD
+  const fetchHistory = useCallback(async () => {
     if (!API_URL) return;
     try {
       const res = await fetch(`${API_URL}/api/pnl/history?period=${pnlPeriod}`);
       const data = await res.json();
       if (data.ok && Array.isArray(data.data)) setPnlHistory(data.data);
-    } catch (e) { console.error(e); }
-  };
+    } catch (e) {
+      console.error("History fetch error:", e);
+    }
+  }, [API_URL, pnlPeriod]);
 
-  useEffect(() => {
-    fetchHistory();
-  }, [pnlPeriod]);
+  const fetchCryptoPrices = useCallback(async () => {
+    if (!API_URL) return;
+    try {
+      const res = await fetch(`${API_URL}/api/crypto-prices`);
+      const data = await res.json();
+      if (data.ok) setCryptoPrices(data.data);
+    } catch (err) {
+      console.error("Crypto prices fetch error:", err);
+    }
+  }, [API_URL]);
+
+  const fetchNewsData = useCallback(async () => {
+    if (!API_URL || activeTab !== 'news') return;
+    try {
+      const results = await Promise.all([
+        fetch(`${API_URL}/api/news`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/api/economic-calendar?days=7`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/api/cmc/global`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/api/gainers-losers`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/api/halving`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/api/tvl`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/api/funding`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/api/long-short`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/api/trending`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/api/altseason`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/api/gas`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/api/rainbow`).then(r => r.json()).catch(() => ({ ok: false })),
+      ]);
+
+      const [newsRes, calendarRes, marketRes, moversRes, halvingRes, tvlRes, fundingRes, longShortRes, trendingRes, altSeasonRes, gasRes, rainbowRes] = results;
+
+      if (newsRes.ok) {
+        setRealtimeNews(newsRes.realtime || []);
+      }
+      if (calendarRes.ok && calendarRes.events) setCalendarEvents(calendarRes.events);
+      if (marketRes.ok && marketRes.data) setGlobalMarket(marketRes.data);
+      if (moversRes.ok) {
+        setTopGainers(moversRes.gainers || []);
+        setTopLosers(moversRes.losers || []);
+      }
+
+      if (halvingRes.ok) setHalvingData(halvingRes);
+      if (tvlRes.ok) setTvlData(tvlRes);
+      if (fundingRes.ok) setFundingData(fundingRes);
+      if (longShortRes.ok) setLongShortData(longShortRes);
+      if (trendingRes.ok) setTrendingCoins(trendingRes.coins || []);
+      if (altSeasonRes.ok) setAltSeasonData(altSeasonRes);
+      if (gasRes.ok) setEthGasData(gasRes);
+      if (rainbowRes.ok) setRainbowData(rainbowRes);
+    } catch (err) {
+      console.error("News data fetch error:", err);
+    }
+  }, [API_URL, activeTab]);
 
   useEffect(() => {
     setMounted(true);
     fetchData();
-
-    // Fetch crypto prices separately
-    const fetchCryptoPrices = async () => {
-      if (!API_URL) return;
-      try {
-        const res = await fetch(`${API_URL}/api/crypto-prices`);
-        const data = await res.json();
-        if (data.ok) setCryptoPrices(data.data);
-      } catch (err) {
-        console.error("Crypto prices fetch error:", err);
-      }
-    };
     fetchCryptoPrices();
 
-    // Fetch News tab data when active
-    const fetchNewsData = async () => {
-      if (!API_URL || activeTab !== 'news') return;
-      try {
-        const results = await Promise.all([
-          fetch(`${API_URL}/api/news`).then(r => r.json()).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/api/economic-calendar?days=7`).then(r => r.json()).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/api/cmc/global`).then(r => r.json()).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/api/gainers-losers`).then(r => r.json()).catch(() => ({ ok: false })),
-          // New Features
-          fetch(`${API_URL}/api/halving`).then(r => r.json()).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/api/tvl`).then(r => r.json()).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/api/funding`).then(r => r.json()).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/api/long-short`).then(r => r.json()).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/api/trending`).then(r => r.json()).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/api/altseason`).then(r => r.json()).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/api/gas`).then(r => r.json()).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/api/rainbow`).then(r => r.json()).catch(() => ({ ok: false })),
-        ]);
-
-        const [newsRes, calendarRes, marketRes, moversRes, halvingRes, tvlRes, fundingRes, longShortRes, trendingRes, altSeasonRes, gasRes, rainbowRes] = results;
-
-        if (newsRes.ok) {
-          setRealtimeNews(newsRes.realtime || []);
-          setTrendingNews(newsRes.trending || []);
-        }
-        if (calendarRes.ok && calendarRes.events) setCalendarEvents(calendarRes.events);
-        if (marketRes.ok && marketRes.data) setGlobalMarket(marketRes.data);
-        if (moversRes.ok) {
-          setTopGainers(moversRes.gainers || []);
-          setTopLosers(moversRes.losers || []);
-        }
-
-        // New Features State Updates
-        if (halvingRes.ok) setHalvingData(halvingRes);
-        if (tvlRes.ok) setTvlData(tvlRes);
-        if (fundingRes.ok) setFundingData(fundingRes);
-        if (longShortRes.ok) setLongShortData(longShortRes);
-        if (trendingRes.ok) setTrendingCoins(trendingRes.coins || []);
-        if (altSeasonRes.ok) setAltSeasonData(altSeasonRes);
-        if (gasRes.ok) setEthGasData(gasRes);
-        if (rainbowRes.ok) setRainbowData(rainbowRes);
-      } catch (err) {
-        console.error("News data fetch error:", err);
-      }
-    };
-    if (activeTab === 'news') fetchNewsData();
-
     const timer = setInterval(() => setTime(new Date()), 1000);
-    const apiTimer = setInterval(fetchData, 15000); // UI Refresh 15s
-    const cryptoTimer = setInterval(fetchCryptoPrices, 15000); // Crypto prices every 15s
-    const newsTimer = setInterval(fetchNewsData, 60000); // News data every 60s
+    const apiTimer = setInterval(fetchData, (settings.refreshRate || 10) * 1000);
+    const cryptoTimer = setInterval(fetchCryptoPrices, 15000);
 
     return () => {
       clearInterval(timer);
       clearInterval(apiTimer);
       clearInterval(cryptoTimer);
-      clearInterval(newsTimer);
     };
-  }, [activeTab]);
+  }, [fetchData, fetchCryptoPrices, settings.refreshRate]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
+
+  useEffect(() => {
+    if (activeTab === 'news') {
+      fetchNewsData();
+      const newsTimer = setInterval(fetchNewsData, 60000);
+      return () => clearInterval(newsTimer);
+    }
+  }, [activeTab, fetchNewsData]);
 
   if (!mounted) return null;
 
@@ -709,7 +696,7 @@ function DashboardContent() {
             return (
               <button
                 key={item.id}
-                onClick={() => { setActiveTab(item.id as any); setSidebarOpen(false); }}
+                onClick={() => { setActiveTab(item.id as 'overview' | 'charts' | 'analytics' | 'news' | 'chat' | 'logs'); setSidebarOpen(false); }}
                 className={className}
               >
                 {content}
@@ -779,7 +766,7 @@ function DashboardContent() {
                 className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all hover:scale-105 active:scale-95"
                 onClick={() => setViewAllModalOpen(!viewAllModalOpen)}
               >
-                <History className="w-5 h-5" />
+                <HistoryIcon className="w-5 h-5" />
               </button>
 
               {viewAllModalOpen && (
@@ -791,10 +778,12 @@ function DashboardContent() {
                   </div>
 
                   <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                    {status?.data?.pnl_history_recent && status.data.pnl_history_recent.length > 0 ? (
-                      status.data.pnl_history_recent.map((item: any, idx: number) => (
+                    {status?.pnl_history_recent && status.pnl_history_recent.length > 0 ? (
+                      status.pnl_history_recent.map((item: { timestamp: string | number; pnl: number }, idx: number) => (
                         <div key={idx} className="flex items-center justify-between text-xs">
-                          <span className="font-mono text-white/60">{safeDate(item.timestamp).toLocaleDateString()} {safeDate(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="font-mono text-white/60">
+                            {safeDate(item.timestamp)?.toLocaleDateString()} {safeDate(item.timestamp)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
                           <span className={cn("font-bold", item.pnl >= 0 ? "text-primary" : "text-red-400")}>
                             {item.pnl >= 0 ? "WIN" : "LOSS"}
                           </span>
@@ -802,11 +791,11 @@ function DashboardContent() {
                       ))
                     ) : (
                       // Fallback mock data if real history is empty/loading
-                      (fullAnalytics?.history || []).slice(-5).reverse().map((h: any, i: number) => {
+                      (fullAnalytics?.history || []).slice(-5).reverse().map((h: { time: string | number; value: number }, i: number) => {
                         const isWin = (h.value - (fullAnalytics?.history?.[fullAnalytics.history.length - i - 2]?.value || h.value)) >= 0;
                         return (
                           <div key={i} className="flex items-center justify-between text-xs">
-                            <span className="font-mono text-white/60">{safeDate(h.time).toLocaleDateString()}</span>
+                            <span className="font-mono text-white/60">{safeDate(h.time)?.toLocaleDateString()}</span>
                             <span className={cn("font-bold", isWin ? "text-primary" : "text-red-400")}>
                               {isWin ? "WIN" : "LOSS"}
                             </span>
@@ -861,22 +850,22 @@ function DashboardContent() {
             className="animate-in fade-in slide-in-from-right-2 duration-300"
           >
             <MarketBar data={{
-              ...((status as any)?.market_data || {}),
+              ...(status?.market_data || {}),
               macro: {
-                ...((status as any)?.market_data?.macro || {}),
-                btc: cryptoPrices?.btc?.price || (status as any)?.market_data?.macro?.btc,
-                eth: cryptoPrices?.eth?.price || (status as any)?.market_data?.macro?.eth,
+                ...(status?.market_data?.macro || {}),
+                btc: cryptoPrices?.btc?.price || status?.market_data?.macro?.btc,
+                eth: cryptoPrices?.eth?.price || status?.market_data?.macro?.eth,
               }
             }} />
 
             <div className="mt-8 mb-8">
               <UnifiedOverviewCard
-                status={status || {}}
+                status={status}
                 history={pnlHistory || []}
                 period={pnlPeriod}
                 setPeriod={setPnlPeriod}
-                journalStats={journalStats || {}}
-                sessionInfo={sessionInfo || {}}
+                journalStats={journalStats}
+                sessionInfo={sessionInfo}
                 isPt={isPt}
                 isLoading={!status}
               />
@@ -1091,7 +1080,7 @@ function DashboardContent() {
                       <h3 className="text-xl font-bold tracking-tight">{isPt ? "Análise de Trade Recente" : "Latest AI Trade Analysis"}</h3>
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">
                         {_trade_logs && _trade_logs.length > 1
-                          ? `${_trade_logs.findIndex((log: any) => log === tradeLog) + 1} of ${_trade_logs.length} Active Positions`
+                          ? `${_trade_logs.findIndex((log: TradeLog) => log === tradeLog) + 1} of ${_trade_logs.length} Active Positions`
                           : 'Detailed Strategy Breakdown'
                         }
                       </p>
@@ -1102,7 +1091,7 @@ function DashboardContent() {
                       <>
                         <button
                           onClick={() => {
-                            const currentIndex = _trade_logs.findIndex((log: any) => log === tradeLog);
+                            const currentIndex = _trade_logs.findIndex((log: TradeLog) => log === tradeLog);
                             const prevIndex = currentIndex > 0 ? currentIndex - 1 : _trade_logs.length - 1;
                             setTradeLog(_trade_logs[prevIndex]);
                           }}
@@ -1112,7 +1101,7 @@ function DashboardContent() {
                         </button>
                         <button
                           onClick={() => {
-                            const currentIndex = _trade_logs.findIndex((log: any) => log === tradeLog);
+                            const currentIndex = _trade_logs.findIndex((log: TradeLog) => log === tradeLog);
                             const nextIndex = currentIndex < _trade_logs.length - 1 ? currentIndex + 1 : 0;
                             setTradeLog(_trade_logs[nextIndex]);
                           }}
@@ -1150,7 +1139,7 @@ function DashboardContent() {
                           <div className="flex items-center gap-2 mt-1">
                             <div className="h-2 w-24 bg-white/10 rounded-full overflow-hidden">
                               <div
-                                style={{ width: `${(tradeLog.strategy?.setup_quality || 0) * 10}%` }}
+                                style={{ width: `${Number(tradeLog.strategy?.setup_quality || 0) * 10}%` }}
                                 className="h-full bg-gradient-to-r from-primary to-purple-500 neon-glow transition-all duration-1000"
                               />
                             </div>
@@ -1179,7 +1168,7 @@ function DashboardContent() {
                             <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">{isPt ? `Confluência (${tradeLog.strategy.confluence_factors.length} fatores)` : `Confluence (${tradeLog.strategy.confluence_factors.length} factors)`}</h5>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            {tradeLog.strategy.confluence_factors.map((factor: any, i: number) => (
+                            {tradeLog.strategy.confluence_factors.map((factor: string, i: number) => (
                               <div
                                 key={i}
                                 className={cn(
@@ -1349,7 +1338,7 @@ function DashboardContent() {
                         </div>
                         <div className="text-right max-w-[200px]">
                           <p className="text-[11px] font-bold text-white/90 leading-relaxed italic border-l-2 border-primary/30 pl-3">
-                            "{tradeLog.expected_outcome || 'AI is monitoring and will adjust targets based on market structure.'}"
+                            &quot;{tradeLog.expected_outcome || 'AI is monitoring and will adjust targets based on market structure.'}&quot;
                           </p>
                         </div>
                       </div>
@@ -1396,7 +1385,7 @@ function DashboardContent() {
                   </div>
 
                   <div className="space-y-6">
-                    {_trade_logs.map((log: any, idx: number) => (
+                    {_trade_logs.map((log: TradeLog, idx: number) => (
                       <div
                         key={log.id || idx}
                         className="p-6 rounded-2xl bg-gradient-to-br from-white/5 to-purple-500/5 border border-white/10 hover:border-purple-500/30 transition-all"
@@ -1440,7 +1429,7 @@ function DashboardContent() {
                                   <h5 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Confluence ({log.strategy.confluence_factors.length} factors)</h5>
                                 </div>
                                 <div className="grid grid-cols-1 gap-2">
-                                  {log.strategy.confluence_factors.map((factor: any, i: number) => (
+                                  {log.strategy.confluence_factors.map((factor: string, i: number) => (
                                     <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-white/5 border border-white/5">
                                       <CheckCircle className="w-3 h-3 text-primary mt-0.5 flex-shrink-0" />
                                       <span className="text-xs text-white/80">{factor}</span>
@@ -1545,9 +1534,9 @@ function DashboardContent() {
 
             {positions.length > 0 ? (
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                {positions.map((pos, i) => {
+                {positions.map((pos: Position, i: number) => {
                   // Find matching trade log for this position
-                  const posTradeLog = _trade_logs?.find((log: any) => log.symbol === pos.symbol) || tradeLog;
+                  const posTradeLog = _trade_logs?.find((log: TradeLog) => log.symbol === pos.symbol) || tradeLog;
 
                   return (
                     <GlassCard key={pos.symbol} delay={i * 0.1} className="!p-0 border-none bg-transparent">
@@ -1648,10 +1637,10 @@ function DashboardContent() {
                   <div className="flex items-baseline gap-3">
                     <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter text-white drop-shadow-2xl">
                       <span
-                        key={fullAnalytics?.history?.[fullAnalytics.history.length - 1]?.value}
+                        key={fullAnalytics?.history && fullAnalytics.history.length > 0 ? fullAnalytics.history[fullAnalytics.history.length - 1].value : "0"}
                         className="inline-block animate-in fade-in slide-in-from-top-2 duration-300"
                       >
-                        ${fullAnalytics?.history ? fullAnalytics.history[fullAnalytics.history.length - 1].value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "---"}
+                        ${fullAnalytics?.history && fullAnalytics.history.length > 0 ? fullAnalytics.history[fullAnalytics.history.length - 1].value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "---"}
                       </span>
                     </h2>
                     {/* Live PnL Indicator */}
@@ -1676,7 +1665,7 @@ function DashboardContent() {
                     </div>
                     <div>
                       <span className="block text-[9px] mb-0.5">{isPt ? 'Alavancagem' : 'Leverage'}</span>
-                      <span className="text-primary">{(((status as any)?.total_exposure || 0) / (status?.equity || 1)).toFixed(2)}x</span>
+                      <span className="text-primary">{((status?.total_exposure || 0) / (status?.equity || 1)).toFixed(2)}x</span>
                     </div>
                   </div>
                 </div>
@@ -1687,7 +1676,7 @@ function DashboardContent() {
                     {(['24H', '7D', '30D', 'ALL'] as const).map((range) => (
                       <button
                         key={range}
-                        onClick={() => setPnlPeriod(range as any)}
+                        onClick={() => setPnlPeriod(range)}
                         className={cn(
                           "px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all",
                           pnlPeriod === range
@@ -1710,7 +1699,7 @@ function DashboardContent() {
 
               {/* Main Area Chart */}
               <div className="w-full relative h-64">
-                {fullAnalytics?.history?.length > 0 ? (
+                {fullAnalytics?.history && fullAnalytics.history.length > 0 ? (
                   (() => {
                     // Filter Logic
                     const now = Date.now();
@@ -1718,7 +1707,7 @@ function DashboardContent() {
                     const cutoff = now - periodMap[pnlPeriod as keyof typeof periodMap];
                     const filteredHistory = pnlPeriod === 'ALL'
                       ? fullAnalytics.history
-                      : fullAnalytics.history.filter((h: any) => h.time > cutoff);
+                      : fullAnalytics.history.filter((h: { time: string | number; value: number }) => Number(h.time) > cutoff);
 
                     if (filteredHistory.length < 2) {
                       return (
@@ -1729,7 +1718,7 @@ function DashboardContent() {
                     }
 
                     // Chart Calc
-                    const values = filteredHistory.map((h: any) => h.value);
+                    const values = filteredHistory.map((h: { time: string | number; value: number }) => h.value);
                     const minVal = Math.min(...values);
                     const maxVal = Math.max(...values);
                     const range = maxVal - minVal || 1;
@@ -1740,7 +1729,7 @@ function DashboardContent() {
                     const isProfit = values[values.length - 1] >= values[0];
                     const color = isProfit ? "#00ff9d" : "#ff3b30";
 
-                    const points = filteredHistory.map((h: any, i: number) => {
+                    const points = filteredHistory.map((h: { time: string | number; value: number }, i: number) => {
                       const x = (i / (filteredHistory.length - 1)) * width;
                       const y = height - ((h.value - minVal) / range) * (height * 0.8) - (height * 0.1); // 10% padding
                       return `${x},${y}`;
@@ -1819,21 +1808,21 @@ function DashboardContent() {
                   <div className="flex gap-4">
                     <div className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-[#00ff9d]" />
-                      <span className="text-[10px] font-bold text-[#00ff9d]">LONG {(positions?.filter((p: any) => p.side === 'LONG').length / (positions?.length || 1) * 100).toFixed(0)}%</span>
+                      <span className="text-[10px] font-bold text-[#00ff9d]">LONG {(positions?.length > 0 ? (positions?.filter((p: Position) => p.side === 'LONG').length / (positions?.length || 1) * 100).toFixed(0) : "0")}%</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-[#ff3b30]" />
-                      <span className="text-[10px] font-bold text-[#ff3b30]">SHORT {(positions?.filter((p: any) => p.side === 'SHORT').length / (positions?.length || 1) * 100).toFixed(0)}%</span>
+                      <span className="text-[10px] font-bold text-[#ff3b30]">SHORT {(positions?.length > 0 ? (positions?.filter((p: Position) => p.side === 'SHORT').length / (positions?.length || 1) * 100).toFixed(0) : "0")}%</span>
                     </div>
                   </div>
                 </div>
                 <div className="h-2.5 w-full bg-black/40 rounded-full overflow-hidden flex ring-1 ring-white/5">
                   <div
-                    style={{ width: `${(positions?.filter((p: any) => p.side === 'LONG').length / (positions?.length || 1) * 100)}%` }}
+                    style={{ width: `${(positions?.filter((p: Position) => p.side === 'LONG').length / (positions?.length || 1) * 100)}%` }}
                     className="h-full bg-gradient-to-r from-green-500 to-[#00ff9d] transition-all duration-1000 ease-out"
                   />
                   <div
-                    style={{ width: `${(positions?.filter((p: any) => p.side === 'SHORT').length / (positions?.length || 1) * 100)}%` }}
+                    style={{ width: `${(positions?.filter((p: Position) => p.side === 'SHORT').length / (positions?.length || 1) * 100)}%` }}
                     className="h-full bg-gradient-to-r from-red-600 to-[#ff3b30] transition-all duration-1000 ease-out"
                   />
                 </div>
@@ -1888,7 +1877,7 @@ function DashboardContent() {
                       </thead>
                       <tbody className="text-sm">
                         {positions?.length > 0 ? (
-                          positions.map((pos: any, idx: number) => (
+                          positions.map((pos: Position, idx: number) => (
                             <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.05] transition-all duration-300 group cursor-default">
                               <td className="py-3 pl-2">
                                 <div className="font-bold text-white">{pos.symbol}</div>
@@ -1948,7 +1937,7 @@ function DashboardContent() {
                       </thead>
                       <tbody className="text-sm">
                         {openOrders.length > 0 ? (
-                          openOrders.map((order: any, idx: number) => (
+                          openOrders.map((order: { symbol: string; type: string; side: string; price: number; size: number; trigger_px?: number }, idx: number) => (
                             <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                               <td className="py-3 pl-2 font-bold text-white">{order.symbol}</td>
                               <td className="py-3 font-mono text-muted-foreground">{order.type}</td>
@@ -1988,7 +1977,7 @@ function DashboardContent() {
                       </thead>
                       <tbody className="text-sm">
                         {recentFills.length > 0 ? (
-                          recentFills.slice(0, 20).map((fill: any, idx: number) => (
+                          recentFills.slice(0, 20).map((fill: { timestamp?: string; symbol: string; side: string; price: number; size: number; value: number; closed_pnl?: number }, idx: number) => (
                             <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                               <td className="py-3 pl-2 font-mono text-muted-foreground text-xs">{fill.timestamp ? new Date(fill.timestamp).toLocaleTimeString() : '—'}</td>
                               <td className="py-3 font-bold text-white">{fill.symbol}</td>
@@ -2000,8 +1989,8 @@ function DashboardContent() {
                               <td className="py-3 font-mono text-white">${fill.price?.toFixed(4)}</td>
                               <td className="py-3 font-mono text-muted-foreground">{fill.size}</td>
                               <td className="py-3 font-mono text-muted-foreground">${fill.value?.toFixed(2)}</td>
-                              <td className={cn("py-3 pr-2 text-right font-mono font-bold", fill.closed_pnl >= 0 ? "text-[#00ff9d]" : "text-[#ff3b30]")}>
-                                {fill.closed_pnl ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : '—'}
+                              <td className={cn("py-3 pr-2 text-right font-mono font-bold", (fill.closed_pnl ?? 0) >= 0 ? "text-[#00ff9d]" : "text-[#ff3b30]")}>
+                                {fill.closed_pnl !== undefined ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : '—'}
                               </td>
                             </tr>
                           ))
@@ -2028,7 +2017,7 @@ function DashboardContent() {
                       </thead>
                       <tbody className="text-sm">
                         {transfers.length > 0 ? (
-                          transfers.map((transfer: any, idx: number) => (
+                          transfers.map((transfer: { timestamp?: string; type: string; amount: number; status: string }, idx: number) => (
                             <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                               <td className="py-3 pl-2 font-mono text-muted-foreground text-xs">{transfer.timestamp ? new Date(transfer.timestamp).toLocaleDateString() : '—'}</td>
                               <td className="py-3">
@@ -2151,7 +2140,7 @@ function DashboardContent() {
                 </div>
                 <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
                   {calendarEvents.length > 0 ? (
-                    calendarEvents.map((event, i) => (
+                    calendarEvents.map((event: { event: string; country: string; impact: string; importance?: string; date: string; time?: string; actual?: string; estimate?: string; previous?: string }, i: number) => (
                       <div
                         key={i}
                         className={cn(
@@ -2298,8 +2287,8 @@ function DashboardContent() {
                         <div className="relative h-2 bg-white/10 rounded-full overflow-hidden">
                           <div
                             className={cn("absolute top-0 bottom-0 w-full transition-all duration-1000",
-                              rainbowData.band_index <= 2 ? "bg-gradient-to-r from-green-500 to-green-300" :
-                                rainbowData.band_index >= 6 ? "bg-gradient-to-r from-red-500 to-red-300" :
+                              (rainbowData.band_index ?? 0) <= 2 ? "bg-gradient-to-r from-green-500 to-green-300" :
+                                (rainbowData.band_index ?? 0) >= 6 ? "bg-gradient-to-r from-red-500 to-red-300" :
                                   "bg-gradient-to-r from-yellow-500 to-orange-500"
                             )}
                             style={{ width: `${Math.min(100, Math.max(0, ((rainbowData.band_index ?? 4) / 8) * 100))}%` }}
@@ -2337,8 +2326,8 @@ function DashboardContent() {
                           <div className="absolute top-0 bottom-0 left-[75%] w-0.5 bg-white/30" />
                         </div>
                         <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest pt-1">
-                          <span className={cn((altSeasonData.blockchaincenter?.season_index ?? altSeasonData.index) < 25 ? "text-orange-400" : "text-white/30")}>Bitcoin Season</span>
-                          <span className={cn((altSeasonData.blockchaincenter?.season_index ?? altSeasonData.index) > 75 ? "text-cyan-400" : "text-white/30")}>Altcoin Season</span>
+                          <span className={cn((altSeasonData.blockchaincenter?.season_index ?? altSeasonData.index ?? 0) < 25 ? "text-orange-400" : "text-white/30")}>Bitcoin Season</span>
+                          <span className={cn((altSeasonData.blockchaincenter?.season_index ?? altSeasonData.index ?? 0) > 75 ? "text-cyan-400" : "text-white/30")}>Altcoin Season</span>
                         </div>
                       </div>
                     )}
@@ -2398,7 +2387,7 @@ function DashboardContent() {
                   </h3>
                   {fundingData && fundingData.funding_rates ? (
                     <div className="grid grid-cols-3 gap-2">
-                      {fundingData.funding_rates.slice(0, 3).map((rate: any, i: number) => (
+                      {fundingData.funding_rates.slice(0, 3).map((rate: { symbol: string; lastFundingRate: string }, i: number) => (
                         <div key={i} className="bg-white/5 rounded-lg p-2 text-center border border-white/5">
                           <div className="text-[9px] font-black text-white/60 mb-1">{rate.symbol}</div>
                           <div className={cn("text-xs font-bold", parseFloat(rate.lastFundingRate) > 0.01 ? "text-orange-400" : "text-green-400")}>
@@ -2437,9 +2426,9 @@ function DashboardContent() {
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {trendingCoins.length > 0 ? (
-                        trendingCoins.slice(0, 4).map((coin: any, i: number) => (
+                        trendingCoins.slice(0, 4).map((coin: { thumb: string; symbol: string; name: string; rank: number }, i: number) => (
                           <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-white/5 border border-white/5">
-                            <img src={coin.thumb} alt={coin.symbol} className="w-5 h-5 rounded-full opacity-80" />
+                            <Image src={coin.thumb} alt={coin.symbol} width={20} height={20} className="rounded-full opacity-80" unoptimized />
                             <div className="flex flex-col">
                               <span className="text-xs font-bold">{coin.name} <span className="text-[9px] text-white/40">{coin.symbol}</span></span>
                               <span className="text-[9px] text-white/50">Rank #{coin.rank}</span>
@@ -2463,7 +2452,7 @@ function DashboardContent() {
 
                 {longShortData && longShortData.global_ratio ? (
                   <div className="space-y-4">
-                    {longShortData.global_ratio.map((item: any, i: number) => (
+                    {longShortData.global_ratio.map((item: { symbol: string; longShortRatio: string; longAccount: string; shortAccount: string; openInterest?: string }, i: number) => (
                       <div key={i} className="p-3 rounded-xl bg-white/5 border border-white/5">
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-xs font-bold text-white/70">{item.symbol} Long/Short</span>
@@ -2524,7 +2513,7 @@ function DashboardContent() {
                       <p className="text-sm font-bold uppercase tracking-widest">{isPt ? 'Inicie uma conversa...' : 'Start a conversation...'}</p>
                     </div>
                   ) : (
-                    chatMessages.map((msg, i) => (
+                    chatMessages.map((msg: { role: string; content: string }, i: number) => (
                       <div key={i} className={cn("flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300", msg.role === 'user' ? "justify-end" : "justify-start")}>
                         {msg.role === 'assistant' && (
                           <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
@@ -2581,7 +2570,7 @@ function DashboardContent() {
                 </div>
                 <div className="space-y-3 h-[450px] overflow-y-auto no-scrollbar">
                   {allThoughts?.length > 0 ? (
-                    allThoughts.map((thought, i) => (
+                    allThoughts.map((thought: AIThought, i: number) => (
                       <div key={i} className="text-xs border-b border-white/5 pb-2">
                         <span className="text-muted-foreground mr-3">[{new Date(thought.timestamp).toLocaleTimeString()}]</span>
                         <span className="text-primary mr-2">[{thought.emoji || '🤖'}]</span>

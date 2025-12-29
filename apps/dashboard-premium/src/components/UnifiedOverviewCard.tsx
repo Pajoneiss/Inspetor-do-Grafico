@@ -4,15 +4,16 @@
 import React, { useMemo } from "react";
 import { Wallet, Activity, Globe, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DashboardData } from "@/app/page";
 
 // --- Types ---
 interface UnifiedOverviewProps {
-    status: any;
-    history: any[];
+    status: DashboardData | null;
+    history: { time: string | number; value: number }[];
     period: '24H' | '7D' | '30D' | 'ALL';
     setPeriod: (p: '24H' | '7D' | '30D' | 'ALL') => void;
-    journalStats: any;
-    sessionInfo: any;
+    journalStats: { win_rate?: number; total_trades?: number } | null;
+    sessionInfo: { session?: string; current_time_utc?: string; is_weekend?: boolean } | null;
     isPt: boolean;
     isLoading: boolean;
 }
@@ -40,7 +41,7 @@ const getSmoothPath = (points: { x: number; y: number }[]) => {
     return d;
 };
 
-const StatValue = ({ value, label, sub, trend = 'neutral', icon: Icon, loading }: any) => (
+const StatValue = ({ value, label, sub, trend = 'neutral', icon: Icon, loading }: { value: string; label: string; sub: string; trend?: 'up' | 'down' | 'neutral'; icon: React.ElementType; loading: boolean }) => (
     <div className="flex flex-col gap-1 z-10">
         <div className="flex items-center gap-2 mb-1">
             <div className={cn("p-1.5 rounded-lg", trend === 'up' ? "bg-primary/10 text-primary" : trend === 'down' ? "bg-secondary/10 text-secondary" : "bg-white/5 text-white/60")}>
@@ -81,7 +82,8 @@ export default function UnifiedOverviewCard({ status, history, period, setPeriod
                 }
             }
             return Number(status?.pnl_24h || 0);
-        } catch (e) {
+        } catch (error) {
+            console.error("PnL Calc error:", error);
             return 0;
         }
     }, [history, status]);
@@ -91,7 +93,7 @@ export default function UnifiedOverviewCard({ status, history, period, setPeriod
             const equity = Number(status?.equity || 1);
             if (equity === 0) return "0.00";
             return ((pnlValue / equity) * 100).toFixed(2);
-        } catch (e) {
+        } catch {
             return "0.00";
         }
     }, [pnlValue, status]);
@@ -119,7 +121,7 @@ export default function UnifiedOverviewCard({ status, history, period, setPeriod
             }));
 
             return getSmoothPath(normalizedPoints);
-        } catch (e) {
+        } catch {
             return "";
         }
     }, [history]);
