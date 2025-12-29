@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Globe,
@@ -184,11 +183,7 @@ export default function NewsPage() {
       </div>
 
       {/* Global Market Stats */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass-card rounded-2xl p-6 mb-8"
-      >
+      <div className="glass-card rounded-2xl p-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
           <Globe className="w-5 h-5 text-cyan-400" />
           <h2 className="text-lg font-bold">{isPt ? "Visão Geral do Mercado Global" : "Global Market Overview"}</h2>
@@ -226,15 +221,10 @@ export default function NewsPage() {
             </p>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Real-time Crypto News - Full Width */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="glass-card rounded-2xl p-6 mb-8"
-      >
+      <div className="glass-card rounded-2xl p-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '0.1s' }}>
         <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
           <Newspaper className="w-5 h-5 text-cyan-400" />
           <h2 className="text-lg font-bold">{isPt ? "Notícias em Tempo Real (CryptoCompare)" : "Real-time News (CryptoCompare)"}</h2>
@@ -267,16 +257,11 @@ export default function NewsPage() {
             </div>
           )}
         </div>
-      </motion.div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Economic Calendar */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="glass-card rounded-2xl p-6"
-        >
+        <div className="glass-card rounded-2xl p-6 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '0.2s' }}>
           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
             <Calendar className="w-5 h-5 text-yellow-400" />
             <h2 className="text-lg font-bold">
@@ -318,15 +303,10 @@ export default function NewsPage() {
               </div>
             )}
           </div>
-        </motion.div>
+        </div>
 
         {/* Top Gainers */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="glass-card rounded-2xl p-6"
-        >
+        <div className="glass-card rounded-2xl p-6 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '0.3s' }}>
           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
             <TrendingUp className="w-5 h-5 text-green-400" />
             <h2 className="text-lg font-bold">{isPt ? "Maiores Altas (24h)" : "Top Gainers (24h)"}</h2>
@@ -353,15 +333,10 @@ export default function NewsPage() {
               <div className="text-center py-6 text-white/40">No data</div>
             )}
           </div>
-        </motion.div>
+        </div>
 
         {/* Top Losers */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="glass-card rounded-2xl p-6"
-        >
+        <div className="glass-card rounded-2xl p-6 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '0.4s' }}>
           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
             <TrendingDown className="w-5 h-5 text-red-400" />
             <h2 className="text-lg font-bold">{isPt ? "Maiores Baixas (24h)" : "Top Losers (24h)"}</h2>
@@ -388,7 +363,7 @@ export default function NewsPage() {
               <div className="text-center py-6 text-white/40">No data</div>
             )}
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );
