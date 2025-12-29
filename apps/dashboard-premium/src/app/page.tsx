@@ -21,17 +21,12 @@ import {
   Settings,
   Menu,
   X,
-  Target,
   Shield,
-  CheckCircle,
-  ChevronRight,
-  ChevronLeft,
   Send,
   Terminal,
   Newspaper,
   UserCircle,
-  History as HistoryIcon,
-  Clock
+  History as HistoryIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SettingsModal from "@/components/SettingsModal";
@@ -622,11 +617,6 @@ function DashboardContent() {
 
   if (!mounted) return null;
 
-  const getConfidenceColor = (conf: number) => {
-    if (conf >= 0.8) return "text-primary bg-primary/10";
-    if (conf >= 0.5) return "text-yellow-400 bg-yellow-400/10";
-    return "text-secondary bg-secondary/10";
-  };
 
   return (
     <div className="flex h-screen overflow-hidden text-foreground">

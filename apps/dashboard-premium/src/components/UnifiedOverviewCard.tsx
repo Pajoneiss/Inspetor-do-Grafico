@@ -4,7 +4,7 @@
 import React, { useMemo } from "react";
 import {
     Wallet, Activity, Globe, ArrowUpRight, ArrowDownRight, LayoutDashboard,
-    BrainCircuit, Target, Shield, CheckCircle, Clock, ChevronLeft, ChevronRight
+    BrainCircuit, Target, CheckCircle, Clock, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardData } from "@/app/page";
@@ -56,7 +56,7 @@ interface AIThought {
     thought?: string;
     summary?: string;
     confidence?: number;
-    actions?: any[];
+    actions?: string[];
 }
 interface UnifiedOverviewProps {
     status: DashboardData | null;
