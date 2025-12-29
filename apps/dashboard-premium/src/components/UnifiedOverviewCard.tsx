@@ -2,11 +2,62 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { Wallet, Activity, Globe, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import {
+    Wallet, Activity, Globe, ArrowUpRight, ArrowDownRight, LayoutDashboard,
+    BrainCircuit, Target, Shield, CheckCircle, Clock, ChevronLeft, ChevronRight
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardData } from "@/app/page";
 
 // --- Types ---
+interface Position {
+    symbol: string;
+    side: string;
+    size: number;
+    entry_price: number;
+    mark_price: number;
+    unrealized_pnl: number;
+    leverage?: number;
+    stop_loss?: number;
+    take_profit?: number;
+    margin_used?: number;
+}
+
+interface TradeLog {
+    id: string;
+    symbol: string;
+    side: string;
+    entry_price: number;
+    confidence?: number;
+    strategy: {
+        name: string;
+        timeframe: string;
+        confluence_factors: string[];
+    };
+    entry_rationale: string;
+    risk_management: {
+        stop_loss: number;
+        stop_loss_reason: string;
+        take_profit_1: number;
+        tp1_reason: string;
+        take_profit_2: number;
+        tp2_reason: string;
+        risk_usd: number;
+        risk_pct: number;
+        tp1_size_pct?: number;
+        tp2_size_pct?: number;
+    };
+    ai_notes: string;
+    timestamp?: string;
+}
+
+interface AIThought {
+    timestamp: string;
+    thought?: string;
+    summary?: string;
+    confidence?: number;
+    actions?: any[];
+}
 interface UnifiedOverviewProps {
     status: DashboardData | null;
     history: { time: string | number; value: number }[];
@@ -16,6 +67,15 @@ interface UnifiedOverviewProps {
     sessionInfo: { session?: string; current_time_utc?: string; is_weekend?: boolean } | null;
     isPt: boolean;
     isLoading: boolean;
+    positions: Position[];
+    tradeLog: TradeLog | null;
+    _trade_logs: TradeLog[];
+    setTradeLog: (log: TradeLog | null) => void;
+    aiNotesLang: 'pt' | 'en';
+    setAiNotesLang: (lang: 'pt' | 'en') => void;
+    aiMood: 'aggressive' | 'defensive' | 'observing';
+    thoughts: AIThought[];
+    setViewAllModalOpen: (open: boolean) => void;
 }
 
 // --- Helper Components ---
@@ -69,7 +129,10 @@ const StatValue = ({ value, label, sub, trend = 'neutral', icon: Icon, loading }
     </div>
 );
 
-export default function UnifiedOverviewCard({ status, history, period, setPeriod, journalStats, sessionInfo, isPt, isLoading }: UnifiedOverviewProps) {
+export default function UnifiedOverviewCard({
+    status, history, period, setPeriod, journalStats, sessionInfo, isPt, isLoading, positions,
+    tradeLog, _trade_logs, setTradeLog, aiNotesLang, setAiNotesLang, aiMood, thoughts, setViewAllModalOpen
+}: UnifiedOverviewProps) {
 
     // Safely calculate PnL
     const pnlValue = useMemo(() => {
@@ -125,6 +188,13 @@ export default function UnifiedOverviewCard({ status, history, period, setPeriod
             return "";
         }
     }, [history]);
+
+    // AI Confidence Color Helper
+    const getConfidenceColor = (conf: number) => {
+        if (conf >= 0.8) return "text-primary bg-primary/10";
+        if (conf >= 0.5) return "text-yellow-400 bg-yellow-400/10";
+        return "text-secondary bg-secondary/10";
+    };
 
     // Win Rate Logic
     const winRate = Number(journalStats?.win_rate || 0);
@@ -271,6 +341,329 @@ export default function UnifiedOverviewCard({ status, history, period, setPeriod
                     </div>
                 </div>
             </div>
+
+            {/* Active Positions Section */}
+            <div className="mt-8 pt-8 border-t border-white/5">
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="p-2 rounded-xl bg-primary/20 text-primary">
+                        <Activity className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-xl font-bold tracking-tight">{isPt ? "Posições Ativas" : "Active Positions"}</h3>
+                </div>
+
+                {positions && positions.length > 0 ? (
+                    <div className="space-y-4">
+                        {positions.map((pos, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/[0.08] transition-all group/item">
+                                <div className="flex items-center gap-4">
+                                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs transition-colors",
+                                        pos.side === 'LONG' ? "bg-primary/20 text-primary group-hover/item:bg-primary/30" : "bg-secondary/20 text-secondary group-hover/item:bg-secondary/30")}>
+                                        {(pos.symbol || "??").substring(0, 2)}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold tracking-tight">{pos.symbol || "Unknown"}</p>
+                                        <div className="flex items-center gap-2">
+                                            <span className={cn("text-[10px] font-bold uppercase tracking-widest", pos.side === 'LONG' ? "text-primary" : "text-secondary")}>
+                                                {(pos.side || "").toUpperCase()} {pos.leverage || 1}x
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm font-bold tracking-tight">${Number(pos.entry_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                    <div className="flex items-center justify-end gap-1">
+                                        <p className={cn("text-xs font-bold", (pos.unrealized_pnl || 0) >= 0 ? "text-primary" : "text-secondary")}>
+                                            {(pos.unrealized_pnl || 0) >= 0 ? '+' : ''}{Number(pos.unrealized_pnl || 0).toFixed(2)}
+                                        </p>
+                                        {(pos.unrealized_pnl || 0) >= 0 ? <ArrowUpRight className="w-3 h-3 text-primary" /> : <ArrowDownRight className="w-3 h-3 text-secondary" />}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="py-12 flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/5 bg-white/[0.01]">
+                        <LayoutDashboard className="w-10 h-10 text-muted-foreground/20 mb-3" />
+                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50">{isPt ? "Nenhuma posição ativa" : "No active positions"}</p>
+                    </div>
+                )}
+            </div>
+
+            {/* AI Strategy Core Section */}
+            <div className="mt-8 pt-8 border-t border-white/5">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-2xl bg-purple-500/20 text-purple-400 neon-glow">
+                            <BrainCircuit className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold tracking-tight">{isPt ? "Núcleo de Estratégia de IA" : "AI Strategy Core"}</h3>
+                            <div className="flex items-center gap-3 mt-1">
+                                <span className={cn(
+                                    "px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border",
+                                    aiMood === 'aggressive' && "bg-green-500/20 text-green-400 border-green-500/30",
+                                    aiMood === 'defensive' && "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+                                    aiMood === 'observing' && "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                                )}>
+                                    {aiMood === 'aggressive' && (isPt ? '🚀 Agressivo' : '🚀 Aggressive')}
+                                    {aiMood === 'defensive' && (isPt ? '🛡️ Defensivo' : '🛡️ Defensive')}
+                                    {aiMood === 'observing' && (isPt ? '⏸️ Observando' : '⏸️ Observing')}
+                                </span>
+                                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                                    {tradeLog
+                                        ? (_trade_logs && _trade_logs.length > 1 ? `${_trade_logs.findIndex((log: TradeLog) => log === tradeLog) + 1} of ${_trade_logs.length} Active` : 'Detailed Strategy Breakdown')
+                                        : (isPt ? "Monitoramento de Mercado em Tempo Real" : "Real-time Market Monitoring")
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {/* Language Toggle */}
+                        <div className="flex items-center gap-1 bg-white/5 p-1 rounded-lg border border-white/10 mr-2">
+                            <button onClick={() => setAiNotesLang('pt')} className={cn("px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all", aiNotesLang === 'pt' ? "bg-green-500/20 text-green-400 border border-green-500/30" : "text-muted-foreground hover:text-white")}>🇧🇷 PT</button>
+                            <button onClick={() => setAiNotesLang('en')} className={cn("px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all", aiNotesLang === 'en' ? "bg-blue-500/20 text-blue-400 border border-blue-500/30" : "text-muted-foreground hover:text-white")}>🇺🇸 EN</button>
+                        </div>
+
+                        {/* Navigation for multiple trades */}
+                        {tradeLog && _trade_logs && _trade_logs.length > 1 && (
+                            <>
+                                <button
+                                    onClick={() => {
+                                        const currentIndex = _trade_logs.findIndex((log: TradeLog) => log === tradeLog);
+                                        const prevIndex = currentIndex > 0 ? currentIndex - 1 : _trade_logs.length - 1;
+                                        setTradeLog(_trade_logs[prevIndex]);
+                                    }}
+                                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all"
+                                >
+                                    <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const currentIndex = _trade_logs.findIndex((log: TradeLog) => log === tradeLog);
+                                        const nextIndex = currentIndex < _trade_logs.length - 1 ? currentIndex + 1 : 0;
+                                        setTradeLog(_trade_logs[nextIndex]);
+                                    }}
+                                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all"
+                                >
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </>
+                        )}
+                        <button
+                            onClick={() => setViewAllModalOpen(true)}
+                            className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-all text-xs font-bold uppercase tracking-wider"
+                        >
+                            {isPt ? "Histórico" : "History"}
+                        </button>
+                    </div>
+                </div>
+
+                {tradeLog ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in duration-500">
+                        <div className="space-y-6">
+                            {/* Trade Header */}
+                            <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-purple-500/10 to-primary/10 border border-white/10">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center font-bold text-lg border border-white/10">
+                                        {tradeLog.symbol?.substring(0, 2)}
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xl font-bold">{tradeLog.symbol} <span className={cn("text-sm uppercase px-2 py-0.5 rounded ml-2", tradeLog.side === 'LONG' ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary")}>{tradeLog.side}</span></h4>
+                                        <p className="text-xs text-muted-foreground uppercase tracking-widest">Entry: ${tradeLog.entry_price?.toLocaleString()}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Confidence</p>
+                                    <p className="text-2xl font-bold text-primary">{((tradeLog.confidence || 0) * 100).toFixed(0)}%</p>
+                                </div>
+                            </div>
+
+                            {/* Strategy Info */}
+                            <div className="p-5 rounded-2xl bg-white/5 border border-white/5">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Target className="w-4 h-4 text-primary" />
+                                    <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">{isPt ? "Estratégia" : "Strategy"}</h5>
+                                </div>
+                                <p className="text-lg font-bold text-white mb-1">{tradeLog.strategy?.name || 'N/A'}</p>
+                                <p className="text-sm text-white/60 mb-4">{tradeLog.entry_rationale || 'No rationale available.'}</p>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    {tradeLog.strategy.confluence_factors.map((factor: string, i: number) => (
+                                        <div
+                                            key={i}
+                                            className={cn(
+                                                "flex items-start gap-2 p-2.5 rounded-xl border transition-all duration-300 hover:scale-[1.02]",
+                                                i === 0
+                                                    ? "bg-gradient-to-r from-primary/20 to-purple-500/10 border-primary/30 shadow-lg shadow-primary/5"
+                                                    : "bg-white/5 border-white/5 hover:bg-white/10"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "p-1 rounded-full",
+                                                i === 0 ? "bg-primary/20 text-primary" : "bg-white/10 text-primary"
+                                            )}>
+                                                <CheckCircle className="w-3 h-3" />
+                                            </div>
+                                            <span className={cn(
+                                                "text-[11px] font-medium leading-tight",
+                                                i === 0 ? "text-white" : "text-white/70"
+                                            )}>{factor}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            {/* Risk Management */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Activity className="w-4 h-4 text-secondary" />
+                                    <h5 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">{isPt ? "Gestão de Risco" : "Risk Management"}</h5>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {/* Stop Loss */}
+                                    <div className="p-3.5 rounded-2xl bg-secondary/10 border border-secondary/20 flex flex-col justify-between min-h-[100px] transition-all hover:bg-secondary/15">
+                                        <div>
+                                            <p className="text-[10px] font-extrabold text-secondary/70 uppercase tracking-[0.15em] mb-1">Stop Loss</p>
+                                            <p className="text-xl font-bold text-secondary tracking-tight">${tradeLog.risk_management?.stop_loss?.toLocaleString() || '0'}</p>
+                                        </div>
+                                        <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.stop_loss_reason || 'N/A'}</p>
+                                    </div>
+
+                                    {/* Take Profit 1 */}
+                                    <div className="p-3.5 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col justify-between min-h-[100px] transition-all hover:bg-primary/15">
+                                        <div>
+                                            <p className="text-[10px] font-extrabold text-primary/70 uppercase tracking-[0.15em] mb-1">Take Profit 1</p>
+                                            <p className="text-xl font-bold text-primary tracking-tight">${tradeLog.risk_management?.take_profit_1?.toLocaleString() || '0'}</p>
+                                        </div>
+                                        <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.tp1_reason || 'N/A'}</p>
+                                    </div>
+
+                                    {/* Risk */}
+                                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex flex-col justify-between min-h-[100px] transition-all hover:bg-white/10">
+                                        <div>
+                                            <p className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.15em] mb-1">{isPt ? "Risco" : "Risk"}</p>
+                                            <p className="text-xl font-bold text-white tracking-tight">${tradeLog.risk_management?.risk_usd?.toFixed(2) || '0'}</p>
+                                        </div>
+                                        <p className="text-[10px] font-medium text-white/40 mt-1">{tradeLog.risk_management?.risk_pct?.toFixed(2) || '0'}%</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* AI Notes - Bilingual */}
+                            {tradeLog.ai_notes && (() => {
+                                const notes = tradeLog.ai_notes;
+                                let ptText = '';
+                                let enText = '';
+
+                                if (notes.includes('🇺🇸')) {
+                                    [ptText, enText] = notes.split('🇺🇸').map((s: string) => s.replace('🇧🇷', '').trim());
+                                } else if (notes.includes('Position Analysis')) {
+                                    const idx = notes.indexOf('Position Analysis');
+                                    ptText = notes.substring(0, idx).replace('🇧🇷', '').trim();
+                                    enText = notes.substring(idx).trim();
+                                } else {
+                                    ptText = notes.replace('🇧🇷', '').trim();
+                                    enText = ptText;
+                                }
+
+                                const displayText = aiNotesLang === 'pt' ? ptText : enText;
+
+                                return (
+                                    <div className="p-4 rounded-xl bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-purple-500/20">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <BrainCircuit className="w-4 h-4 text-purple-400" />
+                                            <p className="text-xs font-bold uppercase tracking-widest text-purple-300">AI Notes</p>
+                                        </div>
+                                        <p className="text-sm font-medium leading-relaxed text-white/90">
+                                            {displayText}
+                                        </p>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                ) : (
+                    // Detailed AI Insight View (No Active Trade)
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 h-full min-h-[300px] animate-in fade-in duration-500">
+                        {/* Left: General Market Sentiment / Thoughts */}
+                        <div className="md:col-span-2 space-y-6">
+                            <div className="p-6 rounded-2xl bg-white/5 border border-white/5 h-full relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 blur-[80px] rounded-full pointer-events-none" />
+                                <div className="flex items-center gap-3 mb-4 relative z-10">
+                                    <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                                        <span className="text-xl">💭</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-lg font-bold text-white">{isPt ? "Insight de Mercado" : "Market Insight"}</h4>
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wider">{thoughts && thoughts.length > 0 ? "Latest AI Thought" : "System Status"}</p>
+                                    </div>
+                                </div>
+
+                                <div className="relative z-10">
+                                    {thoughts && thoughts.length > 0 ? (
+                                        <div className="prose prose-invert prose-sm max-w-none">
+                                            <p className="text-lg font-medium leading-relaxed text-white/90">
+                                                &quot;{thoughts[0].thought || thoughts[0].summary}&quot;
+                                            </p>
+                                            <div className="flex items-center gap-4 mt-6 pt-6 border-t border-white/10">
+                                                <div className="flex items-center gap-2">
+                                                    <Clock className="w-4 h-4 text-white/40" />
+                                                    <span className="text-xs font-bold text-white/40 uppercase tracking-widest">{new Date(thoughts[0].timestamp).toLocaleTimeString()}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className={cn("w-2 h-2 rounded-full", getConfidenceColor(thoughts[0].confidence || 0).replace("text-", "bg-"))} />
+                                                    <span className={cn("text-xs font-bold uppercase tracking-widest", getConfidenceColor(thoughts[0].confidence || 0))}>Confidence: {((thoughts[0].confidence || 0) * 100).toFixed(0)}%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-40 text-center">
+                                            <BrainCircuit className="w-12 h-12 text-white/20 mb-4 animate-pulse" />
+                                            <p className="text-sm text-white/40 font-medium">Analyzing market structure...</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right: Operational Status / Next Steps */}
+                        <div className="space-y-4">
+                            <div className="p-5 rounded-2xl bg-white/5 border border-white/5 h-full flex flex-col justify-center relative">
+                                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20 pointer-events-none" />
+                                <h5 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4 text-center z-10">{isPt ? "Estado Operacional" : "Operational Status"}</h5>
+
+                                <div className="flex flex-col items-center gap-4 z-10">
+                                    <div className="relative">
+                                        <div className={cn(
+                                            "w-20 h-20 rounded-full flex items-center justify-center text-3xl shadow-2xl transition-all duration-1000",
+                                            aiMood === 'aggressive' ? "bg-green-500/20 text-green-400 shadow-green-500/20" :
+                                                aiMood === 'defensive' ? "bg-yellow-500/20 text-yellow-400 shadow-yellow-500/20" :
+                                                    "bg-blue-500/20 text-blue-400 shadow-blue-500/20"
+                                        )}>
+                                            {aiMood === 'aggressive' ? "🚀" : aiMood === 'defensive' ? "🛡️" : "🔎"}
+                                        </div>
+                                        <div className={cn(
+                                            "absolute inset-0 rounded-full animate-ping opacity-20",
+                                            aiMood === 'aggressive' ? "bg-green-500" :
+                                                aiMood === 'defensive' ? "bg-yellow-500" :
+                                                    "bg-blue-500"
+                                        )} />
+                                    </div>
+
+                                    <div className="text-center space-y-1">
+                                        <p className="text-sm font-bold text-white">{aiMood === 'aggressive' ? "Seeking Opportunities" : (aiMood === 'defensive' ? "Protecting Capital" : "Monitoring Structure")}</p>
+                                        <p className="text-xs text-white/40">Scanning for high-probability setups</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
+```
