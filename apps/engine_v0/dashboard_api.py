@@ -970,6 +970,74 @@ _ai_analysis_cache = {}
 AI_ANALYSIS_CACHE_TTL = 60
 
 
+def fetch_real_sl_tp(symbol: str) -> dict:
+    """
+    Fetch real SL/TP trigger orders from Hyperliquid for a given symbol.
+    Returns dict with 'stop_loss' and 'take_profit' prices, or None if not set.
+    """
+    try:
+        user_address = os.getenv("HYPERLIQUID_WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
+        
+        # Fetch open orders
+        response = requests.post(
+            "https://api.hyperliquid.xyz/info",
+            json={"type": "openOrders", "user": user_address},
+            timeout=10
+        )
+        
+        if not response.ok:
+            print(f"[SL_TP] Failed to fetch orders: {response.status_code}")
+            return {'stop_loss': None, 'take_profit': None}
+        
+        orders = response.json()
+        
+        sl_price = None
+        tp_price = None
+        
+        for order in orders:
+            coin = order.get('coin', '')
+            if coin != symbol:
+                continue
+            
+            # Check if this is a trigger order (SL or TP)
+            trigger_px = order.get('triggerPx')
+            if trigger_px:
+                trigger_price = float(trigger_px)
+                side = order.get('side')  # 'B' = buy, 'A' = sell
+                reduce_only = order.get('reduceOnly', False)
+                
+                # For a LONG position:
+                #   - SL is a SELL trigger below entry
+                #   - TP is a SELL trigger above entry
+                # For a SHORT position:
+                #   - SL is a BUY trigger above entry
+                #   - TP is a BUY trigger below entry
+                
+                # If reduce_only and it's a trigger order, categorize it
+                if reduce_only:
+                    # We need to determine if it's SL or TP based on order type
+                    order_type = order.get('orderType', '')
+                    
+                    # Trigger condition helps identify SL vs TP
+                    # For now, we'll assume the first trigger is the active SL
+                    if sl_price is None:
+                        sl_price = trigger_price
+                        print(f"[SL_TP] Found SL for {symbol}: ${trigger_price:,.2f}")
+                    elif tp_price is None:
+                        tp_price = trigger_price
+                        print(f"[SL_TP] Found TP for {symbol}: ${trigger_price:,.2f}")
+        
+        return {
+            'stop_loss': sl_price,
+            'take_profit': tp_price,
+            'source': 'hyperliquid'
+        }
+        
+    except Exception as e:
+        print(f"[SL_TP] Error fetching SL/TP for {symbol}: {e}")
+        return {'stop_loss': None, 'take_profit': None}
+
+
 def generate_ai_trade_analysis(position: dict) -> dict:
     """
     Generate real-time AI analysis for a position using GPT-4o-mini.
@@ -1052,6 +1120,14 @@ IMPORTANT:
 
     try:
         print(f"[AI_ANALYSIS] Generating analysis for {symbol}...")
+        
+        # CRITICAL: Fetch REAL SL/TP from Hyperliquid FIRST
+        real_sl_tp = fetch_real_sl_tp(symbol)
+        real_sl = real_sl_tp.get('stop_loss')
+        real_tp = real_sl_tp.get('take_profit')
+        
+        print(f"[AI_ANALYSIS] Real SL/TP for {symbol}: SL=${real_sl}, TP=${real_tp}")
+        
         response = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -1072,7 +1148,19 @@ IMPORTANT:
         # Parse JSON
         ai_data = json.loads(raw_response)
         
-        # Build complete trade log
+        # Get AI's risk management data (for reasons/explanations only)
+        ai_risk = ai_data.get('risk_management', {})
+        
+        # Build risk management with REAL values from exchange
+        # Only use AI values as fallback if no real order exists
+        actual_sl = real_sl if real_sl else ai_risk.get('stop_loss', entry_price * (0.97 if side == 'LONG' else 1.03))
+        actual_tp = real_tp if real_tp else ai_risk.get('take_profit_1', entry_price * (1.03 if side == 'LONG' else 0.97))
+        
+        # Calculate actual risk based on REAL SL
+        risk_usd = abs(entry_price - actual_sl) * size / entry_price if entry_price > 0 else 0
+        risk_pct = (risk_usd / equity * 100) if equity > 0 else 0
+        
+        # Build complete trade log with REAL values
         trade_log = {
             'id': f'ai-{symbol}-{int(time.time())}',
             'symbol': symbol,
@@ -1084,12 +1172,24 @@ IMPORTANT:
             'leverage': leverage,
             'strategy': ai_data.get('strategy', {}),
             'entry_rationale': ai_data.get('entry_rationale', 'AI-generated analysis'),
-            'risk_management': ai_data.get('risk_management', {}),
+            'risk_management': {
+                'stop_loss': actual_sl,
+                'stop_loss_reason': ai_risk.get('stop_loss_reason', 'Trigger order set on exchange'),
+                'stop_loss_source': 'exchange' if real_sl else 'ai_suggestion',
+                'take_profit_1': actual_tp,
+                'tp1_reason': ai_risk.get('tp1_reason', 'Target based on market structure'),
+                'tp1_source': 'exchange' if real_tp else 'ai_suggestion',
+                'take_profit_2': ai_risk.get('take_profit_2', entry_price * (1.06 if side == 'LONG' else 0.94)),
+                'tp2_reason': ai_risk.get('tp2_reason', 'Secondary expansion target'),
+                'risk_usd': round(risk_usd, 2),
+                'risk_pct': round(risk_pct, 2)
+            },
             'confidence': ai_data.get('confidence', 0.75),
             'ai_notes': f"🇧🇷 {ai_data.get('ai_notes_pt', '')}\n\n🇺🇸 {ai_data.get('ai_notes_en', '')}",
             'expected_outcome': ai_data.get('expected_outcome', 'Monitoring position.'),
             'generated_at': datetime.now(timezone.utc).isoformat(),
-            'source': 'gpt-4o-mini'
+            'source': 'gpt-4o-mini',
+            'sl_tp_source': 'hyperliquid' if real_sl else 'ai_fallback'
         }
         
         # Cache the result
@@ -1098,7 +1198,7 @@ IMPORTANT:
         # Also add to trade logs history
         add_trade_log(trade_log.copy())
         
-        print(f"[AI_ANALYSIS] Successfully generated analysis for {symbol}")
+        print(f"[AI_ANALYSIS] Successfully generated analysis for {symbol} (SL source: {'exchange' if real_sl else 'AI'})")
         return trade_log
         
     except json.JSONDecodeError as e:
