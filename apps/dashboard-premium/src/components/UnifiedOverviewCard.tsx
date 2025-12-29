@@ -117,7 +117,7 @@ export default function UnifiedOverviewCard({ status, history, period, setPeriod
 
             const normalizedPoints = points.map(p => ({
                 x: p.x * 8, // scale width
-                y: 150 - ((p.y - min) / range) * 120 // scale height
+                y: max === min ? 75 : 150 - ((p.y - min) / range) * 120 // Center if flat, else scale
             }));
 
             return getSmoothPath(normalizedPoints);
