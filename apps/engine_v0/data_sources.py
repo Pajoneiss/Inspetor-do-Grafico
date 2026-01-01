@@ -94,8 +94,11 @@ def fetch_cryptocompare() -> List[Dict[str, str]]:
         import httpx
         # No key strictly required for this endpoint on some tiers, but good practice
         url = "https://min-api.cryptocompare.com/data/v2/news/?lang=EN"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
         
-        with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+        with httpx.Client(timeout=API_TIMEOUT_SECONDS, headers=headers) as client:
             resp = client.get(url)
             if resp.status_code == 200:
                 data = resp.json()
@@ -132,7 +135,10 @@ def fetch_cryptopanic() -> List[Dict[str, str]]:
         import httpx
         if CRYPTOPANIC_API_KEY:
             url = f"https://cryptopanic.com/api/free/v1/posts/?auth_token={CRYPTOPANIC_API_KEY}&filter=rising&public=true"
-            with httpx.Client(timeout=API_TIMEOUT_SECONDS) as client:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+            with httpx.Client(timeout=API_TIMEOUT_SECONDS, headers=headers) as client:
                 resp = client.get(url)
                 if resp.status_code == 200:
                     data = resp.json()
@@ -735,53 +741,24 @@ def fetch_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any]]:
     if events:
         return events
         
-    # User-requested "Mandatory Function": Return realistic fallback/sample data
+    # Fallback to Forex Factory if both FMP and Investing.com fail
+    try:
+        events = fetch_forexfactory_calendar()
+        if events:
+            return events
+    except Exception:
+        pass
+
     from datetime import datetime
     today_str = datetime.now().strftime("%Y-%m-%d")
     
+    # Generic fallback if absolutely everything fails
     return [
         {
             "date": today_str,
-            "time": "14:00",
-            "event": "FOMC Meeting Minutes (Sample)",
-            "country": "US",
-            "importance": "HIGH",
-            "actual": None,
-            "estimate": None,
-            "previous": None,
-            "impact": "high"
-        },
-        {
-            "date": today_str,
-            "time": "15:30",
-            "event": "Initial Jobless Claims (Sample)",
-            "country": "US",
-            "importance": "MEDIUM",
-            "actual": "220K",
-            "estimate": "218K",
-            "previous": "215K",
-            "impact": "medium"
-        },
-        {
-            "date": today_str,
-            "time": "16:00",
-            "event": "Crude Oil Inventories (Sample)",
-            "country": "US",
-            "importance": "LOW",
-            "actual": None,
-            "estimate": "-1.5M",
-            "previous": "-2.1M",
-            "impact": "low"
-        }
-    ]
-        
-    # Final Fallback message
-    return [
-        {
-            "date": "TBD",
-            "time": "TBD",
-            "event": "Economic Calendar - Awaiting Data Sync",
-            "country": "US",
+            "time": "N/A",
+            "event": "Data Unavailable - Check Connectivity",
+            "country": "GLOBAL",
             "importance": "INFO",
             "actual": None,
             "estimate": None,
@@ -791,21 +768,98 @@ def fetch_economic_calendar(days_ahead: int = 7) -> List[Dict[str, Any]]:
     ]
 
 
+def fetch_forexfactory_calendar() -> List[Dict[str, Any]]:
+    """
+    Fetch economic calendar from ForexFactory (JSON feed)
+    """
+    cache_key = "ff_calendar"
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+
+    events = []
+    try:
+        import requests
+        from datetime import datetime
+        
+        url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+        resp = requests.get(url, timeout=API_TIMEOUT_SECONDS)
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            for item in data:
+                # Filter for High Impact (Low/Medium/High)
+                # FF uses "Low", "Medium", "High", "Holiday"
+                impact_raw = item.get("impact", "Low")
+                country = item.get("country", "USD")
+                
+                # Filter: US events or High impact global
+                if country != "USD" and impact_raw != "High":
+                    continue
+                
+                # Format date
+                # FF date format: "2024-04-24T14:30:00-04:00"
+                date_str = item.get("date", "")
+                try:
+                    dt = datetime.fromisoformat(date_str)
+                    clean_date = dt.strftime("%Y-%m-%d")
+                    clean_time = dt.strftime("%H:%M")
+                except:
+                    clean_date = date_str[:10]
+                    clean_time = date_str[11:16]
+
+                events.append({
+                    "date": clean_date,
+                    "time": clean_time,
+                    "event": item.get("title", "Event"),
+                    "country": country,
+                    "importance": impact_raw.upper(),
+                    "actual": item.get("actual"),
+                    "estimate": item.get("forecast"),
+                    "previous": item.get("previous"),
+                    "impact": impact_raw.lower()
+                })
+            
+            # Sort by date
+            events.sort(key=lambda x: (x["date"], x["time"]))
+            
+            if events:
+                _set_cache(cache_key, events, ttl=TTL_CALENDAR)
+                print(f"[CALENDAR] Fetched {len(events)} events from ForexFactory")
+                return events
+
+    except Exception as e:
+        print(f"[CALENDAR][WARN] ForexFactory failed: {e}")
+        
+    return []
+
+
 def format_economic_calendar(events: List[Dict[str, Any]], max_events: int = 5) -> str:
     """Format economic calendar for Telegram/Dashboard display"""
     if not events or (len(events) == 1 and "Unavailable" in events[0]["event"]):
         return "(Calendário econômico indisponível)"
     
     lines = []
-    for event in events[:max_events]:
+    
+    # Filter for future events only for display, or show today's events including passed ones
+    from datetime import datetime
+    now_str = datetime.now().strftime("%Y-%m-%d")
+    
+    # Simple filter to show events from today onwards, or recent ones
+    future_events = [e for e in events if e.get("date", "9999") >= now_str]
+    # If no future events (e.g. end of week), show last few
+    display_events = future_events if future_events else events[-max_events:]
+    
+    for event in display_events[:max_events]:
         date_str = event.get("date", "TBD")
         time_str = event.get("time", "TBD")
         name = event.get("event", "Unknown")
         estimate = event.get("estimate")
         previous = event.get("previous")
+        country = event.get("country", "")
         
         # Format importance stars
-        stars = "🔴🔴🔴" if event.get("importance") == "HIGH" else "🟡🟡"
+        stars = "🔴" if event.get("importance") == "HIGH" else "🟡"
         
         # Format date (convert YYYY-MM-DD to DD/MM)
         try:
@@ -815,15 +869,15 @@ def format_economic_calendar(events: List[Dict[str, Any]], max_events: int = 5) 
         except:
             date_display = date_str
         
-        line = f"{stars} {date_display} {time_str} - {name}"
+        line = f"{stars} [{country}] {date_display} {time_str} - {name}"
         
         # Add forecast if available
         if estimate or previous:
             details = []
             if estimate:
-                details.append(f"Prev: {estimate}")
+                details.append(f"Est: {estimate}")
             if previous:
-                details.append(f"Ant: {previous}")
+                details.append(f"Prev: {previous}")
             line += f"\n       {' | '.join(details)}"
         
         lines.append(line)
@@ -1151,7 +1205,10 @@ def fetch_funding_rates() -> Dict[str, Any]:
     try:
         import requests
         symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"]
-        resp = requests.get("https://fapi.binance.com/fapi/v1/premiumIndex", timeout=API_TIMEOUT_SECONDS)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+        resp = requests.get("https://fapi.binance.com/fapi/v1/premiumIndex", headers=headers, timeout=API_TIMEOUT_SECONDS)
         
         if resp.status_code == 451:
             print("[FUNDING][WARN] Binance geo-blocked (451). Using fallback data.")
@@ -1206,59 +1263,56 @@ def fetch_long_short_ratio() -> Dict[str, Any]:
     
     try:
         import requests
+        from datetime import datetime
         symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
         ratios = {}
         global_ratio_list = []
         
         for symbol in symbols:
-            url = f"https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol={symbol}&period=1h&limit=1"
+            url = f"https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol={symbol}&period=1d&limit=1"
             oi_url = f"https://fapi.binance.com/fapi/v1/openInterest?symbol={symbol}"
             
-            resp = requests.get(url, timeout=API_TIMEOUT_SECONDS)
-            oi_resp = requests.get(oi_url, timeout=API_TIMEOUT_SECONDS)
+            try:
+                resp = requests.get(url, headers=headers, timeout=5)
+                oi_resp = requests.get(oi_url, headers=headers, timeout=5)
+                
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data:
+                        item = data[0]
+                        clean_sym = symbol.replace("USDT", "")
+                        ratio = float(item.get("longShortRatio", 1.0))
+                        ratios[clean_sym] = round(ratio, 2)
+                        
+                        oi_val = 0
+                        if oi_resp.status_code == 200:
+                            oi_data = oi_resp.json()
+                            oi_val = float(oi_data.get("openInterest", 0))
+                        
+                        global_ratio_list.append({
+                            "symbol": clean_sym,
+                            "longShortRatio": str(ratio),
+                            "longAccount": str(item.get("longAccount", "0.5")),
+                            "shortAccount": str(item.get("shortAccount", "0.5")),
+                            "openInterest": f"${oi_val/1e6:.1f}M" if oi_val > 0 else "N/A",
+                            "timestamp": item.get("timestamp")
+                        })
+            except Exception as e:
+                print(f"[LONGSHORT] Failed for {symbol}: {e}")
+        
+        if global_ratio_list:
+            btc_ratio = ratios.get("BTC", 1.0)
+            sentiment = "bullish" if btc_ratio > 1.1 else "bearish" if btc_ratio < 0.9 else "neutral"
+            result = {"ratios": ratios, "global_ratio": global_ratio_list, "btc_ratio": btc_ratio, "sentiment": sentiment, "error": None}
+            _set_cache(cache_key, result, TTL_MARKET * 5)
+            print(f"[LONGSHORT] Fetched {len(global_ratio_list)} ratios from Binance")
+            return result
             
-            if resp.status_code == 200:
-                data = resp.json()
-                if data:
-                    item = data[0]
-                    clean_sym = symbol.replace("USDT", "")
-                    ratio = float(item.get("longShortRatio", 1.0))
-                    ratios[clean_sym] = round(ratio, 2)
-                    
-                    oi_val = 0
-                    if oi_resp.status_code == 200:
-                        oi_val = float(oi_resp.json().get("openInterest", 0))
-                    
-                    global_ratio_list.append({
-                        "symbol": clean_sym,
-                        "longShortRatio": str(ratio),
-                        "longAccount": str(item.get("longAccount", "0.5")),
-                        "shortAccount": str(item.get("shortAccount", "0.5")),
-                        "openInterest": f"${oi_val/1e6:.1f}M" if oi_val > 0 else "N/A",
-                        "timestamp": item.get("timestamp")
-                    })
-        
-        btc_ratio = ratios.get("BTC", 1.0)
-        sentiment = "bullish" if btc_ratio > 1.1 else "bearish" if btc_ratio < 0.9 else "neutral"
-        
-        if not global_ratio_list:
-            # Fallback if no data found
-            print("[LONGSHORT] Using fallback data")
-            timestamp = int(datetime.now().timestamp() * 1000)
-            global_ratio_list = [
-                {"symbol": "BTC", "longShortRatio": "1.05", "longAccount": "0.512", "shortAccount": "0.488", "openInterest": "$1.2B", "timestamp": timestamp},
-                {"symbol": "ETH", "longShortRatio": "0.98", "longAccount": "0.495", "shortAccount": "0.505", "openInterest": "$850M", "timestamp": timestamp},
-                {"symbol": "SOL", "longShortRatio": "1.12", "longAccount": "0.528", "shortAccount": "0.472", "openInterest": "$320M", "timestamp": timestamp}
-            ]
-            ratios = {"BTC": 1.05, "ETH": 0.98, "SOL": 1.12}
-            sentiment = "neutral"
-
-        result = {"ratios": ratios, "global_ratio": global_ratio_list, "btc_ratio": ratios.get("BTC", 1.0), "sentiment": sentiment, "error": None}
-        _set_cache(cache_key, result, TTL_MARKET * 5)
-        print(f"[LONGSHORT] Scraped {len(global_ratio_list)} ratios from Binance")
     except Exception as e:
         print(f"[LONGSHORT][ERROR] Failed: {e}")
-        # Return fallback on error
         timestamp = int(datetime.now().timestamp() * 1000)
         global_ratio_list = [
             {"symbol": "BTC", "longShortRatio": "1.00", "longAccount": "0.500", "shortAccount": "0.500", "openInterest": "N/A", "timestamp": timestamp},
