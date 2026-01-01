@@ -847,8 +847,8 @@ def format_economic_calendar(events: List[Dict[str, Any]], max_events: int = 5) 
     
     # Simple filter to show events from today onwards, or recent ones
     future_events = [e for e in events if e.get("date", "9999") >= now_str]
-    # If no future events (e.g. end of week), show last few
-    display_events = future_events if future_events else events[-max_events:]
+    # If no future events, do NOT show past events from previous years
+    display_events = future_events
     
     for event in display_events[:max_events]:
         date_str = event.get("date", "TBD")
@@ -1310,6 +1310,8 @@ def fetch_long_short_ratio() -> Dict[str, Any]:
             _set_cache(cache_key, result, TTL_MARKET * 5)
             print(f"[LONGSHORT] Fetched {len(global_ratio_list)} ratios from Binance")
             return result
+        else:
+            raise Exception("No data fetched for any symbol")
             
     except Exception as e:
         print(f"[LONGSHORT][ERROR] Failed: {e}")
