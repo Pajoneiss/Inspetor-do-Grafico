@@ -438,17 +438,24 @@ def main():
                                 else:
                                     score += 0  # Neutral zone
                                 
-                                # Factor 3: MACD confirmation (+10 for alignment, 0 for divergence - not penalty)
-                                # v13.0: Divergence is information, not necessarily bad
+                                # Factor 3: MACD confirmation
+                                # v14.0: Context-aware MACD - Differentiate Reversal vs Pullback
                                 if macd_hist > 0 and trend in ["UP", "UP_STRONG"]:
                                     score += 10
                                     reasons.append("MACD+")
                                 elif macd_hist < 0 and trend in ["DOWN", "DOWN_STRONG"]:
                                     score += 10
                                     reasons.append("MACD-")
-                                elif (macd_hist > 0 and trend.startswith("DOWN")) or (macd_hist < 0 and trend.startswith("UP")):
-                                    score += 0  # Divergence = neutral, AI decides significance
-                                    reasons.append("MACD diverge")
+                                # PULLBACK LOGIC: Strong trend + opposing MACD = Pullback Opportunity (Not Divergence)
+                                elif macd_hist < 0 and trend == "UP_STRONG":
+                                    score += 8  # High score for bullish pullback
+                                    reasons.append("Bullish Pullback")
+                                elif macd_hist > 0 and trend == "DOWN_STRONG":
+                                    score += 8  # High score for bearish pullback
+                                    reasons.append("Bearish Pullback")
+                                else:
+                                    score += 0  # weak or unclear divergence
+                                    reasons.append("MACD mix")
                                 
                                 # Factor 4: Volume boost (+10 for high volume - more interesting)
                                 if relative_volume > 1.5:

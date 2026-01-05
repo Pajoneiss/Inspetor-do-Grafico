@@ -27,10 +27,10 @@ CRYPTOPANIC_API_KEY = os.getenv("CRYPTOPANIC_API_KEY", "")
 FMP_API_KEY = os.getenv("FMP_API_KEY", "")  # Financial Modeling Prep API Key
 
 # ============================================================
-# 🎯 AI TIMING - Balanced for cost vs reactivity
+# 🎯 AI TIMING - 4H Swing Trading (user's intended config)
 # ============================================================
-AI_CALL_INTERVAL_SECONDS = int(os.getenv("AI_CALL_INTERVAL_SECONDS", "1800"))  # 30 min default (saves ~65% API costs)
-LLM_MIN_SECONDS = int(os.getenv("LLM_MIN_SECONDS", "1800"))  # 30 min minimum between AI calls
+AI_CALL_INTERVAL_SECONDS = int(os.getenv("AI_CALL_INTERVAL_SECONDS", "14400"))  # 4 hours default (swing trading)
+LLM_MIN_SECONDS = int(os.getenv("LLM_MIN_SECONDS", "3600"))  # 1 hour minimum between AI calls
 LLM_STATE_CHANGE_THRESHOLD = float(os.getenv("LLM_STATE_CHANGE_THRESHOLD", "0.5"))  # 0.5% change triggers AI
 PRICE_CHANGE_THRESHOLD = float(os.getenv("PRICE_CHANGE_THRESHOLD", "0.5"))  # 0.5% price move triggers AI
 VOLATILITY_TRIGGER_PCT = float(os.getenv("VOLATILITY_TRIGGER_PCT", "2.0"))  # Call AI immediately if BTC moves >2%
