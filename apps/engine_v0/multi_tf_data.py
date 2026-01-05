@@ -148,7 +148,7 @@ class MultiTimeframeData:
         elif all(t == "BEARISH" for t in trends):
             lines.append("✅ **CONFLUENCE**: All timeframes BEARISH")
         elif len(set(trends)) == 3:
-            lines.append("⚠️ **CONFLICT**: Mixed signals across timeframes → Use caution")
+            lines.append("🔄 **DIVERGENCE**: Timeframes not aligned")
         
         return "\n".join(lines)
 

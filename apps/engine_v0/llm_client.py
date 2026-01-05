@@ -96,7 +96,7 @@ def _format_indicators(indicators_by_symbol: Dict, prices: Dict) -> str:
         ema9, ema21, ema50 = ind.get("ema_9", 0), ind.get("ema_21", 0), ind.get("ema_50", 0)
         rsi, macd, atr = ind.get("rsi_14", 50), ind.get("macd_hist", 0), ind.get("atr_pct", 0)
         
-        status = "BULL" if ema9>ema21>ema50 else "BEAR" if ema9<ema21<ema50 else "MIX"
+        status = "BULL" if ema9>ema21>ema50 else "BEAR" if ema9<ema21<ema50 else "FLAT"
         lines.append(f"{symbol}(${price:.0f}): EMA[{status}] 9={ema9:.0f} 21={ema21:.0f} 50={ema50:.0f} | RSI={rsi:.1f} MACD={macd:.2f} ATR={atr:.2f}%")
     
     return "\n".join(lines) if lines else "(no indicators)"
@@ -168,10 +168,10 @@ def _format_recent_trades(recent_fills: list) -> str:
 def _get_session() -> str:
     """Get current trading session"""
     h = datetime.now(timezone.utc).hour
-    if 0 <= h < 8: return "ASIA (Range/Accum)"
-    elif 8 <= h < 14: return "LONDON (Vol/Trend)"
-    elif 14 <= h < 21: return "NY (Vol/Rev)"
-    return "LATE NY (Low Vol)"
+    if 0 <= h < 8: return "ASIA"
+    elif 8 <= h < 14: return "LONDON"
+    elif 14 <= h < 21: return "NY"
+    return "LATE NY"
 
 
 class LLMClient:

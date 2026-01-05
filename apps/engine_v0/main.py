@@ -419,7 +419,7 @@ def main():
                                     reasons.append("EMA9<21")
                                 else:
                                     trend = "RANGE"
-                                    reasons.append("ranging")
+                                    reasons.append("Consolidating")
                                 
                                 # Factor 2: RSI - NEUTRAL scoring (just note extreme values)
                                 # v13.0: No penalty for overbought/oversold - AI decides if it's opportunity or risk
@@ -455,7 +455,7 @@ def main():
                                     reasons.append("Bearish Pullback")
                                 else:
                                     score += 0  # weak or unclear divergence
-                                    reasons.append("MACD mix")
+                                    reasons.append("Building")
                                 
                                 # Factor 4: Volume boost (+10 for high volume - more interesting)
                                 if relative_volume > 1.5:
