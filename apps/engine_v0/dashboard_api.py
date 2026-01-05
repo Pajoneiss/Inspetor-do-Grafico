@@ -1207,7 +1207,7 @@ IMPORTANT:
         actual_tp = real_tp if real_tp else ai_risk.get('take_profit_1', entry_price * (1.03 if side == 'LONG' else 0.97))
         
         # Calculate actual risk based on REAL SL
-        risk_usd = abs(entry_price - actual_sl) * size / entry_price if entry_price > 0 else 0
+        risk_usd = abs(entry_price - actual_sl) * size if entry_price > 0 else 0
         risk_pct = (risk_usd / equity * 100) if equity > 0 else 0
         
         # Build complete trade log with REAL values
