@@ -134,22 +134,35 @@ export default function UnifiedOverviewCard({
     tradeLog, _trade_logs, setTradeLog, aiNotesLang, setAiNotesLang, aiMood, thoughts, setViewAllModalOpen
 }: UnifiedOverviewProps) {
 
-    // Safely calculate PnL
+    // Calculate total unrealized PnL from open positions
+    const unrealizedPnl = useMemo(() => {
+        try {
+            return positions.reduce((sum, pos) => sum + (pos.unrealized_pnl || 0), 0);
+        } catch {
+            return 0;
+        }
+    }, [positions]);
+
+    // Safely calculate PnL (realized from history + unrealized from open positions)
     const pnlValue = useMemo(() => {
         try {
+            let realizedPnl = 0;
             if (history && history.length > 1 && history[0]?.value !== undefined && history[history.length - 1]?.value !== undefined) {
                 const start = Number(history[0].value);
                 const end = Number(history[history.length - 1].value);
                 if (!isNaN(start) && !isNaN(end)) {
-                    return end - start;
+                    realizedPnl = end - start;
                 }
+            } else {
+                realizedPnl = Number(status?.pnl_24h || 0);
             }
-            return Number(status?.pnl_24h || 0);
+            // Add unrealized PnL for complete picture
+            return realizedPnl + unrealizedPnl;
         } catch (error) {
             console.error("PnL Calc error:", error);
-            return 0;
+            return unrealizedPnl; // At least show unrealized if calculation fails
         }
-    }, [history, status]);
+    }, [history, status, unrealizedPnl]);
 
     const pnlPercent = useMemo(() => {
         try {
@@ -263,7 +276,10 @@ export default function UnifiedOverviewCard({
                     <StatValue
                         label={isPt ? `PnL Total (${period})` : `Total PnL (${period})`}
                         value={!isNaN(pnlValue) ? `${pnlValue >= 0 ? '+' : ''}$${Math.abs(pnlValue).toFixed(2)}` : "---"}
-                        sub={`${pnlValue >= 0 ? '+' : ''}${pnlPercent}%`}
+                        sub={positions.length > 0
+                            ? (isPt ? `${pnlValue >= 0 ? '+' : ''}${pnlPercent}% • incl. ${positions.length} aberta${positions.length > 1 ? 's' : ''}`
+                                : `${pnlValue >= 0 ? '+' : ''}${pnlPercent}% • incl. ${positions.length} open`)
+                            : `${pnlValue >= 0 ? '+' : ''}${pnlPercent}%`}
                         trend={pnlValue >= 0 ? "up" : "down"}
                         icon={Activity}
                         loading={isLoading}
