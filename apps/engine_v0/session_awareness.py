@@ -55,12 +55,12 @@ SESSIONS = {
     "QUIET": {
         "start": 21,  # 21:00 UTC
         "end": 0,     # 00:00 UTC (next day)
-        "description": "Inter-session period - Low activity",
+        "description": "Inter-session period",
         "characteristics": [
-            "Lowest volume of the day",
-            "Tight ranges common",
-            "Avoid large positions",
-            "Good for planning, not executing"
+            "Lower volume period",
+            "Ranges more common",
+            "Smaller position sizes typical",
+            "Pre-Asia positioning"
         ]
     }
 }
@@ -125,7 +125,7 @@ def format_session_for_prompt() -> str:
     
     weekend_warning = ""
     if session_info["is_weekend"]:
-        weekend_warning = "\n⚠️ WEEKEND: Lower liquidity expected, wider spreads possible."
+        weekend_warning = "\n📅 WEEKEND: Crypto markets operate 24/7."
     
     return f"""📍 CURRENT SESSION: {session_info["session"]}
 Time: {session_info["current_time_utc"]} ({session_info["day_of_week"]})
