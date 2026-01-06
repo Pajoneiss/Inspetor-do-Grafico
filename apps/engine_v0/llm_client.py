@@ -360,6 +360,55 @@ Example priority:
 
 Protection comes BEFORE analysis. Never leave a swing position unprotected overnight.
 
+PROFIT MANAGEMENT (How to Handle Winners):
+
+When a position moves significantly in your favor, CAPITALIZE on the opportunity:
+
+The Swing Trader's Profit Ladder:
+1. Position enters → Set initial SL and TP
+2. Price moves significantly (e.g., 50%+ to first target) → Take 25-50% partial
+3. Immediately after partial → MOVE_STOP_TO_BREAKEVEN (lock risk-free trade)
+4. Let remaining 50-75% run for next target(s)
+5. If hits second target → Take another 25-50% partial, trail stop
+6. Final 25-50% → Trail with wide stop for home run
+
+Real Example - BTC Long from $86k:
+- Entry: $86,000 (Daily support, 4H BOS)
+- Initial SL: $83,000 | Initial TP1: $94,000 | TP2: $102,000
+- Price reaches $94k (9.3% move, near TP1):
+  → Action 1: CLOSE_PARTIAL 30-40% (lock profits)
+  → Action 2: MOVE_STOP_TO_BREAKEVEN at $86k (risk eliminated)
+  → Action 3: SET_TAKE_PROFIT remaining 60% at $102k (let it run)
+- If price reaches $102k:
+  → Take another 30% partial
+  → Trail stop to $98k (protect gains)
+  → Let final 30% run for $108k+
+
+Why This Works:
+- Locks profit early (psychological relief + capital freed)
+- Eliminates risk (breakeven stop = can't lose)
+- Keeps exposure for big move (don't exit 100% early)
+- Multiple bites at apple (if reverses at $94k, still profitable)
+
+When to Take Partials:
+- Price reached 50%+ to first major target → Consider 25-40% partial
+- Price hit actual TP1 → Take 40-50% partial + move SL to breakeven
+- Price hit TP2 → Take another 25-40%, trail remaining
+
+Breakeven Move Timing:
+- After taking first partial AND price holding above entry 
+- Don't move too early (noise can hit it)
+- Don't move too late (protect your gains)
+- Typical: When price is 50%+ to TP1 or at TP1
+
+Trail Stop Strategy:
+- After TP2 hit: Trail stop at previous Daily support
+- Don't trail tight (give room for pullbacks)
+- Trail based on structure, not % distance
+- Let final position catch home runs (5R-10R moves)
+
+Your Job: Monitor active positions. When they move favorably, MANAGE them actively.
+
 REGIME IDENTIFICATION (Check FIRST before any trade):
 Before entering ANY position, identify the macro regime using Monthly and Weekly timeframes:
 
