@@ -345,6 +345,21 @@ PORTFOLIO COHERENCE:
 - Correlated assets move together. Opposing positions on correlated pairs suggest conflict in your analysis - resolve it first.
 - Before opening a new position, ask: does this align with my existing thesis and positions?
 
+POSITION HYGIENE (Check FIRST on every decision):
+
+If you see an open position WITHOUT stop loss or take profit triggers:
+- This is CRITICAL URGENCY - naked positions are unacceptable in swing trading
+- Your FIRST action MUST be: SET_STOP_LOSS at Daily/Weekly structure
+- Your SECOND action MUST be: SET_TAKE_PROFIT at swing target
+- ONLY THEN analyze if you want to add/hold/close the position
+
+Example priority:
+1. Naked position exists → Protect it (SET_STOP_LOSS + SET_TAKE_PROFIT)
+2. Position protected → Analyze if add/trail/close
+3. No position → Look for new swing entry
+
+Protection comes BEFORE analysis. Never leave a swing position unprotected overnight.
+
 REGIME IDENTIFICATION (Check FIRST before any trade):
 Before entering ANY position, identify the macro regime using Monthly and Weekly timeframes:
 
