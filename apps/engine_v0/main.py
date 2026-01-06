@@ -123,7 +123,7 @@ def main():
     iteration = 0
     test_order_executed = False  # Flag to execute test order only once
     last_ai_call_time = 0  # Timestamp of last AI call
-    last_state_hash = None  # For state-based throttle
+    last_pos_count = 0  # v17.1: Track position count changes for triggers
     last_equity = 0.0  # Track equity changes
     rotate_offset = 0  # For ROTATE mode
     last_external_fetch = 0  # For data_sources throttle
@@ -632,7 +632,7 @@ def main():
                     equity_change_pct = abs((current_equity - last_equity) / last_equity * 100) if last_equity > 0 else 100
                     positions_changed = len(state.get("positions", {})) != len(state.get("_last_positions", {}))
                     
-                    # Calculate total unrealized PnL for sensitivity
+                     # Calculate total unrealized PnL for sensitivity
                     total_unpnl = sum(p.get("unrealized_pnl", 0) for p in state.get("positions", {}).values())
                     
                     # v15.0: Price Volatility Trigger (Wake up on big moves even if no position)
@@ -641,12 +641,19 @@ def main():
                     if last_ai_price > 0 and current_price > 0:
                         price_change_pct = abs((current_price - last_ai_price) / last_ai_price * 100)
                     
-                    # Build sensitive state hash (positions + equity + unpnl + price_tier)
-                    current_hash = f"{len(state.get('positions', {}))}_{current_equity:.1f}_{total_unpnl:.1f}_{int(current_price/100)}"
-                    state_changed = current_hash != last_state_hash
+                    # v17.1: Robust state change tracking (Positions count + significant jumps only)
+                    # We compare against the state when AI was LAST called
+                    current_pos_count = len(state.get('positions', {}))
+                    positions_changed = current_pos_count != last_pos_count if 'last_pos_count' in locals() or 'last_pos_count' in globals() else True
                     
-                    # Wake up if: Equity changed OR State changed OR Price moved > threshold
-                    material_change = equity_change_pct >= LLM_STATE_CHANGE_THRESHOLD or state_changed or price_change_pct >= PRICE_CHANGE_THRESHOLD
+                    # Wake up if: 
+                    # 1. Position Count changed (opened/closed something)
+                    # 2. Equity changed > threshold (significant balance move)
+                    # 3. Price moved > threshold (significant market move)
+                    material_change = positions_changed or equity_change_pct >= LLM_STATE_CHANGE_THRESHOLD or price_change_pct >= PRICE_CHANGE_THRESHOLD
+                    
+                    # Store current for next loop (only used for state_changed log display)
+                    state_changed = material_change 
                     
                     # v17: Proper trigger logic - Material changes only need a small spam filter
                     # Periodic triggers (full_cooldown or candle_close) stay as is
@@ -701,7 +708,7 @@ def main():
                             
                             # Update tracking
                             last_ai_call_time = current_time
-                            last_state_hash = current_hash
+                            last_pos_count = current_pos_count
                             last_equity = current_equity
                             last_ai_price = current_price
                             last_candle_hour = current_hour  # v16: Update candle hour after AI call
