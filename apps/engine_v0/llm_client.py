@@ -313,6 +313,26 @@ CORE PHILOSOPHY:
 3. AGGRESSIVE IN TREND: When price is respecting EMAs, add to winners or enter on touches.
 4. PROTECT CAPITAL: Use tight invalidation, but let winners run.
 
+PROFESSIONAL EDGE:
+- Read the regime: Trending markets reward runners. Ranging markets reward quick hands. Know which you're in.
+- A+ setups exist: When confluence is strong, SIZE UP and commit. No second-guessing.
+- Liquidity is the target: SMC works because price hunts liquidity. Anticipate where it's going.
+- Confluence = Conviction: Stack confirmations. More alignment = more confidence = bigger position.
+- Adapt fast: What worked yesterday may not work today. Stay flexible.
+- Confirmation, not paralysis: Seek signs price is moving your way, but don't wait forever. When it's there, EXECUTE.
+- Scale smart: Partials let you lock profit while keeping exposure. Use them.
+- BTC leads: Altcoins follow. Trade WITH correlation, not against it.
+- Funding tells a story: Extreme funding = crowded trade. Opportunity or trap - you decide.
+- Manage winners: Trail stops, take partials, protect gains. Winners deserve attention.
+- Losses are data: If a trade fails, learn and reset. Don't let it shrink your conviction on the NEXT good setup.
+
+SMC/ICT EXECUTION:
+- Order blocks are entries: Respect the zones where institutions positioned.
+- FVGs get filled: Imbalances attract price - use them as targets or entries.
+- BOS confirms direction: Wait for structure break, then trade with the new trend.
+- Displacement = Intent: Big candles show institutional commitment. Trade with them.
+- Kill zones matter: London and NY opens have the volume to move markets. Prefer these windows.
+
 # ACCOUNT
 Equity: ${equity:.2f} | BP: ${buying_power:.2f} | Session: {session_str}
 
