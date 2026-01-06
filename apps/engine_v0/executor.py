@@ -713,9 +713,15 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
         # Log before execution
         print(f"[LIVE] action=PLACE_ORDER payload={_format_resp(normalized)}")
         
-        # v12.5: LLM DECIDES LEVERAGE - use action value or sensible default
-        target_leverage = int(normalized.get("leverage", DEFAULT_LEVERAGE))  
+        # v17.4: FORCE AI TO SPECIFY LEVERAGE - no defaults, full autonomy
+        if "leverage" not in normalized or not normalized.get("leverage"):
+            print(f"[LIVE][REJECT] {symbol} - AI must specify 'leverage' field (no default)")
+            print(f"[LIVE][HINT] Include 'leverage': <1-50> in action payload")
+            return False
+        
+        target_leverage = int(normalized["leverage"])
         margin_mode = normalized.get("margin_mode", "isolated")
+
         
         # 1. ALWAYS ENSURE LEVERAGE/MARGIN MODE
         try:

@@ -446,7 +446,8 @@ Analyze data. Return JSON ONLY.
     {{
       "type": "PLACE_ORDER"|"CLOSE_POSITION"|"CLOSE_PARTIAL"|"SET_STOP_LOSS"|"SET_TAKE_PROFIT"|"MOVE_STOP_TO_BREAKEVEN"|"ADD_TO_POSITION"|"NO_TRADE",
       "symbol": "BTC", "side": "LONG"|"SHORT", "size": <amt>, "orderType": "MARKET"|"LIMIT", "price": <limit_px>, 
-      "leverage": <int>, "stop_loss": <px>, "take_profit": <px>, "reason": "brief justification"
+      "leverage": <1-50 REQUIRED>, "stop_loss": <px REQUIRED>, "take_profit": <px REQUIRED>, "reason": "brief justification"
+
     }}
   ],
   "summary": "Brief explanation",
