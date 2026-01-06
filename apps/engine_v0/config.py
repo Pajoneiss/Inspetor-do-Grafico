@@ -31,9 +31,9 @@ FMP_API_KEY = os.getenv("FMP_API_KEY", "")  # Financial Modeling Prep API Key
 # ============================================================
 AI_CALL_INTERVAL_SECONDS = int(os.getenv("AI_CALL_INTERVAL_SECONDS", "14400"))  # 4 hours default (swing trading)
 LLM_MIN_SECONDS = int(os.getenv("LLM_MIN_SECONDS", "3600"))  # 1 hour minimum between AI calls
-LLM_STATE_CHANGE_THRESHOLD = float(os.getenv("LLM_STATE_CHANGE_THRESHOLD", "0.5"))  # 0.5% change triggers AI
-PRICE_CHANGE_THRESHOLD = float(os.getenv("PRICE_CHANGE_THRESHOLD", "0.5"))  # 0.5% price move triggers AI
-VOLATILITY_TRIGGER_PCT = float(os.getenv("VOLATILITY_TRIGGER_PCT", "2.0"))  # Call AI immediately if BTC moves >2%
+LLM_STATE_CHANGE_THRESHOLD = float(os.getenv("LLM_STATE_CHANGE_THRESHOLD", "5.0"))  # 5% equity move triggers AI
+PRICE_CHANGE_THRESHOLD = float(os.getenv("PRICE_CHANGE_THRESHOLD", "1.5"))  # 1.5% price move triggers AI
+VOLATILITY_TRIGGER_PCT = float(os.getenv("VOLATILITY_TRIGGER_PCT", "3.0"))  # Wake up on >3% price spike
 MAX_ACTIONS_PER_TICK = int(os.getenv("MAX_ACTIONS_PER_TICK", "10"))  # AI can take up to 10 actions per decision
 ACTION_DEDUP_SECONDS = int(os.getenv("ACTION_DEDUP_SECONDS", "60"))  # 1 min dedup
 
