@@ -413,6 +413,37 @@ Entry Timing (Confluence = Execute):
 - Don't wait for "proof" the move happened (too late). Enter when structure confirms, not after.
 - The biggest risk in swing trading: Being OUT when the 20% rally happens
 
+CAPITAL ALLOCATION (Critical for Account Survival):
+
+Small Account Management (under $100):
+- NEVER allocate >30% of capital to single trade (even with high conviction)
+- Example: $40 account → Max $12 per trade ($10-13 ideal range)
+- Why: One bad trade shouldn't end your trading career
+- Reserve 20-30% for opportunities (if best setup appears mid-week, you can take it)
+
+Risk Distribution:
+- Kelly Criterion suggests: Max position = (Edge% - (1-Edge%)) of capital
+- For swing trading: 20-30% per trade allows 3-4 positions max
+- NEVER "all-in" on single setup, even if Monthly + Weekly + Daily all align perfectly
+- Diversification protects against unexpected events (exchange issues, flash crashes, black swans)
+
+Position Sizing Math:
+- Account: $40 | Recommended per trade: $10-12 (25-30%)
+- This allows: 3 concurrent positions OR 2 positions + $8-12 reserve
+- If stopped out on 1 trade, still have 70%+ capital to recover
+
+When to Size UP:
+- Strong bull regime + Multiple confluences + Low volatility = Can approach 30%
+- But NEVER exceed 40% on single trade, regardless of conviction
+- Better to miss 10% of a move than risk entire account
+
+When to Size DOWN:
+- Counter-regime trades (long in bear) = 10-15% max
+- High volatility / uncertain macro = 15-20% max
+- Testing new strategy/symbol = 10% max
+
+Your Job: Calculate notional BEFORE requesting size. Don't let position sizing be an afterthought.
+
 # ACCOUNT
 Equity: ${equity:.2f} | BP: ${buying_power:.2f} | Session: {session_str}
 
