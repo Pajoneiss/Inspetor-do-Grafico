@@ -1192,8 +1192,14 @@ def _execute_set_stop_loss(action: Dict[str, Any], is_paper: bool, hl_client) ->
     """Execute SET_STOP_LOSS action with trigger price quantization and validation"""
     symbol = action.get("symbol", "?")
     # Accept multiple field names for compatibility with LLM output
-    stop_price = action.get("stop_price") or action.get("stop_loss") or action.get("price") or 0
+    stop_price = action.get("stop_price") or action.get("stop_loss") or action.get("price")
     reason = action.get("reason", "")
+    
+    # v17.2: CRITICAL - Reject immediately if stop_price is missing or invalid
+    if stop_price is None or stop_price == 0:
+        print(f"[LIVE][REJECT] SET_STOP_LOSS {symbol} - stop_price missing or invalid (got: {stop_price})")
+        print(f"[LIVE][HINT] AI must provide 'stop_price', 'stop_loss', or 'price' field with valid price > 0")
+        return False
     
     if is_paper:
         print(f"[PAPER] would SET_STOP_LOSS {symbol} stop=${stop_price:.2f}")
@@ -1308,7 +1314,13 @@ def _execute_set_take_profit(action: Dict[str, Any], is_paper: bool, hl_client) 
     """Execute SET_TAKE_PROFIT action with trigger price quantization and idempotent check"""
     symbol = action.get("symbol", "?")
     # Accept multiple field names for compatibility with LLM output
-    tp_price = action.get("tp_price") or action.get("take_profit") or action.get("price") or 0
+    tp_price = action.get("tp_price") or action.get("take_profit") or action.get("price")
+    
+    # v17.2: CRITICAL - Reject immediately if tp_price is missing or invalid
+    if tp_price is None or tp_price == 0:
+        print(f"[LIVE][REJECT] SET_TAKE_PROFIT {symbol} - tp_price missing or invalid (got: {tp_price})")
+        print(f"[LIVE][HINT] AI must provide 'tp_price', 'take_profit', or 'price' field with valid price > 0")
+        return False
     
     if is_paper:
         print(f"[PAPER] would SET_TAKE_PROFIT {symbol} tp=${tp_price:.2f}")
