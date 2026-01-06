@@ -719,8 +719,20 @@ def _execute_place_order(action: Dict[str, Any], is_paper: bool, hl_client) -> N
             print(f"[LIVE][HINT] Include 'leverage': <1-50> in action payload")
             return False
         
+        # v17.5: FORCE AI TO SPECIFY SL AND TP - swing trading REQUIRES protection
+        if "stop_loss" not in normalized or not normalized.get("stop_loss"):
+            print(f"[LIVE][REJECT] {symbol} - AI must specify 'stop_loss' field (REQUIRED)")
+            print(f"[LIVE][HINT] Swing trades MUST have stop loss protection")
+            return False
+        
+        if "take_profit" not in normalized or not normalized.get("take_profit"):
+            print(f"[LIVE][REJECT] {symbol} - AI must specify 'take_profit' field (REQUIRED)")
+            print(f"[LIVE][HINT] Swing trades MUST have take profit target")
+            return False
+        
         target_leverage = int(normalized["leverage"])
         margin_mode = normalized.get("margin_mode", "isolated")
+
 
         
         # 1. ALWAYS ENSURE LEVERAGE/MARGIN MODE
