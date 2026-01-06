@@ -648,21 +648,30 @@ def main():
                     # Wake up if: Equity changed OR State changed OR Price moved > threshold
                     material_change = equity_change_pct >= LLM_STATE_CHANGE_THRESHOLD or state_changed or price_change_pct >= PRICE_CHANGE_THRESHOLD
                     
-                    # v15.1: Extreme Volatility Bypass (bypass LLM_MIN_SECONDS if price moves > VOLATILITY_TRIGGER_PCT)
-                    high_volatility = price_change_pct >= VOLATILITY_TRIGGER_PCT
+                    # v17: Proper trigger logic - Material changes only need a small spam filter
+                    # Periodic triggers (full_cooldown or candle_close) stay as is
+                    # Trigger triggers (material_change) only need 5 minutes spam protection
+                    SPAM_COOLDOWN = 300 # 5 minutes
+                    min_spam_passed = time_since_last_call >= SPAM_COOLDOWN
                     
-                    min_time_passed = time_since_last_call >= LLM_MIN_SECONDS
                     full_cooldown_passed = time_since_last_call >= AI_CALL_INTERVAL_SECONDS
                     
-                    # v16: Candle Close Sync - trigger AI at 4h boundaries only (00:00, 04:00, 08:00, 12:00, 16:00, 20:00 UTC)
+                    # v15.1: Extreme Volatility Bypass (Immediate call if price moves > VOLATILITY_TRIGGER_PCT)
+                    high_volatility = price_change_pct >= VOLATILITY_TRIGGER_PCT
+                    
+                    # v16: Candle Close Sync - trigger AI at 4h boundaries only (UTC)
                     current_hour = datetime.now(timezone.utc).hour
                     is_4h_boundary = (current_hour % 4 == 0)
                     candle_close_trigger = is_4h_boundary and (current_hour != last_candle_hour) and (last_candle_hour != -1)
                     if candle_close_trigger:
-                        print(f"[LLM] 🕐 4H Candle close detected! Hour {last_candle_hour} → {current_hour} (UTC)")
+                        print(f"[LLM] 🕐 Periodic 4H Trigger! UTC Hour: {current_hour}h")
                     
-                    # Call AI if: (min time passed AND material change) OR (full cooldown passed) OR (high volatility) OR (candle close)
-                    should_call_ai = (min_time_passed and material_change) or full_cooldown_passed or high_volatility or candle_close_trigger
+                    # Call AI if:
+                    # 1. Material Change (Price/Position) + small spam filter
+                    # 2. Periodic Cooldown (4h)
+                    # 3. Candle Boundary (4h UTC)
+                    # 4. High Volatility (Immediate)
+                    should_call_ai = (min_spam_passed and material_change) or full_cooldown_passed or high_volatility or candle_close_trigger
                     
                     if should_call_ai:
                         try:
@@ -750,12 +759,19 @@ def main():
                             import traceback
                             traceback.print_exc()
                     else:
-                        remaining = LLM_MIN_SECONDS - time_since_last_call if not min_time_passed else AI_CALL_INTERVAL_SECONDS - time_since_last_call
-                        # v16: Update candle hour even when skipping (for initialization)
+                        # Determine which cooldown we are actually waiting for
+                        if material_change:
+                            remaining = SPAM_COOLDOWN - time_since_last_call
+                            reason = "spam_filter"
+                        else:
+                            remaining = AI_CALL_INTERVAL_SECONDS - time_since_last_call
+                            reason = "periodic"
+                            
+                        # v16: Update candle hour even when skipping
                         if last_candle_hour == -1:
                             last_candle_hour = current_hour
                             print(f"[LLM] 🕐 Initialized candle hour tracking: {current_hour}h UTC")
-                        print(f"[LLM] skipped (cooldown {max(0, remaining):.0f}s, state_changed={state_changed}, hour={current_hour}h)")
+                        print(f"[LLM] skipped ({reason} cooldown {max(0, remaining):.0f}s, state_changed={state_changed}, hour={current_hour}h)")
             
             # BLOCO 4: Test Trade Request Processing (from Telegram)
             if TELEGRAM_AVAILABLE and llm:
