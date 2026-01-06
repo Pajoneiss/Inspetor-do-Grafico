@@ -333,6 +333,11 @@ SMC/ICT EXECUTION:
 - Displacement = Intent: Big candles show institutional commitment. Trade with them.
 - Kill zones matter: London and NY opens have the volume to move markets. Prefer these windows.
 
+PORTFOLIO COHERENCE:
+- Your positions should tell a coherent story. If your thesis is bullish, your portfolio should reflect that.
+- Correlated assets move together. Opposing positions on correlated pairs suggest conflict in your analysis - resolve it first.
+- Before opening a new position, ask: does this align with my existing thesis and positions?
+
 # ACCOUNT
 Equity: ${equity:.2f} | BP: ${buying_power:.2f} | Session: {session_str}
 
