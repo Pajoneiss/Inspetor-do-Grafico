@@ -534,6 +534,13 @@ News: {news_str}
 # DECISION
 Analyze data. Return JSON ONLY.
 
+⚠️ CRITICAL: Every PLACE_ORDER action MUST include:
+- leverage (1-50)
+- stop_loss (price level)
+- take_profit (price level)
+
+Orders WITHOUT these fields will be REJECTED by the system.
+
 Schema:
 {{
   "actions": [
@@ -553,7 +560,7 @@ Schema:
   "thesis": {{ "bias": "LONG"|"SHORT"|"NEUTRAL", "regime": "BULL"|"BEAR"|"RANGE", "conviction": "HIGH"|"MEDIUM"|"LOW" }}
 }}
 
-Example - Opening Swing Long:
+Example - Opening Swing Long (CORRECT FORMAT):
 {{
   "actions": [{{
     "type": "PLACE_ORDER",
@@ -572,6 +579,7 @@ Example - Opening Swing Long:
   "next_triggers": ["Daily close above resistance = consider adding", "Break below support = exit"],
   "thesis": {{ "bias": "LONG", "regime": "BULL", "conviction": "HIGH" }}
 }}"""
+
 
 
     def _parse_decision(self, response: str) -> Dict[str, Any]:
