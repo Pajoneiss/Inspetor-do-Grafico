@@ -867,6 +867,9 @@ function DashboardContent() {
                 aiMood={aiMood}
                 thoughts={thoughts}
                 setViewAllModalOpen={setViewAllModalOpen}
+                fullAnalytics={fullAnalytics}
+                pnlPeriod={pnlPeriod}
+                setPnlPeriod={setPnlPeriod}
               />
             </div>
 

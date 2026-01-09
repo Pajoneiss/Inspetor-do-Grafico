@@ -58,6 +58,12 @@ interface AIThought {
     confidence?: number;
     actions?: string[];
 }
+interface FullAnalytics {
+    history: Array<{ time: string | number; value: number }>;
+    pnl_24h?: number;
+    pnl_total?: number;
+}
+
 interface UnifiedOverviewProps {
     status: DashboardData | null;
     history: { time: string | number; value: number }[];
@@ -76,6 +82,10 @@ interface UnifiedOverviewProps {
     aiMood: 'aggressive' | 'defensive' | 'observing';
     thoughts: AIThought[];
     setViewAllModalOpen: (open: boolean) => void;
+    // Phase 1: Hyperliquid Analytics Integration
+    fullAnalytics?: FullAnalytics | null;
+    pnlPeriod?: '24H' | '7D' | '30D' | 'ALL';
+    setPnlPeriod?: (p: '24H' | '7D' | '30D' | 'ALL') => void;
 }
 
 // --- Helper Components ---
@@ -131,7 +141,8 @@ const StatValue = ({ value, label, sub, trend = 'neutral', icon: Icon, loading }
 
 export default function UnifiedOverviewCard({
     status, history, period, setPeriod, journalStats, sessionInfo, isPt, isLoading, positions,
-    tradeLog, _trade_logs, setTradeLog, aiNotesLang, setAiNotesLang, aiMood, thoughts, setViewAllModalOpen
+    tradeLog, _trade_logs, setTradeLog, aiNotesLang, setAiNotesLang, aiMood, thoughts, setViewAllModalOpen,
+    fullAnalytics, pnlPeriod, setPnlPeriod
 }: UnifiedOverviewProps) {
 
     // Calculate total unrealized PnL from open positions
