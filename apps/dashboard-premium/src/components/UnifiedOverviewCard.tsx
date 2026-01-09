@@ -382,6 +382,18 @@ export default function UnifiedOverviewCard({
                         // Calculate last point position for live dot
                         const lastY = height - ((values[values.length - 1] - minVal) / range) * (height * 0.8) - (height * 0.1);
 
+                        // Trading Sessions (only show for 24H view)
+                        const showSessions = activePeriod === '24H';
+                        const sessions = [
+                            { name: 'ASIA', startHour: 0, endHour: 9, color: '#3b82f6', opacity: 0.08 },
+                            { name: 'LONDON', startHour: 8, endHour: 16, color: '#10b981', opacity: 0.08 },
+                            { name: 'NY', startHour: 13, endHour: 22, color: '#f59e0b', opacity: 0.08 }
+                        ];
+
+                        // Calculate session positions based on current hour
+                        const currentHourUTC = new Date().getUTCHours();
+                        const hoursAgo24 = 24;
+
                         return (
                             <>
                                 <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="overflow-visible" preserveAspectRatio="none">
@@ -396,6 +408,26 @@ export default function UnifiedOverviewCard({
                                             <feComposite in="SourceGraphic" in2="blur" operator="over" />
                                         </filter>
                                     </defs>
+
+                                    {/* Trading Sessions Overlay */}
+                                    {showSessions && sessions.map((session) => {
+                                        // Calculate position relative to 24h timeline
+                                        const startX = ((session.startHour + 24 - currentHourUTC) % 24) / hoursAgo24 * width;
+                                        const endX = ((session.endHour + 24 - currentHourUTC) % 24) / hoursAgo24 * width;
+                                        const sessionWidth = endX > startX ? endX - startX : (width - startX) + endX;
+
+                                        return (
+                                            <rect
+                                                key={session.name}
+                                                x={startX}
+                                                y={0}
+                                                width={Math.min(sessionWidth, width - startX)}
+                                                height={height}
+                                                fill={session.color}
+                                                opacity={session.opacity}
+                                            />
+                                        );
+                                    })}
 
                                     {/* Grid Lines */}
                                     <line x1="0" y1={height} x2={width} y2={height} stroke="white" strokeOpacity="0.03" />
@@ -433,6 +465,18 @@ export default function UnifiedOverviewCard({
                                         transform: 'translate(50%, -50%)'
                                     }}
                                 />
+
+                                {/* Session Legend (only for 24H) */}
+                                {showSessions && (
+                                    <div className="absolute top-2 right-2 flex gap-3">
+                                        {sessions.map((s) => (
+                                            <div key={s.name} className="flex items-center gap-1">
+                                                <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: s.color }} />
+                                                <span className="text-[8px] font-bold text-white/40 uppercase">{s.name}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </>
                         );
                     })()}
@@ -442,6 +486,48 @@ export default function UnifiedOverviewCard({
                         <span>{pnlPeriod || period}</span>
                         <span></span>
                         <span>NOW</span>
+                    </div>
+                </div>
+
+                {/* Advanced Metrics Row */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                    <div className="text-center">
+                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-1">
+                            {isPt ? 'Fator de Lucro' : 'Profit Factor'}
+                        </p>
+                        <p className={cn("text-lg font-bold", (journalStats?.total_pnl_usd || 0) >= 0 ? "text-primary" : "text-red-400")}>
+                            {journalStats?.total_pnl_usd && journalStats.total_pnl_usd !== 0
+                                ? Math.abs(journalStats.total_pnl_usd / Math.abs(journalStats.worst_trade_pct || 1)).toFixed(2)
+                                : '---'}
+                        </p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-1">
+                            {isPt ? 'Melhor Trade' : 'Best Trade'}
+                        </p>
+                        <p className="text-lg font-bold text-primary">
+                            {journalStats?.best_trade_pct ? `+${journalStats.best_trade_pct.toFixed(1)}%` : '---'}
+                        </p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-1">
+                            {isPt ? 'Duração Média' : 'Avg Duration'}
+                        </p>
+                        <p className="text-lg font-bold text-white/80">
+                            {journalStats?.avg_duration_minutes
+                                ? journalStats.avg_duration_minutes < 60
+                                    ? `${journalStats.avg_duration_minutes.toFixed(0)}m`
+                                    : `${(journalStats.avg_duration_minutes / 60).toFixed(1)}h`
+                                : '---'}
+                        </p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-1">
+                            {isPt ? 'Uso Margem' : 'Margin Usage'}
+                        </p>
+                        <p className={cn("text-lg font-bold", (status?.margin_usage || 0) > 50 ? "text-yellow-400" : "text-white/80")}>
+                            {status?.margin_usage ? `${status.margin_usage.toFixed(1)}%` : '---'}
+                        </p>
                     </div>
                 </div>
             </div>
