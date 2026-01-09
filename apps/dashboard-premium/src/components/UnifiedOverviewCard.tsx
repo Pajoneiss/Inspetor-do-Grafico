@@ -161,7 +161,8 @@ export default function UnifiedOverviewCard({
             return ((pnlValue / equity) * 100).toFixed(2);
         } catch {
             return "0.00";
-        }, [pnlValue, status]);
+        }
+    }, [pnlValue, status]);
 
     // AI Confidence Color Helper
     const getConfidenceColor = (conf: number) => {
