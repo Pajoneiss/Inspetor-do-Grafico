@@ -4,7 +4,7 @@
 import React, { useMemo } from "react";
 import {
     Wallet, Activity, Globe, ArrowUpRight, ArrowDownRight, LayoutDashboard,
-    BrainCircuit, Target, CheckCircle, Clock, ChevronLeft, ChevronRight
+    BrainCircuit, Target, CheckCircle, Clock, ChevronLeft, ChevronRight, Layers
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardData } from "@/app/page";
