@@ -359,7 +359,6 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'charts' | 'news' | 'chat' | 'logs'>('overview');
-  const [activeFleetTab, setActiveFleetTab] = useState<'Asset Positions' | 'Open Orders' | 'Recent Fills' | 'Completed Trades' | 'TWAP' | 'Deposits & Withdrawals'>('Asset Positions');
   const [pnlHistory, setPnlHistory] = useState<{ time: string | number; value: number }[]>([]);
   const [pnlPeriod, setPnlPeriod] = useState<'24H' | '7D' | '30D' | 'ALL'>('24H');
   const [chatMessages, setChatMessages] = useState<{ role: string, content: string }[]>([]);
@@ -369,9 +368,6 @@ function DashboardContent() {
   const [_trade_logs, _setTradeLogs] = useState<TradeLog[]>([]);
   const [viewAllModalOpen, setViewAllModalOpen] = useState(false);
   const [fullAnalytics, setFullAnalytics] = useState<FullAnalytics | null>(null);
-  const [openOrders, setOpenOrders] = useState<OrderInfo[]>([]);
-  const [recentFills, setRecentFills] = useState<FillInfo[]>([]);
-  const [transfers, setTransfers] = useState<TransferInfo[]>([]);
   const [cryptoPrices, setCryptoPrices] = useState<{ btc: { price: number }, eth: { price: number } } | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [aiNotesLang, setAiNotesLang] = useState<'pt' | 'en'>('pt'); // Language toggle for AI Strategy Core
@@ -419,7 +415,7 @@ function DashboardContent() {
     if (!API_URL) return;
 
     try {
-      const [statusRes, posRes, thoughtRes, allThoughtRes, pnlRes, historyRes, tradeLogsRes, fullAnalyticsRes, ordersRes, fillsRes, transfersRes] = await Promise.all([
+      const [statusRes, posRes, thoughtRes, allThoughtRes, pnlRes, historyRes, tradeLogsRes, fullAnalyticsRes] = await Promise.all([
         fetch(`${API_URL}/api/status`).then(r => r.json()),
         fetch(`${API_URL}/api/positions`).then(r => r.json()),
         fetch(`${API_URL}/api/ai/thoughts`).then(r => r.json()),
@@ -427,10 +423,7 @@ function DashboardContent() {
         fetch(`${API_URL}/api/pnl`).then(r => r.json()),
         fetch(`${API_URL}/api/pnl/history?period=${pnlPeriod}`).then(r => r.json()),
         fetch(`${API_URL}/api/ai/trade-logs`).then(r => r.json()),
-        fetch(`${API_URL}/api/analytics`).then(r => r.json()),
-        fetch(`${API_URL}/api/orders`).then(r => r.json()).catch(() => ({ ok: false })),
-        fetch(`${API_URL}/api/user/trades`).then(r => r.json()).catch(() => ({ ok: false })),
-        fetch(`${API_URL}/api/transfers`).then(r => r.json()).catch(() => ({ ok: false }))
+        fetch(`${API_URL}/api/analytics`).then(r => r.json())
       ]);
 
       if (statusRes.ok) setStatus(statusRes.data);
@@ -444,9 +437,6 @@ function DashboardContent() {
         _setTradeLogs(tradeLogsRes.data);
       }
       if (fullAnalyticsRes.ok) setFullAnalytics(fullAnalyticsRes.data);
-      if (ordersRes.ok && Array.isArray(ordersRes.data)) setOpenOrders(ordersRes.data);
-      if (fillsRes.ok && Array.isArray(fillsRes.data)) setRecentFills(fillsRes.data);
-      if (transfersRes.ok && Array.isArray(transfersRes.data)) setTransfers(transfersRes.data);
 
       try {
         const journalRes = await fetch(`${API_URL}/api/journal/stats`).then(r => r.json());
