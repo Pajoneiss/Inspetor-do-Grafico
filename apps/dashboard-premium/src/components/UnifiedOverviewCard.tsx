@@ -135,11 +135,16 @@ export default function UnifiedOverviewCard({
 
     // Safely calculate PnL (realized from history + unrealized from open positions)
     const pnlValue = useMemo(() => {
+        if (pnlPeriod === 'ALL' && fullAnalytics?.pnl_total !== undefined) {
+            return fullAnalytics.pnl_total;
+        }
+
         try {
             let realizedPnl = 0;
-            if (history && history.length > 1 && history[0]?.value !== undefined && history[history.length - 1]?.value !== undefined) {
-                const start = Number(history[0].value);
-                const end = Number(history[history.length - 1].value);
+            const currentHistory = fullAnalytics?.history || history;
+            if (currentHistory && currentHistory.length > 1 && currentHistory[0]?.value !== undefined && currentHistory[currentHistory.length - 1]?.value !== undefined) {
+                const start = Number(currentHistory[0].value);
+                const end = Number(currentHistory[currentHistory.length - 1].value);
                 if (!isNaN(start) && !isNaN(end)) {
                     realizedPnl = end - start;
                 }
@@ -152,7 +157,7 @@ export default function UnifiedOverviewCard({
             console.error("PnL Calc error:", error);
             return unrealizedPnl; // At least show unrealized if calculation fails
         }
-    }, [history, status, unrealizedPnl]);
+    }, [history, fullAnalytics, status, unrealizedPnl, pnlPeriod]);
 
     const pnlPercent = useMemo(() => {
         try {
@@ -232,7 +237,7 @@ export default function UnifiedOverviewCard({
                 </div>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10 mb-8 pb-8 border-b border-white/5">
                     <StatValue
                         label={isPt ? "Patrimônio Total" : "Total Equity"}
                         value={status?.equity ? `$${Number(status.equity).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : "---"}
@@ -243,34 +248,39 @@ export default function UnifiedOverviewCard({
                     />
 
                     <StatValue
-                        label={isPt ? `PnL Total (${period})` : `Total PnL (${period})`}
+                        label={isPt ? `PnL (${pnlPeriod || period})` : `PnL (${pnlPeriod || period})`}
                         value={!isNaN(pnlValue) ? `${pnlValue >= 0 ? '+' : ''}$${Math.abs(pnlValue).toFixed(2)}` : "---"}
-                        sub={positions.length > 0
-                            ? (isPt ? `${pnlValue >= 0 ? '+' : ''}${pnlPercent}% • incl. ${positions.length} aberta${positions.length > 1 ? 's' : ''}`
-                                : `${pnlValue >= 0 ? '+' : ''}${pnlPercent}% • incl. ${positions.length} open`)
-                            : `${pnlValue >= 0 ? '+' : ''}${pnlPercent}%`}
+                        sub={`${pnlValue >= 0 ? '+' : ''}${pnlPercent}%`}
                         trend={pnlValue >= 0 ? "up" : "down"}
                         icon={Activity}
                         loading={isLoading}
                     />
 
+                    <StatValue
+                        label={isPt ? "PnL All-Time" : "Acc. PnL (Total)"}
+                        value={fullAnalytics?.pnl_total !== undefined ? `${fullAnalytics.pnl_total >= 0 ? '+' : ''}$${Math.abs(fullAnalytics.pnl_total).toFixed(2)}` : "---"}
+                        sub={isPt ? "Histórico Blockchain" : "Blockchain History"}
+                        trend={(fullAnalytics?.pnl_total || 0) >= 0 ? "up" : "down"}
+                        icon={Layers}
+                        loading={isLoading}
+                    />
+
                     <div className="relative flex items-center gap-4">
-                        <div className="relative w-12 h-12">
+                        <div className="relative w-10 h-10">
                             <svg className="w-full h-full transform -rotate-90">
-                                <circle cx="24" cy="24" r="18" stroke="currentColor" strokeWidth="4" fill="none" className="text-white/5" />
+                                <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="3" fill="none" className="text-white/5" />
                                 <circle
-                                    cx="24" cy="24" r="18" stroke={winRateColor} strokeWidth="4" fill="none" strokeLinecap="round"
-                                    strokeDasharray={circumference}
-                                    strokeDashoffset={isNaN(offset) ? circumference : offset}
-                                    className={cn("transition-all duration-1000", winRateColor === '#00ff9d' ? "shadow-[#00ff9d]" : "shadow-red-500")}
+                                    cx="20" cy="20" r="16" stroke={winRateColor} strokeWidth="3" fill="none" strokeLinecap="round"
+                                    strokeDasharray={100}
+                                    strokeDashoffset={100 - (winRate || 0)}
+                                    className={cn("transition-all duration-1000")}
                                     style={{ filter: `drop-shadow(0 0 4px ${winRateColor})` }}
                                 />
                             </svg>
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{isPt ? "Taxa de Vitória" : "Win Rate"}</p>
-                            <h3 className="text-2xl font-bold tracking-tight">{!isNaN(winRate) ? winRate.toFixed(1) : '0.0'}%</h3>
-                            <p className="text-[9px] text-white/40 font-medium">{journalStats?.total_trades || 0} Trades</p>
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{isPt ? "Win Rate" : "Win Rate"}</p>
+                            <h3 className="text-xl font-bold tracking-tight">{!isNaN(winRate) ? winRate.toFixed(1) : '0.0'}%</h3>
                         </div>
                     </div>
                 </div>

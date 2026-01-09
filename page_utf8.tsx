@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
@@ -358,7 +358,8 @@ function DashboardContent() {
   const [allThoughts, setAllThoughts] = useState<AIThought[]>([]); // Full logs including HOLDs
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'charts' | 'news' | 'chat' | 'logs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'charts' | 'analytics' | 'news' | 'chat' | 'logs'>('overview');
+  const [activeFleetTab, setActiveFleetTab] = useState<'Asset Positions' | 'Open Orders' | 'Recent Fills' | 'Completed Trades' | 'TWAP' | 'Deposits & Withdrawals'>('Asset Positions');
   const [pnlHistory, setPnlHistory] = useState<{ time: string | number; value: number }[]>([]);
   const [pnlPeriod, setPnlPeriod] = useState<'24H' | '7D' | '30D' | 'ALL'>('24H');
   const [chatMessages, setChatMessages] = useState<{ role: string, content: string }[]>([]);
@@ -368,8 +369,6 @@ function DashboardContent() {
   const [_trade_logs, _setTradeLogs] = useState<TradeLog[]>([]);
   const [viewAllModalOpen, setViewAllModalOpen] = useState(false);
   const [fullAnalytics, setFullAnalytics] = useState<FullAnalytics | null>(null);
-  const [pnlPeriod, setPnlPeriod] = useState<'24H' | '7D' | '30D' | 'ALL'>('24H');
-  const [activeFleetTab, setActiveFleetTab] = useState<'Asset Positions' | 'Open Orders' | 'Recent Fills' | 'Completed Trades' | 'TWAP' | 'Deposits & Withdrawals'>('Asset Positions');
   const [openOrders, setOpenOrders] = useState<OrderInfo[]>([]);
   const [recentFills, setRecentFills] = useState<FillInfo[]>([]);
   const [transfers, setTransfers] = useState<TransferInfo[]>([]);
@@ -429,9 +428,9 @@ function DashboardContent() {
         fetch(`${API_URL}/api/pnl/history?period=${pnlPeriod}`).then(r => r.json()),
         fetch(`${API_URL}/api/ai/trade-logs`).then(r => r.json()),
         fetch(`${API_URL}/api/analytics`).then(r => r.json()),
-        fetch(`${API_URL}/api/orders`).then(r => r.json()),
-        fetch(`${API_URL}/api/user/trades`).then(r => r.json()),
-        fetch(`${API_URL}/api/transfers`).then(r => r.json())
+        fetch(`${API_URL}/api/orders`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/api/user/trades`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/api/transfers`).then(r => r.json()).catch(() => ({ ok: false }))
       ]);
 
       if (statusRes.ok) setStatus(statusRes.data);
@@ -445,9 +444,9 @@ function DashboardContent() {
         _setTradeLogs(tradeLogsRes.data);
       }
       if (fullAnalyticsRes.ok) setFullAnalytics(fullAnalyticsRes.data);
-      if (ordersRes.ok) setOpenOrders(ordersRes.data || []);
-      if (fillsRes.ok) setRecentFills(fillsRes.data || []);
-      if (transfersRes.ok) setTransfers(transfersRes.data || []);
+      if (ordersRes.ok && Array.isArray(ordersRes.data)) setOpenOrders(ordersRes.data);
+      if (fillsRes.ok && Array.isArray(fillsRes.data)) setRecentFills(fillsRes.data);
+      if (transfersRes.ok && Array.isArray(transfersRes.data)) setTransfers(transfersRes.data);
 
       try {
         const journalRes = await fetch(`${API_URL}/api/journal/stats`).then(r => r.json());
@@ -656,11 +655,12 @@ function DashboardContent() {
 
         <nav className="flex-1 w-full space-y-2">
           {[
-            { id: 'overview', label: isPt ? 'Visão Geral' : 'Overview', icon: LayoutDashboard },
-            { id: 'charts', label: isPt ? 'Gráficos' : 'Charts', icon: LineChart },
-            { id: 'news', label: isPt ? 'Notícias' : 'News', icon: Globe },
+            { id: 'overview', label: isPt ? 'Vis├úo Geral' : 'Overview', icon: LayoutDashboard },
+            { id: 'charts', label: isPt ? 'Gr├íficos' : 'Charts', icon: LineChart },
+            { id: 'analytics', label: isPt ? 'An├ílise' : 'Analytics', icon: BarChart3 },
+            { id: 'news', label: isPt ? 'Not├¡cias' : 'News', icon: Globe },
             { id: 'chat', label: isPt ? 'Chat IA' : 'AI Chat', icon: MessageSquare },
-            { id: 'logs', label: isPt ? 'Logs de Execução' : 'Execution Logs', icon: Terminal },
+            { id: 'logs', label: isPt ? 'Logs de Execu├º├úo' : 'Execution Logs', icon: Terminal },
           ].map((item) => {
             const content = (
               <>
@@ -686,7 +686,7 @@ function DashboardContent() {
             return (
               <button
                 key={item.id}
-                onClick={() => { setActiveTab(item.id as 'overview' | 'charts' | 'news' | 'chat' | 'logs'); setSidebarOpen(false); }}
+                onClick={() => { setActiveTab(item.id as 'overview' | 'charts' | 'analytics' | 'news' | 'chat' | 'logs'); setSidebarOpen(false); }}
                 className={className}
               >
                 {content}
@@ -698,7 +698,7 @@ function DashboardContent() {
         <div className="w-full pt-8 mt-8 border-t border-white/5 space-y-2">
           <button onClick={() => { setIsSettingsModalOpen(true); setSidebarOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-white transition-colors">
             <Settings className="w-5 h-5" />
-            <span className="font-semibold text-sm">{isPt ? 'Configurações' : 'Settings'}</span>
+            <span className="font-semibold text-sm">{isPt ? 'Configura├º├Áes' : 'Settings'}</span>
           </button>
         </div>
       </aside>
@@ -715,7 +715,7 @@ function DashboardContent() {
               <Menu className="w-6 h-6" />
             </button>
             <div>
-              <h2 className="text-2xl lg:text-3xl font-bold tracking-tight mb-1">O Inspetor Do Gráfico</h2>
+              <h2 className="text-2xl lg:text-3xl font-bold tracking-tight mb-1">O Inspetor Do Gr├ífico</h2>
               <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest">
                 <span className={cn("flex items-center gap-2", error ? "text-secondary" : "text-primary")}>
                   <span className={cn("w-2 h-2 rounded-full", error ? "bg-secondary" : "bg-primary animate-pulse neon-glow")} />
@@ -726,11 +726,11 @@ function DashboardContent() {
                 {sessionInfo && (
                   <span className="flex items-center gap-2 text-cyan-400">
                     <Globe className="w-3 h-3" />
-                    {sessionInfo.session === 'ASIA' && '🌏 Asia'}
-                    {sessionInfo.session === 'LONDON' && '🇬🇧 London'}
-                    {sessionInfo.session === 'NEW_YORK' && '🇺🇸 NY'}
-                    {sessionInfo.session === 'OVERLAP_LONDON_NY' && '🔥 NY/London'}
-                    {sessionInfo.session === 'QUIET' && '🌙 Quiet'}
+                    {sessionInfo.session === 'ASIA' && '­ƒîÅ Asia'}
+                    {sessionInfo.session === 'LONDON' && '­ƒç¼­ƒçº London'}
+                    {sessionInfo.session === 'NEW_YORK' && '­ƒç║­ƒç© NY'}
+                    {sessionInfo.session === 'OVERLAP_LONDON_NY' && '­ƒöÑ NY/London'}
+                    {sessionInfo.session === 'QUIET' && '­ƒîÖ Quiet'}
                     {sessionInfo.is_weekend && ' (Weekend)'}
                   </span>
                 )}
@@ -873,164 +873,6 @@ function DashboardContent() {
               />
             </div>
 
-            {/* Portfolio History Section (Restored from Analytics) */}
-            <GlassCard className="min-h-[400px] flex flex-col border border-white/5 bg-[#0b0c10]/50 mt-8" delay={0.2}>
-              <div className="flex-1">
-                {/* Tabs */}
-                <div className="flex items-center gap-1 mb-6 overflow-x-auto no-scrollbar border-b border-white/5 pb-4">
-                  {(['Open Orders', 'Recent Fills', 'Completed Trades', 'TWAP', 'Deposits & Withdrawals'] as const).map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveFleetTab(tab)}
-                      className={cn(
-                        "px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all",
-                        activeFleetTab === tab
-                          ? "bg-primary/20 text-primary shadow-sm ring-1 ring-primary/30"
-                          : "text-muted-foreground hover:text-white"
-                      )}
-                    >
-                      {isPt ? {
-                        'Asset Positions': 'Posições',
-                        'Open Orders': 'Ordens Abertas',
-                        'Recent Fills': 'Execuções Recentes',
-                        'Completed Trades': 'Trades Completos',
-                        'TWAP': 'TWAP',
-                        'Deposits & Withdrawals': 'Depósitos & Saques'
-                      }[tab] : tab}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Dynamic Table Content */}
-                <div className="overflow-x-auto min-h-[300px]">
-                  {activeFleetTab === 'Open Orders' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] border-b border-white/5">
-                          <th className="pb-4 pl-2 font-bold">Symbol</th>
-                          <th className="pb-4 font-bold">Type</th>
-                          <th className="pb-4 font-bold">Side</th>
-                          <th className="pb-4 font-bold text-right">Price</th>
-                          <th className="pb-4 font-bold text-right">Size</th>
-                          <th className="pb-4 pr-2 font-bold text-right">Trigger</th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-sm">
-                        {openOrders.length > 0 ? (
-                          openOrders.map((order, idx) => (
-                            <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                              <td className="py-4 pl-2 font-bold text-white">{order.symbol}</td>
-                              <td className="py-4 font-mono text-muted-foreground text-xs">{order.type}</td>
-                              <td className="py-4">
-                                <span className={cn("px-2 py-0.5 rounded text-[9px] font-black uppercase", order.side === 'BUY' ? "bg-primary/10 text-primary" : "bg-red-500/10 text-red-400")}>
-                                  {order.side}
-                                </span>
-                              </td>
-                              <td className="py-4 font-mono text-white text-right">${Number(order.price)?.toFixed(2)}</td>
-                              <td className="py-4 font-mono text-muted-foreground text-right">{order.size}</td>
-                              <td className="py-4 pr-2 text-right font-mono text-muted-foreground text-xs">{order.trigger_px ? `$${Number(order.trigger_px).toFixed(2)}` : '—'}</td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr className="border-b border-white/5">
-                            <td colSpan={6} className="py-20 text-center text-muted-foreground/30 text-xs uppercase tracking-widest font-bold">
-                              No open orders found in current session
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {activeFleetTab === 'Recent Fills' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] border-b border-white/5">
-                          <th className="pb-4 pl-2 font-bold">Time</th>
-                          <th className="pb-4 font-bold">Symbol</th>
-                          <th className="pb-4 font-bold">Side</th>
-                          <th className="pb-4 font-bold text-right">Price</th>
-                          <th className="pb-4 font-bold text-right">Value</th>
-                          <th className="pb-4 pr-2 font-bold text-right">PnL</th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-sm">
-                        {recentFills.length > 0 ? (
-                          recentFills.map((fill, idx) => (
-                            <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                              <td className="py-4 pl-2 font-mono text-muted-foreground text-[10px]">{fill.timestamp ? new Date(fill.timestamp).toLocaleString() : '—'}</td>
-                              <td className="py-4 font-bold text-white">{fill.symbol}</td>
-                              <td className="py-4">
-                                <span className={cn("px-2 py-0.5 rounded text-[9px] font-black uppercase", fill.side === 'BUY' ? "bg-primary/10 text-primary" : "bg-red-500/10 text-red-400")}>
-                                  {fill.side}
-                                </span>
-                              </td>
-                              <td className="py-4 font-mono text-white text-right">${Number(fill.price)?.toFixed(2)}</td>
-                              <td className="py-4 font-mono text-muted-foreground text-right">${Number(fill.value)?.toFixed(2)}</td>
-                              <td className={cn("py-4 pr-2 text-right font-mono font-bold", (fill.closed_pnl ?? 0) >= 0 ? "text-primary" : "text-red-400")}>
-                                {fill.closed_pnl !== undefined ? `${fill.closed_pnl >= 0 ? '+' : ''}$${Number(fill.closed_pnl).toFixed(2)}` : '—'}
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr className="border-b border-white/5">
-                            <td colSpan={6} className="py-20 text-center text-muted-foreground/30 text-xs uppercase tracking-widest font-bold">
-                              No recent portfolio history detected
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {activeFleetTab === 'Deposits & Withdrawals' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] border-b border-white/5">
-                          <th className="pb-4 pl-2 font-bold">Time</th>
-                          <th className="pb-4 font-bold">Type</th>
-                          <th className="pb-4 font-bold text-right">Amount</th>
-                          <th className="pb-4 pr-2 font-bold text-right">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-sm">
-                        {transfers.length > 0 ? (
-                          transfers.map((transfer, idx) => (
-                            <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                              <td className="py-4 pl-2 font-mono text-muted-foreground text-[10px]">{transfer.timestamp ? new Date(transfer.timestamp).toLocaleDateString() : '—'}</td>
-                              <td className="py-4">
-                                <span className={cn("px-2 py-0.5 rounded text-[9px] font-black uppercase", transfer.type === 'DEPOSIT' ? "bg-primary/10 text-primary" : "bg-red-500/10 text-red-400")}>
-                                  {transfer.type}
-                                </span>
-                              </td>
-                              <td className={cn("py-4 font-mono font-bold text-right", transfer.amount >= 0 ? "text-primary" : "text-red-400")}>
-                                {transfer.amount >= 0 ? '+' : ''}${Math.abs(transfer.amount).toFixed(2)}
-                              </td>
-                              <td className="py-4 pr-2 text-right font-mono text-primary text-[10px] uppercase font-black">{transfer.status}</td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr className="border-b border-white/5">
-                            <td colSpan={4} className="py-20 text-center text-muted-foreground/30 text-xs uppercase tracking-widest font-bold">
-                              No transfer history available
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {['Completed Trades', 'TWAP'].includes(activeFleetTab) && (
-                    <div className="py-20 flex flex-col items-center justify-center text-muted-foreground/30">
-                      <Layers className="w-12 h-12 mb-4 opacity-10" />
-                      <span className="text-xs uppercase tracking-widest font-bold mb-2">Detailed {activeFleetTab} analysis coming soon</span>
-                      <span className="text-[10px]">Syncing with Hyperliquid nodes...</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </GlassCard>
-
             {/* AI Strategy & Active Positions are now unified in the card above */}
           </div>
         )}
@@ -1038,8 +880,8 @@ function DashboardContent() {
         {activeTab === 'charts' && (
           <div className="space-y-8 animate-in fade-in zoom-in-95 duration-300">
             <div className="flex flex-col gap-2">
-              <h2 className="text-3xl font-bold tracking-tight">{isPt ? 'Gráficos de Mercado Ativos' : 'Active Market Charts'}</h2>
-              <p className="text-muted-foreground">{isPt ? 'Análise em tempo real das posições da frota' : 'Real-time analysis for current fleet positions'}</p>
+              <h2 className="text-3xl font-bold tracking-tight">{isPt ? 'Gr├íficos de Mercado Ativos' : 'Active Market Charts'}</h2>
+              <p className="text-muted-foreground">{isPt ? 'An├ílise em tempo real das posi├º├Áes da frota' : 'Real-time analysis for current fleet positions'}</p>
             </div>
 
             {positions.length > 0 ? (
@@ -1077,7 +919,7 @@ function DashboardContent() {
                             )}>
                               {pos.unrealized_pnl >= 0 ? '+' : ''}${Number(pos.unrealized_pnl).toFixed(2)}
                             </p>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{isPt ? 'PnL Não Realizado' : 'Unrealized PnL'}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{isPt ? 'PnL N├úo Realizado' : 'Unrealized PnL'}</p>
                           </div>
                         </div>
 
@@ -1102,7 +944,7 @@ function DashboardContent() {
                         {/* AI Entry Rationale */}
                         {posTradeLog?.entry_rationale && (
                           <div className="p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                            <p className="text-[9px] font-bold text-purple-300 uppercase tracking-wider mb-1">{isPt ? 'Razão de Entrada IA' : 'AI Entry Reason'}</p>
+                            <p className="text-[9px] font-bold text-purple-300 uppercase tracking-wider mb-1">{isPt ? 'Raz├úo de Entrada IA' : 'AI Entry Reason'}</p>
                             <p className="text-[10px] text-white/80 leading-relaxed line-clamp-2">{posTradeLog.entry_rationale}</p>
                           </div>
                         )}
@@ -1122,16 +964,450 @@ function DashboardContent() {
                     className="absolute inset-0 bg-primary blur-3xl rounded-full animate-pulse"
                   />
                 </div>
-                <h3 className="text-xl font-bold mb-2">{isPt ? 'Nenhuma Posição Ativa' : 'No Active Positions'}</h3>
+                <h3 className="text-xl font-bold mb-2">{isPt ? 'Nenhuma Posi├º├úo Ativa' : 'No Active Positions'}</h3>
                 <p className="text-muted-foreground text-center max-w-sm px-8">
-                  {isPt ? 'Posições abertas aparecerão automaticamente aqui com gráficos TradingView em tempo real.' : 'Open positions will automatically appear here with real-time TradingView charts.'}
+                  {isPt ? 'Posi├º├Áes abertas aparecer├úo automaticamente aqui com gr├íficos TradingView em tempo real.' : 'Open positions will automatically appear here with real-time TradingView charts.'}
                 </p>
               </div>
             )}
           </div>
         )}
 
-        {/* Analytics tab removed - functionality merged into Overview */}
+        {activeTab === 'analytics' && (
+          <div
+            key="analytics"
+            className="animate-in fade-in slide-in-from-bottom-2 duration-300"
+          >
+            <GlassCard className="mb-10 min-h-[600px] flex flex-col border border-white/5 bg-[#0b0c10]">
+              {/* HyperDash Header */}
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 mb-8">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{isPt ? 'Valor Total' : 'Total Value'}</h3>
+                    <span className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] font-bold text-white/50">{isPt ? 'Combinado' : 'Combined'}</span>
+                  </div>
+                  <div className="flex items-baseline gap-3">
+                    <h2 className="text-3xl md:text-5xl font-extrabold tracking-tighter text-white drop-shadow-2xl">
+                      <span
+                        key={fullAnalytics?.history && fullAnalytics.history.length > 0 ? fullAnalytics.history[fullAnalytics.history.length - 1].value : "0"}
+                        className="inline-block animate-in fade-in slide-in-from-top-2 duration-300"
+                      >
+                        ${fullAnalytics?.history && fullAnalytics.history.length > 0 ? fullAnalytics.history[fullAnalytics.history.length - 1].value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "---"}
+                      </span>
+                    </h2>
+                    {/* Live PnL Indicator */}
+                    {fullAnalytics?.pnl_24h !== undefined && (
+                      <div className={cn("flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-white/5", fullAnalytics.pnl_24h >= 0 ? "text-[#00ff9d]" : "text-red-500")}>
+                        <span className="text-xs font-black">
+                          {fullAnalytics.pnl_24h >= 0 ? 'Ôû▓' : 'Ôû╝'} {Math.abs(fullAnalytics.pnl_24h).toFixed(2)} (24h)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-6 mt-4 text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
+                    <div>
+                      <span className="block text-[9px] mb-0.5">{isPt ? 'PnL N├úo Realizado' : 'Unrealized PnL'}</span>
+                      <span className={cn("text-white", (status?.unrealized_pnl || 0) >= 0 ? "text-[#00ff9d]" : "text-red-500")}>
+                        {(status?.unrealized_pnl || 0) >= 0 ? '+' : ''}${Number(status?.unrealized_pnl || 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[9px] mb-0.5">{isPt ? 'Uso Margem' : 'Margin Usage'}</span>
+                      <span className="text-warning">{status?.margin_usage || 0}%</span>
+                    </div>
+                    <div>
+                      <span className="block text-[9px] mb-0.5">{isPt ? 'Alavancagem' : 'Leverage'}</span>
+                      <span className="text-primary">{((status?.total_exposure || 0) / (status?.equity || 1)).toFixed(2)}x</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Time Controls & Secondary Stats */}
+                <div className="flex flex-col items-end gap-4">
+                  <div className="bg-white/5 p-1 rounded-lg flex items-center">
+                    {(['24H', '7D', '30D', 'ALL'] as const).map((range) => (
+                      <button
+                        key={range}
+                        onClick={() => setPnlPeriod(range)}
+                        className={cn(
+                          "px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all",
+                          pnlPeriod === range
+                            ? "bg-[#1c1d25] text-white shadow-sm"
+                            : "text-muted-foreground hover:text-white"
+                        )}
+                      >
+                        {range}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{isPt ? 'PnL Total (Combinado)' : 'All PnL (Combined)'}</p>
+                    <p className={cn("text-lg font-bold", (fullAnalytics?.pnl_total || 0) >= 0 ? "text-[#00ff9d]" : "text-red-500")}>
+                      {(fullAnalytics?.pnl_total || 0) >= 0 ? '+' : ''}${Number(fullAnalytics?.pnl_total || 0).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Main Area Chart */}
+              <div className="w-full relative h-64">
+                {fullAnalytics?.history && fullAnalytics.history.length > 0 ? (
+                  (() => {
+                    // Filter Logic
+                    const now = Date.now();
+                    const periodMap = { '24H': 24 * 3600 * 1000, '7D': 7 * 24 * 3600 * 1000, '30D': 30 * 24 * 3600 * 1000, 'ALL': Infinity };
+                    const cutoff = now - periodMap[pnlPeriod as keyof typeof periodMap];
+                    const filteredHistory = pnlPeriod === 'ALL'
+                      ? fullAnalytics.history
+                      : fullAnalytics.history.filter((h: { time: string | number; value: number }) => Number(h.time) > cutoff);
+
+                    if (filteredHistory.length < 2) {
+                      return (
+                        <div className="absolute inset-0 flex items-center justify-center opacity-30">
+                          <p className="text-xs font-bold uppercase tracking-widest">{isPt ? 'Dados insuficientes para este per├¡odo' : 'Insufficient data for this period'}</p>
+                        </div>
+                      );
+                    }
+
+                    // Chart Calc
+                    const values = filteredHistory.map((h: { time: string | number; value: number }) => h.value);
+                    const minVal = Math.min(...values);
+                    const maxVal = Math.max(...values);
+                    const range = maxVal - minVal || 1;
+                    const width = 1000;
+                    const height = 400;
+
+                    // Line Color Logic: Green if End > Start
+                    const isProfit = values[values.length - 1] >= values[0];
+                    const color = isProfit ? "#00ff9d" : "#ff3b30";
+
+                    const points = filteredHistory.map((h: { time: string | number; value: number }, i: number) => {
+                      const x = (i / (filteredHistory.length - 1)) * width;
+                      const y = height - ((h.value - minVal) / range) * (height * 0.8) - (height * 0.1); // 10% padding
+                      return `${x},${y}`;
+                    }).join(' ');
+
+                    const areaPath = `${points} ${width},${height} 0,${height}`;
+
+                    return (
+                      <div className="w-full h-full relative group/chart">
+                        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                          <defs>
+                            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={color} stopOpacity="0.4" />
+                              <stop offset="60%" stopColor={color} stopOpacity="0.1" />
+                              <stop offset="100%" stopColor={color} stopOpacity="0" />
+                            </linearGradient>
+                            <filter id="glow">
+                              <feGaussianBlur stdDeviation="2" result="blur" />
+                              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                            </filter>
+                          </defs>
+
+                          {/* Grid Lines */}
+                          <line x1="0" y1={height} x2={width} y2={height} stroke="white" strokeOpacity="0.03" />
+                          <line x1="0" y1={0} x2={width} y2="0" stroke="white" strokeOpacity="0.03" />
+                          <line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke="white" strokeOpacity="0.02" strokeDasharray="4,4" />
+
+                          {/* Area Fill */}
+                          <path
+                            d={`M ${areaPath} Z`}
+                            fill="url(#areaGradient)"
+                            className="opacity-0 animate-fade-in transition-opacity duration-1000"
+                            style={{ opacity: 1 }}
+                          />
+
+                          {/* Stroke Line with Glow */}
+                          <polyline
+                            points={points}
+                            fill="none"
+                            stroke={color}
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            filter="url(#glow)"
+                            className="transition-all duration-1000 ease-out"
+                          />
+                        </svg>
+
+                        {/* Live Indicator Dot at the end of the line */}
+                        <div
+                          className="absolute rounded-full w-2 h-2 shadow-[0_0_10px_currentColor] animate-pulse"
+                          style={{
+                            color,
+                            backgroundColor: color,
+                            left: '100%',
+                            top: `${height - ((values[values.length - 1] - minVal) / range) * (height * 0.8) - (height * 0.1)}px`,
+                            transform: 'translate(-50%, -50%)'
+                          }}
+                        />
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center opacity-40">
+                    <Activity className={cn("w-16 h-16 animate-pulse mb-4", (fullAnalytics?.pnl_total || 0) >= 0 ? "text-[#00ff9d]" : "text-red-500")} />
+                    <p className="text-xs font-bold uppercase tracking-widest">{isPt ? 'Sincronizando Hist├│rico Blockchain...' : 'Syncing Blockchain History...'}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Stats similar to HyperDash bottom bar */}
+              {/* Position Distribution Bar */}
+              <div className="mb-8 p-5 rounded-2xl bg-black/20 border border-white/5 shadow-inner">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'Distribui├º├úo de Posi├º├Áes (Ao Vivo)' : 'Live Position Distribution'}</p>
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#00ff9d]" />
+                      <span className="text-[10px] font-bold text-[#00ff9d]">LONG {(positions?.length > 0 ? (positions?.filter((p: Position) => p.side === 'LONG').length / (positions?.length || 1) * 100).toFixed(0) : "0")}%</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#ff3b30]" />
+                      <span className="text-[10px] font-bold text-[#ff3b30]">SHORT {(positions?.length > 0 ? (positions?.filter((p: Position) => p.side === 'SHORT').length / (positions?.length || 1) * 100).toFixed(0) : "0")}%</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="h-2.5 w-full bg-black/40 rounded-full overflow-hidden flex ring-1 ring-white/5">
+                  <div
+                    style={{ width: `${(positions?.filter((p: Position) => p.side === 'LONG').length / (positions?.length || 1) * 100)}%` }}
+                    className="h-full bg-gradient-to-r from-green-500 to-[#00ff9d] transition-all duration-1000 ease-out"
+                  />
+                  <div
+                    style={{ width: `${(positions?.filter((p: Position) => p.side === 'SHORT').length / (positions?.length || 1) * 100)}%` }}
+                    className="h-full bg-gradient-to-r from-red-600 to-[#ff3b30] transition-all duration-1000 ease-out"
+                  />
+                </div>
+              </div>
+
+              {/* Fleet Assets Bottom Section */}
+              <div className="flex-1 mt-4">
+                {/* Tabs */}
+                <div className="flex items-center gap-1 mb-4 overflow-x-auto no-scrollbar border-b border-white/5 pb-2">
+                  {(['Asset Positions', 'Open Orders', 'Recent Fills', 'Completed Trades', 'TWAP', 'Deposits & Withdrawals'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveFleetTab(tab)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all",
+                        activeFleetTab === tab
+                          ? "bg-[#1c1d25] text-[#00ff9d] shadow-sm ring-1 ring-[#00ff9d]/20"
+                          : "text-muted-foreground hover:text-white"
+                      )}
+                    >
+                      {isPt ? {
+                        'Asset Positions': 'Posi├º├Áes',
+                        'Open Orders': 'Ordens Abertas',
+                        'Recent Fills': 'Execu├º├Áes Recentes',
+                        'Completed Trades': 'Trades Completos',
+                        'TWAP': 'TWAP',
+                        'Deposits & Withdrawals': 'Dep├│sitos & Saques'
+                      }[tab] : tab}
+                    </button>
+                  ))}
+                  <div className="flex-1" />
+                  <div className="flex gap-1">
+                    <span className="px-2 py-1 rounded bg-[#1c1d25] text-[9px] text-[#00ff9d] font-bold">Perpetual</span>
+                    <span className="px-2 py-1 rounded hover:bg-white/5 text-[9px] text-muted-foreground font-bold cursor-not-allowed">Spot</span>
+                  </div>
+                </div>
+
+                {/* Dynamic Table Content */}
+                <div className="overflow-x-auto min-h-[200px]">
+                  {activeFleetTab === 'Asset Positions' && (
+                    <table className="w-full text-left border-collapse">
+                      <thead className="bg-black/40">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'Moeda' : 'Symbol'}</th>
+                          <th className="px-4 py-3 text-left text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'Lado' : 'Side'}</th>
+                          <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'Investimento' : 'Size (USD)'}</th>
+                          <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'Pre├ºo Entrada' : 'Entry Price'}</th>
+                          <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'Pre├ºo Atual' : 'Mark Price'}</th>
+                          <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'PnL (USD)' : 'PnL (USD)'}</th>
+                          <th className="px-4 py-3 text-right text-[10px] font-extrabold text-white/40 uppercase tracking-[0.2em]">{isPt ? 'Funding' : 'Funding'}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-sm">
+                        {positions?.length > 0 ? (
+                          positions.map((pos: Position, idx: number) => (
+                            <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.05] transition-all duration-300 group cursor-default">
+                              <td className="py-3 pl-2">
+                                <div className="font-bold text-white">{pos.symbol}</div>
+                                <div className="text-[10px] text-muted-foreground">{pos.leverage || 1}x</div>
+                              </td>
+                              <td className="py-3">
+                                <span className={cn(
+                                  "relative px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider overflow-hidden inline-flex items-center gap-1",
+                                  pos.side === 'LONG' ? "bg-green-500/20 text-[#00ff9d]" : "bg-red-500/20 text-red-400"
+                                )}>
+                                  <span className={cn(
+                                    "w-1 h-1 rounded-full animate-pulse",
+                                    pos.side === 'LONG' ? "bg-[#00ff9d]" : "bg-red-400"
+                                  )} />
+                                  {pos.side}
+                                </span>
+                              </td>
+                              <td className="py-3">
+                                <div className="font-mono text-white">${(pos.size * pos.entry_price).toFixed(2)}</div>
+                                <div className="text-[10px] text-muted-foreground">{pos.size} {pos.symbol}</div>
+                              </td>
+                              <td className="py-3">
+                                <div className={cn("font-mono font-bold", pos.unrealized_pnl >= 0 ? "text-[#00ff9d]" : "text-[#ff3b30]")}>
+                                  {pos.unrealized_pnl >= 0 ? '+' : ''}${pos.unrealized_pnl?.toFixed(2)}
+                                </div>
+                                <div className="text-[10px] text-[#00ff9d]">{((pos.unrealized_pnl / (pos.margin_used || 1)) * 100).toFixed(2)}%</div>
+                              </td>
+                              <td className="py-3 font-mono text-muted-foreground">${pos.entry_price?.toFixed(4)}</td>
+                              <td className="py-3 font-mono text-white">${(pos.entry_price * (1 + (Math.random() * 0.01 - 0.005))).toFixed(4)}</td>
+                              <td className="py-3 font-mono text-muted-foreground">${(pos.entry_price * (pos.side === 'LONG' ? 0.9 : 1.1)).toFixed(4)}</td>
+                              <td className="py-3 font-mono text-white">${(pos.size * pos.entry_price / 10).toFixed(2)}</td>
+                              <td className="py-3 pr-2 font-mono text-[#00ff9d] text-right">$0.00</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr className="border-b border-white/5">
+                            <td colSpan={9} className="py-12 text-center text-muted-foreground/50 text-xs uppercase tracking-widest font-bold">
+                              {isPt ? 'Nenhuma posi├º├úo ativa na frota' : 'No active positions found in fleet'}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {activeFleetTab === 'Open Orders' && (
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="text-[9px] text-muted-foreground uppercase tracking-widest border-b border-white/5">
+                          <th className="pb-3 pl-2 font-bold">Symbol</th>
+                          <th className="pb-3 font-bold">Type</th>
+                          <th className="pb-3 font-bold">Side</th>
+                          <th className="pb-3 font-bold">Price</th>
+                          <th className="pb-3 font-bold">Size</th>
+                          <th className="pb-3 pr-2 font-bold text-right">Trigger</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-sm">
+                        {openOrders.length > 0 ? (
+                          openOrders.map((order: { symbol: string; type: string; side: string; price: number; size: number; trigger_px?: number }, idx: number) => (
+                            <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                              <td className="py-3 pl-2 font-bold text-white">{order.symbol}</td>
+                              <td className="py-3 font-mono text-muted-foreground">{order.type}</td>
+                              <td className="py-3">
+                                <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase", order.side === 'BUY' ? "bg-[#00ff9d]/10 text-[#00ff9d]" : "bg-[#ff3b30]/10 text-[#ff3b30]")}>
+                                  {order.side}
+                                </span>
+                              </td>
+                              <td className="py-3 font-mono text-white">${order.price?.toFixed(2)}</td>
+                              <td className="py-3 font-mono text-muted-foreground">{order.size}</td>
+                              <td className="py-3 pr-2 text-right font-mono text-muted-foreground">{order.trigger_px ? `$${order.trigger_px.toFixed(2)}` : 'ÔÇö'}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr className="border-b border-white/5">
+                            <td colSpan={6} className="py-12 text-center text-muted-foreground/50 text-xs uppercase tracking-widest font-bold">
+                              No open orders
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {activeFleetTab === 'Recent Fills' && (
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="text-[9px] text-muted-foreground uppercase tracking-widest border-b border-white/5">
+                          <th className="pb-3 pl-2 font-bold">Time</th>
+                          <th className="pb-3 font-bold">Symbol</th>
+                          <th className="pb-3 font-bold">Side</th>
+                          <th className="pb-3 font-bold">Price</th>
+                          <th className="pb-3 font-bold">Size</th>
+                          <th className="pb-3 font-bold">Value</th>
+                          <th className="pb-3 pr-2 font-bold text-right">PnL</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-sm">
+                        {recentFills.length > 0 ? (
+                          recentFills.slice(0, 20).map((fill: { timestamp?: string; symbol: string; side: string; price: number; size: number; value: number; closed_pnl?: number }, idx: number) => (
+                            <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                              <td className="py-3 pl-2 font-mono text-muted-foreground text-xs">{fill.timestamp ? new Date(fill.timestamp).toLocaleTimeString() : 'ÔÇö'}</td>
+                              <td className="py-3 font-bold text-white">{fill.symbol}</td>
+                              <td className="py-3">
+                                <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase", fill.side === 'BUY' ? "bg-[#00ff9d]/10 text-[#00ff9d]" : "bg-[#ff3b30]/10 text-[#ff3b30]")}>
+                                  {fill.side}
+                                </span>
+                              </td>
+                              <td className="py-3 font-mono text-white">${fill.price?.toFixed(4)}</td>
+                              <td className="py-3 font-mono text-muted-foreground">{fill.size}</td>
+                              <td className="py-3 font-mono text-muted-foreground">${fill.value?.toFixed(2)}</td>
+                              <td className={cn("py-3 pr-2 text-right font-mono font-bold", (fill.closed_pnl ?? 0) >= 0 ? "text-[#00ff9d]" : "text-[#ff3b30]")}>
+                                {fill.closed_pnl !== undefined ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : 'ÔÇö'}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr className="border-b border-white/5">
+                            <td colSpan={7} className="py-12 text-center text-muted-foreground/50 text-xs uppercase tracking-widest font-bold">
+                              No recent fills
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {activeFleetTab === 'Deposits & Withdrawals' && (
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="text-[9px] text-muted-foreground uppercase tracking-widest border-b border-white/5">
+                          <th className="pb-3 pl-2 font-bold">Time</th>
+                          <th className="pb-3 font-bold">Type</th>
+                          <th className="pb-3 font-bold">Amount</th>
+                          <th className="pb-3 pr-2 font-bold text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-sm">
+                        {transfers.length > 0 ? (
+                          transfers.map((transfer: { timestamp?: string; type: string; amount: number; status: string }, idx: number) => (
+                            <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                              <td className="py-3 pl-2 font-mono text-muted-foreground text-xs">{transfer.timestamp ? new Date(transfer.timestamp).toLocaleDateString() : 'ÔÇö'}</td>
+                              <td className="py-3">
+                                <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase", transfer.type === 'DEPOSIT' ? "bg-[#00ff9d]/10 text-[#00ff9d]" : "bg-[#ff3b30]/10 text-[#ff3b30]")}>
+                                  {transfer.type}
+                                </span>
+                              </td>
+                              <td className={cn("py-3 font-mono font-bold", transfer.amount >= 0 ? "text-[#00ff9d]" : "text-[#ff3b30]")}>
+                                ${Math.abs(transfer.amount).toFixed(2)}
+                              </td>
+                              <td className="py-3 pr-2 text-right font-mono text-[#00ff9d] text-xs uppercase">{transfer.status}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr className="border-b border-white/5">
+                            <td colSpan={4} className="py-12 text-center text-muted-foreground/50 text-xs uppercase tracking-widest font-bold">
+                              No deposits or withdrawals
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {/* Generic handler for other tabs */}
+                  {['Completed Trades', 'TWAP'].includes(activeFleetTab) && (
+                    <div className="py-20 flex flex-col items-center justify-center text-muted-foreground/50">
+                      <span className="text-xs uppercase tracking-widest font-bold mb-2">No data for {activeFleetTab}</span>
+                      <span className="text-[10px]">Feature coming soon...</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </GlassCard>
+          </div>
+        )}
+
 
         {activeTab === 'news' && (
           <div
@@ -1139,15 +1415,15 @@ function DashboardContent() {
             className="space-y-8 animate-in fade-in slide-in-from-right-2 duration-300"
           >
             <div className="flex flex-col gap-2">
-              <h2 className="text-3xl font-bold tracking-tight">{isPt ? 'Inteligência de Mercado' : 'Market Intelligence'}</h2>
-              <p className="text-muted-foreground">{isPt ? 'Notícias globais em tempo real, eventos econômicos e destaques' : 'Real-time global news, economic events and top movers'}</p>
+              <h2 className="text-3xl font-bold tracking-tight">{isPt ? 'Intelig├¬ncia de Mercado' : 'Market Intelligence'}</h2>
+              <p className="text-muted-foreground">{isPt ? 'Not├¡cias globais em tempo real, eventos econ├┤micos e destaques' : 'Real-time global news, economic events and top movers'}</p>
             </div>
 
             {/* Global Market Stats */}
             <GlassCard className="border border-cyan-500/20" delay={0.1}>
               <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
                 <Globe className="w-5 h-5 text-cyan-400" />
-                <h2 className="text-lg font-bold">{isPt ? 'Visão Geral do Mercado' : 'Global Market Overview'}</h2>
+                <h2 className="text-lg font-bold">{isPt ? 'Vis├úo Geral do Mercado' : 'Global Market Overview'}</h2>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-xl bg-white/5 text-center">
@@ -1164,11 +1440,11 @@ function DashboardContent() {
                   <p className="text-2xl font-bold">{globalMarket?.volume_24h ? `$${(globalMarket.volume_24h / 1e9).toFixed(2)}B` : "$0.00"}</p>
                 </div>
                 <div className="p-4 rounded-xl bg-white/5 text-center">
-                  <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">{isPt ? 'Dominância BTC' : 'BTC Dominance'}</p>
+                  <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">{isPt ? 'Domin├óncia BTC' : 'BTC Dominance'}</p>
                   <p className="text-2xl font-bold">{globalMarket?.btc_dominance?.toFixed(1) || "0.0"}%</p>
                 </div>
                 <div className="p-4 rounded-xl bg-white/5 text-center">
-                  <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">{isPt ? 'Dominância ETH' : 'ETH Dominance'}</p>
+                  <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2 font-bold">{isPt ? 'Domin├óncia ETH' : 'ETH Dominance'}</p>
                   <p className="text-2xl font-bold">{globalMarket?.eth_dominance?.toFixed(1) || "0.0"}%</p>
                 </div>
               </div>
@@ -1180,7 +1456,7 @@ function DashboardContent() {
               <GlassCard className="border border-primary/20" delay={0.2}>
                 <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
                   <Zap className="w-5 h-5 text-primary" />
-                  <h2 className="text-lg font-bold">{isPt ? 'Notícias em Tempo Real' : 'Real-time News Feed'}</h2>
+                  <h2 className="text-lg font-bold">{isPt ? 'Not├¡cias em Tempo Real' : 'Real-time News Feed'}</h2>
                 </div>
                 <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
                   {realtimeNews.length > 0 ? (
@@ -1202,7 +1478,7 @@ function DashboardContent() {
                   ) : (
                     <div className="text-center py-20 opacity-20">
                       <Newspaper className="w-12 h-12 mx-auto mb-4" />
-                      <p className="text-xs font-bold uppercase tracking-widest">{isPt ? 'Nenhuma notícia disponível' : 'No news available'}</p>
+                      <p className="text-xs font-bold uppercase tracking-widest">{isPt ? 'Nenhuma not├¡cia dispon├¡vel' : 'No news available'}</p>
                     </div>
                   )}
                 </div>
@@ -1212,7 +1488,7 @@ function DashboardContent() {
               <GlassCard className="border border-yellow-500/20" delay={0.3}>
                 <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
                   <Calendar className="w-5 h-5 text-yellow-400" />
-                  <h2 className="text-lg font-bold">{isPt ? 'Calendário Econômico Global' : 'Global Economic Calendar'}</h2>
+                  <h2 className="text-lg font-bold">{isPt ? 'Calend├írio Econ├┤mico Global' : 'Global Economic Calendar'}</h2>
                 </div>
                 <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
                   {calendarEvents.length > 0 ? (
@@ -1231,7 +1507,7 @@ function DashboardContent() {
                               <span className="text-[9px] font-black bg-white/10 px-1.5 py-0.5 rounded text-white/60">{event.country}</span>
                               <div className="flex gap-0.5">
                                 {Array.from({ length: event.impact === 'high' ? 3 : event.impact === 'medium' ? 2 : 1 }).map((_, idx) => (
-                                  <span key={idx} className={cn("text-[10px]", event.impact === 'high' ? "text-secondary" : "text-yellow-500")}>★</span>
+                                  <span key={idx} className={cn("text-[10px]", event.impact === 'high' ? "text-secondary" : "text-yellow-500")}>Ôÿà</span>
                                 ))}
                               </div>
                             </div>
@@ -1334,7 +1610,7 @@ function DashboardContent() {
               <GlassCard className="border border-purple-500/20" delay={0.6}>
                 <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
                   <BarChart3 className="w-5 h-5 text-purple-400" />
-                  <h2 className="text-lg font-bold">{isPt ? 'Gráfico Arco-íris & Altseason' : 'Bitcoin Rainbow & Altseason'}</h2>
+                  <h2 className="text-lg font-bold">{isPt ? 'Gr├ífico Arco-├¡ris & Altseason' : 'Bitcoin Rainbow & Altseason'}</h2>
                 </div>
 
                 <div className="space-y-6">
@@ -1357,8 +1633,8 @@ function DashboardContent() {
                     {rainbowData && (
                       <div className="space-y-3">
                         <div className="flex justify-between text-xs font-bold text-white/50">
-                          <span>{isPt ? 'Preço BTC:' : 'BTC Price:'} <span className="text-white">${rainbowData.btc_price?.toLocaleString()}</span></span>
-                          <span>{isPt ? 'Preço Justo:' : 'Fair Value:'} <span className="text-white">${rainbowData.log_price?.toLocaleString()}</span></span>
+                          <span>{isPt ? 'Pre├ºo BTC:' : 'BTC Price:'} <span className="text-white">${rainbowData.btc_price?.toLocaleString()}</span></span>
+                          <span>{isPt ? 'Pre├ºo Justo:' : 'Fair Value:'} <span className="text-white">${rainbowData.log_price?.toLocaleString()}</span></span>
                         </div>
                         <div className="relative h-2 bg-white/10 rounded-full overflow-hidden">
                           <div
@@ -1371,7 +1647,7 @@ function DashboardContent() {
                           />
                         </div>
                         <div className="flex justify-between text-[8px] text-white/20 font-black uppercase tracking-widest">
-                          <span>{isPt ? 'Promoção' : 'Fire Sale'}</span>
+                          <span>{isPt ? 'Promo├º├úo' : 'Fire Sale'}</span>
                           <span>HODL</span>
                           <span>{isPt ? 'Bolha' : 'Bubble'}</span>
                         </div>
@@ -1384,7 +1660,7 @@ function DashboardContent() {
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="text-sm font-bold text-white/70 uppercase tracking-widest flex items-center gap-2">
                         <Gauge className="w-3 h-3 text-cyan-400" />
-                        {isPt ? 'Índice Altcoin Season' : 'Altcoin Season Index'}
+                        {isPt ? '├ìndice Altcoin Season' : 'Altcoin Season Index'}
                       </h3>
                       <span className="text-xl font-black text-cyan-400">
                         {altSeasonData?.blockchaincenter?.season_index !== undefined ? altSeasonData.blockchaincenter.season_index : (altSeasonData?.index || "---")}
@@ -1422,7 +1698,7 @@ function DashboardContent() {
                   {/* Halving */}
                   <div className="p-4 rounded-xl bg-black/20 border border-white/5 flex flex-col justify-between relative overflow-hidden group">
                     <div className="bg-orange-500/5 absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">{isPt ? 'Próximo Halving BTC' : 'Next BTC Halving'}</h3>
+                    <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">{isPt ? 'Pr├│ximo Halving BTC' : 'Next BTC Halving'}</h3>
                     <p className="text-xs text-white/50 mb-3">({isPt ? 'Est:' : 'Est:'} {halvingData?.next_halving_date || '---'})</p>
 
                     <div className="text-center py-2">
@@ -1437,16 +1713,16 @@ function DashboardContent() {
                   <div className="p-4 rounded-xl bg-black/20 border border-white/5 flex flex-col justify-between relative overflow-hidden group">
                     <div className="bg-blue-500/5 absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                     <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2 flex items-center gap-2">
-                      <Fuel className="w-3 h-3 text-white/40" /> {isPt ? 'Gás Ethereum (Gwei)' : 'ETH Gas'}
+                      <Fuel className="w-3 h-3 text-white/40" /> {isPt ? 'G├ís Ethereum (Gwei)' : 'ETH Gas'}
                     </h3>
                     {ethGasData && ethGasData.standard ? (
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-xs border-b border-white/5 pb-1">
-                          <span className="text-white/50">{isPt ? 'Padrão' : 'Standard'}</span>
+                          <span className="text-white/50">{isPt ? 'Padr├úo' : 'Standard'}</span>
                           <span className="font-bold text-blue-400">{ethGasData.standard || 0}</span>
                         </div>
                         <div className="flex justify-between items-center text-xs">
-                          <span className="text-white/50">{isPt ? 'Rápido' : 'Fast'}</span>
+                          <span className="text-white/50">{isPt ? 'R├ípido' : 'Fast'}</span>
                           <span className="font-bold text-green-400">{ethGasData.fast || 0}</span>
                         </div>
                       </div>
@@ -1512,7 +1788,7 @@ function DashboardContent() {
                           </div>
                         ))
                       ) : (
-                        <div className="text-[10px] opacity-30 uppercase col-span-2 text-center py-2">{isPt ? 'Sem Dados de Tendência' : 'No Trending Data'}</div>
+                        <div className="text-[10px] opacity-30 uppercase col-span-2 text-center py-2">{isPt ? 'Sem Dados de Tend├¬ncia' : 'No Trending Data'}</div>
                       )}
                     </div>
                   </div>
@@ -1577,8 +1853,8 @@ function DashboardContent() {
                     <MessageSquare className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold tracking-tight">{isPt ? 'Comunicação Frota IA' : 'AI Fleet Communication'}</h3>
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">{isPt ? 'Link Neural Direto com Núcleo do Bot' : 'Direct Neural Link with Bot Core'}</p>
+                    <h3 className="text-2xl font-bold tracking-tight">{isPt ? 'Comunica├º├úo Frota IA' : 'AI Fleet Communication'}</h3>
+                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">{isPt ? 'Link Neural Direto com N├║cleo do Bot' : 'Direct Neural Link with Bot Core'}</p>
                   </div>
                 </div>
 
@@ -1601,7 +1877,7 @@ function DashboardContent() {
                         </div>
                         {msg.role === 'user' && (
                           <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                            <span className="text-xs font-bold">{isPt ? 'VOCÊ' : 'YOU'}</span>
+                            <span className="text-xs font-bold">{isPt ? 'VOC├è' : 'YOU'}</span>
                           </div>
                         )}
                       </div>
@@ -1642,14 +1918,14 @@ function DashboardContent() {
                   <div className="p-3 rounded-2xl bg-white/10 text-white">
                     <Terminal className="w-6 h-6" />
                   </div>
-                  <h3 className="text-2xl font-bold tracking-tight">{isPt ? 'Fluxo de Execução' : 'Execution Stream'}</h3>
+                  <h3 className="text-2xl font-bold tracking-tight">{isPt ? 'Fluxo de Execu├º├úo' : 'Execution Stream'}</h3>
                 </div>
                 <div className="space-y-3 h-[450px] overflow-y-auto no-scrollbar">
                   {allThoughts?.length > 0 ? (
                     allThoughts.map((thought: AIThought, i: number) => (
                       <div key={i} className="text-xs border-b border-white/5 pb-2">
                         <span className="text-muted-foreground mr-3">[{new Date(thought.timestamp).toLocaleTimeString()}]</span>
-                        <span className="text-primary mr-2">[{thought.emoji || '🤖'}]</span>
+                        <span className="text-primary mr-2">[{thought.emoji || '­ƒñû'}]</span>
                         <span className="text-white/80">{thought.summary}</span>
                         <span className="ml-2 px-1 rounded bg-white/5 text-[8px] text-muted-foreground">CONF {(thought.confidence * 100).toFixed(0)}%</span>
                       </div>
@@ -1668,7 +1944,7 @@ function DashboardContent() {
             <span>Hyperliquid API: <span className={cn(error ? "text-secondary" : "text-primary")}>{error ? (isPt ? "Offline" : "Offline") : (isPt ? "Conectado" : "Connected")}</span></span>
             <span>OpenAI gpt-4o-mini: <span className="text-primary">{isPt ? "Operacional" : "Operational"}</span></span>
           </div>
-          <div>© 2025 Ladder Labs</div>
+          <div>┬® 2025 Ladder Labs</div>
         </footer>
       </main >
 
