@@ -368,7 +368,6 @@ function DashboardContent() {
   const [_trade_logs, _setTradeLogs] = useState<TradeLog[]>([]);
   const [viewAllModalOpen, setViewAllModalOpen] = useState(false);
   const [fullAnalytics, setFullAnalytics] = useState<FullAnalytics | null>(null);
-  const [pnlPeriod, setPnlPeriod] = useState<'24H' | '7D' | '30D' | 'ALL'>('24H');
   const [activeFleetTab, setActiveFleetTab] = useState<'Asset Positions' | 'Open Orders' | 'Recent Fills' | 'Completed Trades' | 'TWAP' | 'Deposits & Withdrawals'>('Asset Positions');
   const [openOrders, setOpenOrders] = useState<OrderInfo[]>([]);
   const [recentFills, setRecentFills] = useState<FillInfo[]>([]);
