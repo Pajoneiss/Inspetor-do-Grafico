@@ -129,32 +129,6 @@ interface FullAnalytics {
   pnl_total?: number;
 }
 
-interface OrderInfo {
-  symbol: string;
-  type: string;
-  side: string;
-  price: number;
-  size: number;
-  trigger_px?: number;
-}
-
-interface FillInfo {
-  timestamp?: string;
-  symbol: string;
-  side: string;
-  price: number;
-  size: number;
-  value: number;
-  closed_pnl?: number;
-}
-
-interface TransferInfo {
-  timestamp?: string;
-  type: string;
-  amount: number;
-  status: string;
-}
-
 // --- Components ---
 
 const GlassCard = ({ children, className, delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) => (
