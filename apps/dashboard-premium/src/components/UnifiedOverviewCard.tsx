@@ -179,8 +179,6 @@ export default function UnifiedOverviewCard({
     // Win Rate Logic
     const winRate = Number(journalStats?.win_rate || 0);
     const winRateColor = winRate >= 50 ? "#00ff9d" : "#ef4444";
-    const circumference = 2 * Math.PI * 18;
-    const offset = circumference - (Math.min(100, Math.max(0, winRate)) / 100) * circumference;
 
     return (
         <div className="col-span-1 lg:col-span-full xl:col-span-3 relative overflow-hidden rounded-[32px] bg-[#0a0a0a] border border-white/5 shadow-2xl group transition-all duration-300 hover:border-white/10">
