@@ -256,20 +256,27 @@ export default function UnifiedOverviewCard({
                     </div>
 
                     <div className="flex p-1 rounded-xl bg-white/5 border border-white/10 self-start md:self-auto">
-                        {(['24H', '7D', '30D', 'ALL'] as const).map((p) => (
-                            <button
-                                key={p}
-                                onClick={() => setPeriod(p)}
-                                className={cn(
-                                    "px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all duration-300",
-                                    period === p
-                                        ? "bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]"
-                                        : "text-white/40 hover:text-white hover:bg-white/5"
-                                )}
-                            >
-                                {p}
-                            </button>
-                        ))}
+                        {(['24H', '7D', '30D', 'ALL'] as const).map((p) => {
+                            const activePeriod = pnlPeriod || period;
+                            const handleClick = () => {
+                                if (setPnlPeriod) setPnlPeriod(p);
+                                setPeriod(p);
+                            };
+                            return (
+                                <button
+                                    key={p}
+                                    onClick={handleClick}
+                                    className={cn(
+                                        "px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all duration-300",
+                                        activePeriod === p
+                                            ? "bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                                            : "text-white/40 hover:text-white hover:bg-white/5"
+                                    )}
+                                >
+                                    {p}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -317,54 +324,124 @@ export default function UnifiedOverviewCard({
                     </div>
                 </div>
 
-                {/* Chart Area */}
+                {/* Chart Area - Hyperliquid Analytics Integration */}
                 <div className="relative h-[200px] w-full mt-4">
-                    {history && history.length > 1 ? (
-                        <svg width="100%" height="100%" viewBox="0 0 800 150" className="overflow-visible" preserveAspectRatio="none">
-                            <defs>
-                                <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor={pnlValue >= 0 ? "#00ff9d" : "#ef4444"} stopOpacity="0.2" />
-                                    <stop offset="100%" stopColor={pnlValue >= 0 ? "#00ff9d" : "#ef4444"} stopOpacity="0" />
-                                </linearGradient>
-                                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                                    <feGaussianBlur stdDeviation="4" result="coloredBlur" />
-                                    <feMerge>
-                                        <feMergeNode in="coloredBlur" />
-                                        <feMergeNode in="SourceGraphic" />
-                                    </feMerge>
-                                </filter>
-                            </defs>
+                    {(() => {
+                        // Use fullAnalytics if available, otherwise fall back to history
+                        const chartData = fullAnalytics?.history || history;
+                        const activePeriod = pnlPeriod || period;
 
-                            {chartPath && (
-                                <path
-                                    d={`${chartPath} L 800 150 L 0 150 Z`}
-                                    fill="url(#chartFill)"
-                                    className="transition-all duration-500"
-                                />
-                            )}
+                        if (!chartData || chartData.length < 2) {
+                            return (
+                                <div className="h-full flex items-center justify-center opacity-30">
+                                    <p className="text-xs font-bold uppercase tracking-widest animate-pulse">
+                                        {isPt ? 'Carregando dados do gráfico...' : 'Loading Chart Data...'}
+                                    </p>
+                                </div>
+                            );
+                        }
 
-                            {chartPath && (
-                                <path
-                                    d={chartPath}
-                                    fill="none"
-                                    stroke={pnlValue >= 0 ? "#00ff9d" : "#ef4444"}
-                                    strokeWidth="3"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    filter="url(#glow)"
-                                    className="transition-all duration-500"
+                        // Filter Logic based on period
+                        const now = Date.now();
+                        const periodMap = { '24H': 24 * 3600 * 1000, '7D': 7 * 24 * 3600 * 1000, '30D': 30 * 24 * 3600 * 1000, 'ALL': Infinity };
+                        const cutoff = now - periodMap[activePeriod as keyof typeof periodMap];
+                        const filteredHistory = activePeriod === 'ALL'
+                            ? chartData
+                            : chartData.filter((h: { time: string | number; value: number }) => Number(h.time) > cutoff);
+
+                        if (filteredHistory.length < 2) {
+                            return (
+                                <div className="h-full flex items-center justify-center opacity-30">
+                                    <p className="text-xs font-bold uppercase tracking-widest">
+                                        {isPt ? 'Dados insuficientes para este período' : 'Insufficient data for this period'}
+                                    </p>
+                                </div>
+                            );
+                        }
+
+                        // Chart Calculations
+                        const values = filteredHistory.map((h: { time: string | number; value: number }) => h.value);
+                        const minVal = Math.min(...values);
+                        const maxVal = Math.max(...values);
+                        const range = maxVal - minVal || 1;
+                        const width = 800;
+                        const height = 150;
+
+                        // Line Color Logic: Green if End > Start
+                        const isProfit = values[values.length - 1] >= values[0];
+                        const color = isProfit ? "#00ff9d" : "#ef4444";
+
+                        const points = filteredHistory.map((h: { time: string | number; value: number }, i: number) => {
+                            const x = (i / (filteredHistory.length - 1)) * width;
+                            const y = height - ((h.value - minVal) / range) * (height * 0.8) - (height * 0.1);
+                            return `${x},${y}`;
+                        }).join(' ');
+
+                        const areaPath = `${points} ${width},${height} 0,${height}`;
+
+                        // Calculate last point position for live dot
+                        const lastY = height - ((values[values.length - 1] - minVal) / range) * (height * 0.8) - (height * 0.1);
+
+                        return (
+                            <>
+                                <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} className="overflow-visible" preserveAspectRatio="none">
+                                    <defs>
+                                        <linearGradient id="overviewChartFill" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor={color} stopOpacity="0.4" />
+                                            <stop offset="60%" stopColor={color} stopOpacity="0.1" />
+                                            <stop offset="100%" stopColor={color} stopOpacity="0" />
+                                        </linearGradient>
+                                        <filter id="overviewGlow">
+                                            <feGaussianBlur stdDeviation="2" result="blur" />
+                                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                        </filter>
+                                    </defs>
+
+                                    {/* Grid Lines */}
+                                    <line x1="0" y1={height} x2={width} y2={height} stroke="white" strokeOpacity="0.03" />
+                                    <line x1="0" y1={0} x2={width} y2={0} stroke="white" strokeOpacity="0.03" />
+                                    <line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke="white" strokeOpacity="0.02" strokeDasharray="4,4" />
+
+                                    {/* Area Fill */}
+                                    <path
+                                        d={`M ${areaPath} Z`}
+                                        fill="url(#overviewChartFill)"
+                                        className="transition-all duration-500"
+                                    />
+
+                                    {/* Stroke Line with Glow */}
+                                    <polyline
+                                        points={points}
+                                        fill="none"
+                                        stroke={color}
+                                        strokeWidth="3"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        filter="url(#overviewGlow)"
+                                        className="transition-all duration-500"
+                                    />
+                                </svg>
+
+                                {/* Live Indicator Dot */}
+                                <div
+                                    className="absolute w-2 h-2 rounded-full animate-pulse shadow-[0_0_10px_currentColor]"
+                                    style={{
+                                        backgroundColor: color,
+                                        color: color,
+                                        right: '0',
+                                        top: `${(lastY / height) * 100}%`,
+                                        transform: 'translate(50%, -50%)'
+                                    }}
                                 />
-                            )}
-                        </svg>
-                    ) : (
-                        <div className="h-full flex items-center justify-center opacity-30">
-                            <p className="text-xs font-bold uppercase tracking-widest animate-pulse">Loading Chart Data...</p>
-                        </div>
-                    )}
+                            </>
+                        );
+                    })()}
+
+                    {/* Time Labels */}
                     <div className="absolute bottom-0 left-0 right-0 flex justify-between px-2 text-[10px] font-bold text-white/20 uppercase tracking-widest">
-                        <span>{history?.[0]?.time || ''}</span>
-                        <span>{history?.[Math.floor((history?.length || 0) / 2)]?.time || ''}</span>
-                        <span>{history?.[(history?.length || 0) - 1]?.time || 'NOW'}</span>
+                        <span>{pnlPeriod || period}</span>
+                        <span></span>
+                        <span>NOW</span>
                     </div>
                 </div>
             </div>
