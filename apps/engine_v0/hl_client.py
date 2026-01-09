@@ -271,12 +271,14 @@ class HLClient:
                 
                 entry_price = float(position.get("entryPx", 0))
                 unrealized_pnl = float(position.get("unrealizedPnl", 0))
+                leverage = int(position.get("leverage", {}).get("value", 1))  # Extract leverage
                 
                 positions.append({
                     "coin": coin,
                     "size": size,
                     "entry_price": entry_price,
-                    "unrealized_pnl": unrealized_pnl
+                    "unrealized_pnl": unrealized_pnl,
+                    "leverage": leverage  # Add to output
                 })
             
             return positions
@@ -379,7 +381,8 @@ class HLClient:
                     "size": abs(size),
                     "side": "LONG" if size > 0 else "SHORT",
                     "entry_price": pos["entry_price"],
-                    "unrealized_pnl": pos["unrealized_pnl"]
+                    "unrealized_pnl": pos["unrealized_pnl"],
+                    "leverage": pos.get("leverage", 1)  # Include leverage
                 }
             
             return positions_map

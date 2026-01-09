@@ -1230,7 +1230,7 @@ function DashboardContent() {
                             <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.05] transition-all duration-300 group cursor-default">
                               <td className="py-3 pl-2">
                                 <div className="font-bold text-white">{pos.symbol}</div>
-                                <div className="text-[10px] text-muted-foreground">10x</div>
+                                <div className="text-[10px] text-muted-foreground">{pos.leverage || 1}x</div>
                               </td>
                               <td className="py-3">
                                 <span className={cn(
