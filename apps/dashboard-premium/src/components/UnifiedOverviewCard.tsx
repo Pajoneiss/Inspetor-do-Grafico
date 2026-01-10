@@ -492,7 +492,7 @@ export default function UnifiedOverviewCard({
             </div>
 
             {/* Active Positions Section */}
-            <div className="mt-8 pt-8 border-t border-white/5">
+            <div className="mt-8 pt-8 border-t border-white/5 pl-2">
                 <div className="flex items-center gap-4 mb-6">
                     <div className="p-2 rounded-xl bg-primary/20 text-primary">
                         <Activity className="w-5 h-5" />
@@ -539,7 +539,7 @@ export default function UnifiedOverviewCard({
             </div>
 
             {/* AI Strategy Core Section */}
-            <div className="mt-8 pt-8 border-t border-white/5">
+            <div className="mt-8 pt-8 border-t border-white/5 pl-2">
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
                         <div className="p-3 rounded-2xl bg-purple-500/20 text-purple-400 neon-glow">
