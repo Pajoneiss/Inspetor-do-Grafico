@@ -235,7 +235,7 @@ export default function UnifiedOverviewCard({
                 </div>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-10 mb-8 pb-8 border-b border-white/5">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-16 mb-12 pb-12 border-b border-white/5">
                     <StatValue
                         label={isPt ? "Patrimônio Total" : "Total Equity"}
                         value={status?.equity ? `$${Number(status.equity).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : "---"}
@@ -247,7 +247,7 @@ export default function UnifiedOverviewCard({
 
                     <StatValue
                         label={isPt ? `PnL (${pnlPeriod || period})` : `PnL (${pnlPeriod || period})`}
-                        value={!isNaN(pnlValue) ? `${pnlValue >= 0 ? '+' : ''}$${Math.abs(pnlValue).toFixed(2)}` : "---"}
+                        value={!isNaN(pnlValue) ? `${pnlValue >= 0 ? '+' : '-'}$${Math.abs(pnlValue).toFixed(2)}` : "---"}
                         sub={`${pnlValue >= 0 ? '+' : ''}${pnlPercent}%`}
                         trend={pnlValue >= 0 ? "up" : "down"}
                         icon={Activity}
@@ -256,7 +256,7 @@ export default function UnifiedOverviewCard({
 
                     <StatValue
                         label={isPt ? "PnL All-Time" : "Acc. PnL (Total)"}
-                        value={fullAnalytics?.pnl_total !== undefined ? `${fullAnalytics.pnl_total >= 0 ? '+' : ''}$${Math.abs(fullAnalytics.pnl_total).toFixed(2)}` : "---"}
+                        value={fullAnalytics?.pnl_total !== undefined ? `${fullAnalytics.pnl_total >= 0 ? '+' : '-'}$${Math.abs(fullAnalytics.pnl_total).toFixed(2)}` : "---"}
                         sub={isPt ? "Histórico Blockchain" : "Blockchain History"}
                         trend={(fullAnalytics?.pnl_total || 0) >= 0 ? "up" : "down"}
                         icon={Layers}
