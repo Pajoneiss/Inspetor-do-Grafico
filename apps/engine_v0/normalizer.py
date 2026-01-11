@@ -107,6 +107,13 @@ def normalize_place_order(
     
     if action.get("limit_price") is not None:
         normalized["limit_price"] = action.get("limit_price")
+
+    # v17.5: Pass through Stop Loss and Take Profit
+    if action.get("stop_loss") is not None:
+        normalized["stop_loss"] = action.get("stop_loss")
+    
+    if action.get("take_profit") is not None:
+        normalized["take_profit"] = action.get("take_profit")
     
     return normalized, None
 
