@@ -113,11 +113,20 @@ interface AIThought {
 interface FullAnalytics {
     history: Array<{ time: string | number; value: number }>;
     pnl_24h?: number;
+    pnl_7d?: number;
+    pnl_30d?: number;
     pnl_total?: number;
     win_rate?: number;
     profit_factor?: number;
     total_trades?: number;
+    wins?: number;
+    losses?: number;
     volume?: number;
+    best_trade_pnl?: number;
+    worst_trade_pnl?: number;
+    avg_duration_minutes?: number;
+    total_profit?: number;
+    total_loss?: number;
 }
 
 interface UnifiedOverviewProps {
@@ -555,37 +564,43 @@ export default function UnifiedOverviewCard({
                     </div>
                 </div>
 
-                {/* Secondary Info: Journal Details + Execution Logs (2 columns) */}
+                {/* Secondary Info: Blockchain Details + Execution Logs (2 columns) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    {/* Journal Details Mini Box */}
+                    {/* Blockchain Details Mini Box */}
                     <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
                         <p className="text-[9px] font-bold text-purple-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                             <BrainCircuit className="w-3 h-3" />
-                            {isPt ? 'Detalhes do Journal' : 'Journal Details'}
+                            {isPt ? 'Dados da Blockchain' : 'Blockchain Data'}
                         </p>
                         <div className="grid grid-cols-2 gap-3 text-xs">
                             <div>
                                 <p className="text-white/40 text-[9px] uppercase">Best Trade</p>
-                                <p className="text-primary font-bold">{journalStats?.best_trade_pct ? `+${Number(journalStats.best_trade_pct).toFixed(1)}%` : '---'}</p>
+                                <p className="text-primary font-bold">
+                                    {fullAnalytics?.best_trade_pnl ? `+$${Number(fullAnalytics.best_trade_pnl).toFixed(2)}` : '---'}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-white/40 text-[9px] uppercase">Worst Trade</p>
-                                <p className="text-red-400 font-bold">{journalStats?.worst_trade_pct ? `${Number(journalStats.worst_trade_pct).toFixed(1)}%` : '---'}</p>
+                                <p className="text-red-400 font-bold">
+                                    {fullAnalytics?.worst_trade_pnl ? `$${Number(fullAnalytics.worst_trade_pnl).toFixed(2)}` : '---'}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-white/40 text-[9px] uppercase">Avg Duration</p>
                                 <p className="text-white/80 font-bold">
-                                    {journalStats?.avg_duration_minutes
-                                        ? Number(journalStats.avg_duration_minutes) < 60
-                                            ? `${Number(journalStats.avg_duration_minutes).toFixed(0)}m`
-                                            : `${(Number(journalStats.avg_duration_minutes) / 60).toFixed(1)}h`
+                                    {fullAnalytics?.avg_duration_minutes
+                                        ? Number(fullAnalytics.avg_duration_minutes) < 60
+                                            ? `${Number(fullAnalytics.avg_duration_minutes).toFixed(0)}m`
+                                            : `${(Number(fullAnalytics.avg_duration_minutes) / 60).toFixed(1)}h`
                                         : '---'}
                                 </p>
                             </div>
                             <div>
                                 <p className="text-white/40 text-[9px] uppercase">Total PnL</p>
-                                <p className={cn("font-bold", (journalStats?.total_pnl_usd || 0) >= 0 ? "text-primary" : "text-red-400")}>
-                                    {journalStats?.total_pnl_usd ? `${Number(journalStats.total_pnl_usd) >= 0 ? '+' : ''}$${Number(journalStats.total_pnl_usd).toFixed(2)}` : '---'}
+                                <p className={cn("font-bold", (fullAnalytics?.pnl_total || 0) >= 0 ? "text-primary" : "text-red-400")}>
+                                    {fullAnalytics?.pnl_total !== undefined
+                                        ? `${Number(fullAnalytics.pnl_total) >= 0 ? '+' : ''}$${Number(fullAnalytics.pnl_total).toFixed(2)}`
+                                        : '---'}
                                 </p>
                             </div>
                         </div>

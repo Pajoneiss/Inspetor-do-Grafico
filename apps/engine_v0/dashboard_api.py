@@ -671,69 +671,128 @@ def api_pnl_summary():
 def api_analytics():
     """
     Get comprehensive analytics data from Hyperliquid blockchain.
-    Returns history, win_rate, profit_factor, total_trades, volume, pnl values.
+    Calculates ALL metrics from fills: Win Rate, Best/Worst Trade, Profit Factor, etc.
     """
     try:
         from pnl_tracker import get_pnl_windows, get_pnl_history
-        from trade_journal import get_journal
         
-        # Get PnL from Hyperliquid
+        # Get PnL from Hyperliquid Portfolio API
         pnl_data = get_pnl_windows()
         
         # Get history for chart
         history = get_pnl_history()
         
-        # Get stats from journal
-        journal = get_journal()
-        journal_stats = journal.get_stats()
-        
-        # Extract PnL values
+        # Extract PnL values from Hyperliquid
         pnl_24h = pnl_data.get("24h", {}).get("pnl", 0) if isinstance(pnl_data.get("24h"), dict) else 0
+        pnl_7d = pnl_data.get("7d", {}).get("pnl", 0) if isinstance(pnl_data.get("7d"), dict) else 0
+        pnl_30d = pnl_data.get("30d", {}).get("pnl", 0) if isinstance(pnl_data.get("30d"), dict) else 0
         pnl_total = pnl_data.get("allTime", {}).get("pnl", 0) if isinstance(pnl_data.get("allTime"), dict) else 0
         
-        # Calculate profit factor from journal
-        wins = journal_stats.get("wins", 0)
-        losses = journal_stats.get("losses", 0)
-        total_trades = journal_stats.get("total_trades", 0)
-        
-        # Win rate
-        win_rate = 0
-        if total_trades > 0:
-            win_rate = (wins / total_trades) * 100
-        
-        # Profit factor (rough estimate)
-        profit_factor = 1.0
-        total_pnl = journal_stats.get("total_pnl_usd", 0)
-        if total_pnl > 0 and losses > 0:
-            profit_factor = abs(total_pnl / (losses * 10))  # Rough estimate
-        
-        # Volume estimate from fills
+        # Initialize metrics
+        total_trades = 0
+        wins = 0
+        losses = 0
         volume = 0
-        try:
-            wallet = os.environ.get("HYPERLIQUID_WALLET_ADDRESS", "")
-            if wallet:
-                fills_url = f"https://api.hyperliquid.xyz/info"
+        best_trade_pnl = 0
+        worst_trade_pnl = 0
+        total_profit = 0
+        total_loss = 0
+        trade_durations = []
+        
+        # Fetch fills directly from Hyperliquid
+        wallet = os.environ.get("HYPERLIQUID_WALLET_ADDRESS", "")
+        if wallet:
+            try:
+                fills_url = "https://api.hyperliquid.xyz/info"
                 fills_resp = requests.post(fills_url, json={
                     "type": "userFills",
                     "user": wallet
-                }, timeout=10)
+                }, timeout=15)
+                
                 if fills_resp.status_code == 200:
                     fills = fills_resp.json()
-                    for fill in fills[:100]:  # Last 100 fills
-                        volume += abs(float(fill.get("sz", 0)) * float(fill.get("px", 0)))
-        except Exception as e:
-            print(f"[ANALYTICS] Volume calc error: {e}")
+                    
+                    # Group fills by position (symbol + side)
+                    positions = {}
+                    for fill in fills:
+                        key = f"{fill.get('coin')}_{fill.get('dir')}"
+                        if key not in positions:
+                            positions[key] = []
+                        positions[key].append(fill)
+                    
+                    # Analyze each closed position
+                    for key, position_fills in positions.items():
+                        if len(position_fills) >= 2:
+                            # Calculate PnL for this position
+                            pnl = sum(float(f.get("closedPnl", 0)) for f in position_fills)
+                            fill_value = sum(abs(float(f.get("sz", 0)) * float(f.get("px", 0))) for f in position_fills)
+                            volume += fill_value
+                            
+                            if pnl != 0:
+                                total_trades += 1
+                                if pnl > 0:
+                                    wins += 1
+                                    total_profit += pnl
+                                    if pnl > best_trade_pnl:
+                                        best_trade_pnl = pnl
+                                else:
+                                    losses += 1
+                                    total_loss += abs(pnl)
+                                    if pnl < worst_trade_pnl:
+                                        worst_trade_pnl = pnl
+                                
+                                # Calculate duration if timestamps available
+                                times = [int(f.get("time", 0)) for f in position_fills if f.get("time")]
+                                if len(times) >= 2:
+                                    duration_ms = max(times) - min(times)
+                                    duration_min = duration_ms / 60000
+                                    if duration_min > 0:
+                                        trade_durations.append(duration_min)
+                    
+                    # Also count individual fills with closedPnl
+                    for fill in fills:
+                        closed_pnl = float(fill.get("closedPnl", 0))
+                        if closed_pnl != 0 and total_trades == 0:
+                            total_trades += 1
+                            volume += abs(float(fill.get("sz", 0)) * float(fill.get("px", 0)))
+                            if closed_pnl > 0:
+                                wins += 1
+                                total_profit += closed_pnl
+                                best_trade_pnl = max(best_trade_pnl, closed_pnl)
+                            else:
+                                losses += 1
+                                total_loss += abs(closed_pnl)
+                                worst_trade_pnl = min(worst_trade_pnl, closed_pnl)
+                                
+            except Exception as e:
+                print(f"[ANALYTICS] Fills fetch error: {e}")
+        
+        # Calculate derived metrics
+        win_rate = (wins / total_trades * 100) if total_trades > 0 else 0
+        profit_factor = (total_profit / total_loss) if total_loss > 0 else (1.0 if total_profit == 0 else 2.0)
+        avg_duration = (sum(trade_durations) / len(trade_durations)) if trade_durations else 0
         
         return jsonify({
             "ok": True,
             "data": {
                 "history": history,
-                "pnl_24h": pnl_24h,
-                "pnl_total": pnl_total,
+                # PnL from Hyperliquid Portfolio API
+                "pnl_24h": round(pnl_24h, 2),
+                "pnl_7d": round(pnl_7d, 2),
+                "pnl_30d": round(pnl_30d, 2),
+                "pnl_total": round(pnl_total, 2),
+                # Metrics calculated from fills
                 "win_rate": round(win_rate, 1),
                 "profit_factor": round(profit_factor, 2),
                 "total_trades": total_trades,
-                "volume": round(volume, 2)
+                "wins": wins,
+                "losses": losses,
+                "volume": round(volume, 2),
+                "best_trade_pnl": round(best_trade_pnl, 2),
+                "worst_trade_pnl": round(worst_trade_pnl, 2),
+                "avg_duration_minutes": round(avg_duration, 1),
+                "total_profit": round(total_profit, 2),
+                "total_loss": round(total_loss, 2)
             },
             "server_time_ms": int(time.time() * 1000)
         })
