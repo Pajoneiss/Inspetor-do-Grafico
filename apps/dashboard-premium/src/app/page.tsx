@@ -33,6 +33,7 @@ import SettingsModal from "@/components/SettingsModal";
 import { useSettings } from "@/hooks/useSettings";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import UnifiedOverviewCard from "@/components/UnifiedOverviewCard";
+import HyperDashOverview from "@/components/HyperDashOverview";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -125,6 +126,7 @@ interface RainbowData { ok: boolean; price?: number; band_index?: number; band_n
 
 interface FullAnalytics {
   history: Array<{ time: string | number; value: number }>;
+  pnl_history?: Array<{ time: string | number; value: number }>;
   pnl_24h?: number;
   pnl_7d?: number;
   pnl_30d?: number;
@@ -132,6 +134,8 @@ interface FullAnalytics {
   win_rate?: number;
   profit_factor?: number;
   total_trades?: number;
+  wins?: number;
+  losses?: number;
   volume?: number;
   best_trade_pnl?: number;
   worst_trade_pnl?: number;
@@ -865,27 +869,14 @@ function DashboardContent() {
             }} />
 
             <div className="mt-8 mb-8">
-              <UnifiedOverviewCard
+              <HyperDashOverview
                 status={status}
-                history={pnlHistory}
+                fullAnalytics={fullAnalytics}
+                positions={positions}
+                recentFills={recentFills}
                 period={pnlPeriod}
                 setPeriod={setPnlPeriod}
-                journalStats={journalStats}
-                sessionInfo={sessionInfo}
-                isPt={isPt}
                 isLoading={loading}
-                positions={positions}
-                tradeLog={tradeLog}
-                _trade_logs={_trade_logs}
-                setTradeLog={setTradeLog}
-                aiNotesLang={aiNotesLang}
-                setAiNotesLang={setAiNotesLang}
-                aiMood={aiMood}
-                thoughts={thoughts}
-                setViewAllModalOpen={setViewAllModalOpen}
-                fullAnalytics={fullAnalytics}
-                pnlPeriod={pnlPeriod}
-                setPnlPeriod={setPnlPeriod}
               />
             </div>
 
