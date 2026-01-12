@@ -421,7 +421,7 @@ export default function HyperDashOverview({
 
     return (
         <div className="w-full bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden">
-            <div className="grid grid-cols-12 min-h-[600px]">
+            <div className="grid grid-cols-12 min-h-[480px]">
 
                 {/* Left Sidebar - 2 cols */}
                 <div className="col-span-2 border-r border-white/5 p-3 overflow-y-auto bg-[#080808]">
@@ -524,7 +524,7 @@ export default function HyperDashOverview({
                     </div>
 
                     {/* Chart */}
-                    <div className="flex-1 p-4 min-h-[300px]">
+                    <div className="h-[320px] p-4 shrink-0">
                         {viewMode === 'CALENDAR' ? (
                             <EconomicCalendarWidget />
                         ) : viewMode === 'COMBINED' ? (
