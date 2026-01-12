@@ -2,6 +2,7 @@
 
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { BrainCircuit, Terminal } from 'lucide-react';
+import EconomicCalendarWidget from './EconomicCalendarWidget';
 
 // Types
 interface FullAnalytics {
@@ -378,6 +379,7 @@ export default function HyperDashOverview({
 
     const [activeTab, setActiveTab] = useState<'POSITIONS' | 'BALANCES' | 'ORDERS' | 'FILLS' | 'TRADES' | 'TWAP' | 'TRANSFERS'>('POSITIONS');
     const [rightTab, setRightTab] = useState<'BEST_TRADES' | 'AI_STRATEGY'>('BEST_TRADES');
+    const [viewMode, setViewMode] = useState<'PERPS' | 'CALENDAR' | 'COMBINED'>('PERPS');
 
     // Calculate values
     const equity = status?.equity || 0;
@@ -414,6 +416,29 @@ export default function HyperDashOverview({
         }
         return [];
     }, [fullAnalytics?.history, fullAnalytics?.pnl_history, equity, pnlTotal]);
+
+    // Filter chart data based on period
+    const filteredChartData = useMemo(() => {
+        if (!chartData || chartData.length === 0) return [];
+        if (period === 'ALL') return chartData;
+
+        const now = Date.now();
+        // If data is significantly old (> 1 day gap), we ideally align to the last data point for better UX,
+        // but standard practice is wall-clock time. I'll stick to wall-clock for now.
+        // Actually, let's use the LATEST data point timestamp to ensure we show *something* relevant if the bot was offline.
+        // This is a "Smart Period" feature.
+        const lastDataTime = chartData[chartData.length - 1].time;
+        // Anchor to the LAST DATA POINT to ensure chart shows data even if history is old
+        const referenceTime = lastDataTime;
+
+        let cutoff = 0;
+        if (period === '24H') cutoff = referenceTime - 24 * 60 * 60 * 1000;
+        else if (period === '7D') cutoff = referenceTime - 7 * 24 * 60 * 60 * 1000;
+        else if (period === '30D') cutoff = referenceTime - 30 * 24 * 60 * 60 * 1000;
+        else return chartData;
+
+        return chartData.filter(d => d.time >= cutoff);
+    }, [chartData, period]);
 
     // Format duration
     const formatDuration = (mins: number) => {
@@ -510,11 +535,26 @@ export default function HyperDashOverview({
                         <div className="flex items-center gap-3">
                             <div className="flex gap-1">
                                 <button className="px-2 py-1 text-[10px] bg-white/10 text-white rounded">PNL</button>
-                                <button className="px-2 py-1 text-[10px] text-white/40 hover:text-white transition">CALENDAR</button>
+                                <button
+                                    onClick={() => setViewMode('CALENDAR')}
+                                    className={`px-2 py-1 text-[10px] transition ${viewMode === 'CALENDAR' ? 'bg-white/10 text-white rounded' : 'text-white/40 hover:text-white'}`}
+                                >
+                                    CALENDAR
+                                </button>
                             </div>
                             <div className="flex gap-1">
-                                <button className="px-2 py-1 text-[10px] bg-white/5 text-white/60 rounded">PERPS</button>
-                                <button className="px-2 py-1 text-[10px] text-white/40 hover:text-white transition">COMBINED</button>
+                                <button
+                                    onClick={() => setViewMode('PERPS')}
+                                    className={`px-2 py-1 text-[10px] transition ${viewMode === 'PERPS' ? 'bg-white/5 text-white/60 rounded' : 'text-white/40 hover:text-white'}`}
+                                >
+                                    PERPS
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('COMBINED')}
+                                    className={`px-2 py-1 text-[10px] transition ${viewMode === 'COMBINED' ? 'bg-white/5 text-white/60 rounded' : 'text-white/40 hover:text-white'}`}
+                                >
+                                    COMBINED
+                                </button>
                             </div>
                         </div>
                         <div className="flex gap-1 p-0.5 rounded bg-white/5">
@@ -535,13 +575,25 @@ export default function HyperDashOverview({
 
                     {/* Chart */}
                     <div className="flex-1 p-4 min-h-[300px]">
+                        {viewMode === 'CALENDAR' ? (
+                            <EconomicCalendarWidget />
+                        ) : viewMode === 'COMBINED' ? (
+                            <div className="flex items-center justify-center w-full h-full text-white/30 text-xs">
+                                Combined View Placeholder
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center w-full h-full text-white/30 text-xs">
+                                Combined View Placeholder
+                            </div>
+                        ) : (
                         <EquityChart
-                            data={chartData}
+                            data={filteredChartData}
                             isLoading={isLoading}
                             pnlValue={currentPnl}
                             pnlPeriod={period}
                             trades={recentFills}
                         />
+                        )}
                     </div>
 
                     {/* Bottom Tabs */}
