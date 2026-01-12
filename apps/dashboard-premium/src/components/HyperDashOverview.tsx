@@ -127,7 +127,8 @@ const EquityChart = ({
         const isPositive = endVal >= startVal;
 
         const lineColor = isPositive ? '#22c55e' : '#ef4444';
-        const gradientTop = isPositive ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+        const gradientTop = isPositive ? 'rgba(34, 197, 94, 0.35)' : 'rgba(239, 68, 68, 0.35)';
+        const gradientMid = isPositive ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)';
 
         // Draw grid
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
@@ -147,10 +148,11 @@ const EquityChart = ({
             return [x, y];
         });
 
-        // Draw gradient fill
+        // Draw gradient fill (HyperDash style - more visible)
         const gradient = ctx.createLinearGradient(0, 0, 0, height);
         gradient.addColorStop(0, gradientTop);
-        gradient.addColorStop(1, 'transparent');
+        gradient.addColorStop(0.5, gradientMid);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
         ctx.beginPath();
         ctx.moveTo(points[0][0], height);

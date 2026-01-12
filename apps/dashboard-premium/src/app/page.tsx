@@ -478,13 +478,7 @@ function DashboardContent() {
         }
       } catch { /* Session info optional */ }
 
-      // Fetch full analytics from Hyperliquid
-      try {
-        const analyticsRes = await fetch(`${API_URL}/api/analytics`).then(r => r.json());
-        if (analyticsRes.ok && analyticsRes.data) {
-          setFullAnalytics(analyticsRes.data);
-        }
-      } catch { /* Analytics optional */ }
+      // Analytics is already fetched in Promise.all above, no duplicate needed
 
       if (thoughtRes.ok && thoughtRes.data && thoughtRes.data.length > 0) {
         const latestThought = thoughtRes.data[0];
