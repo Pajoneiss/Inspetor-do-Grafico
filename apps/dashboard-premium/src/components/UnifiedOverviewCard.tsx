@@ -242,7 +242,7 @@ export default function UnifiedOverviewCard({
 
         // Last fallback: unrealized only
         return unrealizedPnl;
-    }, [history, fullAnalytics, unrealizedPnl]);
+    }, [history, fullAnalytics, unrealizedPnl, period, pnlPeriod]);
 
     const pnlPercent = useMemo(() => {
         try {

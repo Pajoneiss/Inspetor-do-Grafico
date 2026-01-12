@@ -660,7 +660,7 @@ export default function HyperDashOverview({
                                     <div className="text-center py-6 text-white/30 text-xs">No active positions</div>
                                 )
                             )}
-                            )}
+
                             {activeTab === 'BALANCES' && (
                                 <div className="space-y-1">
                                     <div className="flex items-center justify-between py-2 border-b border-white/5">
