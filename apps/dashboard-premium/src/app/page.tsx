@@ -31,7 +31,7 @@ import {
 import { cn } from "@/lib/utils";
 import SettingsModal from "@/components/SettingsModal";
 import { useSettings } from "@/hooks/useSettings";
-// AnimatedBackground removed for Matrix theme
+import AnimatedBackground from "@/components/AnimatedBackground";
 // UnifiedOverviewCard replaced by HyperDashOverview
 import HyperDashOverview from "@/components/HyperDashOverview";
 import Link from "next/link";
@@ -1682,7 +1682,8 @@ function DashboardContent() {
         </footer>
       </main >
 
-      {/* Background Grid handled by global CSS */}
+      {/* Animated Background with Blockchain Energy Flows */}
+      <AnimatedBackground />
 
       {/* Settings Modal */}
       < SettingsModal
