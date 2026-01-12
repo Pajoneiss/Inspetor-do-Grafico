@@ -180,52 +180,11 @@ const EquityChart = ({
         ctx.fillStyle = lineColor;
         ctx.fillRect(lastPoint[0] - 3, lastPoint[1] - 3, 6, 6);
 
-        // Draw trade markers
-        const minTime = chartData[0].time;
-        const maxTime = chartData[chartData.length - 1].time;
-        const timeRange = maxTime - minTime;
-
+        /* Trade markers removed as requested
         trades.forEach(trade => {
-            const tradeTime = trade.time || (trade.timestamp ? new Date(trade.timestamp).getTime() : 0);
-            if (tradeTime >= minTime && tradeTime <= maxTime) {
-                // Find x position based on time
-                const xPos = ((tradeTime - minTime) / timeRange) * width;
-
-                // Find closest data points for y position (Linear Interpolation)
-                let nextIdx = chartData.findIndex(d => d.time > tradeTime);
-                if (nextIdx === -1) nextIdx = chartData.length - 1; // After last point
-                const prevIdx = Math.max(0, nextIdx > 0 ? nextIdx - 1 : 0);
-
-                let yPos;
-                if (prevIdx === nextIdx) {
-                    yPos = points[prevIdx][1];
-                } else {
-                    const t1 = chartData[prevIdx].time;
-                    const t2 = chartData[nextIdx].time;
-                    const y1 = points[prevIdx][1];
-                    const y2 = points[nextIdx][1];
-                    const ratio = (tradeTime - t1) / (t2 - t1);
-                    yPos = y1 + (y2 - y1) * ratio;
-                }
-
-                // Draw marker (Square 8-bit style)
-                const isBuy = trade.side?.toLowerCase() === 'buy' || trade.side?.toLowerCase() === 'b';
-                const isPnlPositive = (trade.closed_pnl || 0) >= 0;
-                const markerColor = isBuy ? '#00FF41' : isPnlPositive ? '#00FF41' : '#FF0000';
-
-                // Outer square (glow)
-                ctx.fillStyle = markerColor + '40';
-                ctx.fillRect(xPos - 6, yPos - 6, 12, 12);
-
-                // Inner square
-                ctx.fillStyle = markerColor;
-                ctx.fillRect(xPos - 4, yPos - 4, 8, 8);
-
-                // Center dot
-                ctx.fillStyle = '#000';
-                ctx.fillRect(xPos - 2, yPos - 2, 4, 4);
-            }
+            // ... (code removed for cleaner UI)
         });
+        */
 
         // Draw time labels
         ctx.fillStyle = '#00FF41';

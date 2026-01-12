@@ -65,7 +65,7 @@ export default function AnimatedBackground() {
                     speed: 0.2 + Math.random() * 0.5,
                     rotation: Math.random() * Math.PI * 2,
                     rotationSpeed: (Math.random() - 0.5) * 0.02,
-                    type: Math.random() > 0.5 ? 'btc' : 'eth'
+                    type: 'btc' // User requested only BTC
                 });
             }
             coinsRef.current = coins;
@@ -115,17 +115,7 @@ export default function AnimatedBackground() {
             ctx.restore();
         };
 
-        const drawETH = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number, rotation: number) => {
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(rotation);
-            ctx.fillStyle = 'rgba(98, 126, 234, 0.15)';
-            ctx.font = `bold ${size}px "Courier New", monospace`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('Ξ', 0, 0);
-            ctx.restore();
-        };
+        // ETH drawing removed as requested
 
         const animate = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -195,7 +185,6 @@ export default function AnimatedBackground() {
                     coin.x = Math.random() * canvas.width;
                 }
                 if (coin.type === 'btc') drawBTC(ctx, coin.x, coin.y, coin.size, coin.rotation);
-                else drawETH(ctx, coin.x, coin.y, coin.size, coin.rotation);
             });
 
             animationFrameRef.current = requestAnimationFrame(animate);
