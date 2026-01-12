@@ -582,17 +582,13 @@ export default function HyperDashOverview({
                                 Combined View Placeholder
                             </div>
                         ) : (
-                            <div className="flex items-center justify-center w-full h-full text-white/30 text-xs">
-                                Combined View Placeholder
-                            </div>
-                        ) : (
-                        <EquityChart
-                            data={filteredChartData}
-                            isLoading={isLoading}
-                            pnlValue={currentPnl}
-                            pnlPeriod={period}
-                            trades={recentFills}
-                        />
+                            <EquityChart
+                                data={filteredChartData}
+                                isLoading={isLoading}
+                                pnlValue={currentPnl}
+                                pnlPeriod={period}
+                                trades={recentFills}
+                            />
                         )}
                     </div>
 
