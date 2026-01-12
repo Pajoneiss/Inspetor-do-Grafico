@@ -9,8 +9,10 @@ from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 from threading import Lock
 
-# Journal file path
-JOURNAL_FILE = os.path.join(os.path.dirname(__file__), "data", "trade_journal.json")
+# Journal file path - Use environment variable for Railway Volume persistence
+# Fallback to local path for development
+_DATA_DIR = os.environ.get("DATA_VOLUME_PATH", os.path.join(os.path.dirname(__file__), "data"))
+JOURNAL_FILE = os.path.join(_DATA_DIR, "trade_journal.json")
 
 
 class TradeJournal:

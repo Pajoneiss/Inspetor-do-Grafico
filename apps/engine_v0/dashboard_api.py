@@ -610,6 +610,116 @@ def api_health():
     })
 
 
+@app.route('/api/pnl-summary')
+def api_pnl_summary():
+    """
+    Get comprehensive PnL summary for client display.
+    Combines Hyperliquid portfolio API with TradeJournal stats.
+    """
+    try:
+        from pnl_tracker import get_pnl_windows
+        from trade_journal import get_journal
+        
+        # Get real PnL from Hyperliquid Portfolio API
+        pnl_data = get_pnl_windows()
+        
+        # Get real stats from TradeJournal
+        journal = get_journal()
+        journal_stats = journal.get_stats()
+        
+        # Helper to safely extract numeric PNL value
+        def safe_pnl(window_key):
+            val = pnl_data.get(window_key, {}).get("pnl", 0)
+            if isinstance(val, (int, float)):
+                return round(val, 2)
+            return 0
+        
+        return jsonify({
+            "ok": True,
+            "data": {
+                # PnL Windows (from Hyperliquid)
+                "pnl_24h": safe_pnl("24h"),
+                "pnl_7d": safe_pnl("7d"),
+                "pnl_30d": safe_pnl("30d"),
+                "pnl_all_time": safe_pnl("allTime"),
+                
+                # Trade Stats (from Journal)
+                "total_trades": journal_stats.get("total_trades", 0),
+                "closed_trades": journal_stats.get("closed_trades", 0),
+                "open_trades": journal_stats.get("open_trades", 0),
+                "wins": journal_stats.get("wins", 0),
+                "losses": journal_stats.get("losses", 0),
+                "win_rate": journal_stats.get("win_rate", 0),
+                "avg_pnl_pct": journal_stats.get("avg_pnl_pct", 0),
+                "total_pnl_usd": journal_stats.get("total_pnl_usd", 0),
+                "best_trade_pct": journal_stats.get("best_trade_pct", 0),
+                "worst_trade_pct": journal_stats.get("worst_trade_pct", 0),
+                "avg_duration_minutes": journal_stats.get("avg_duration_minutes", 0)
+            },
+            "server_time_ms": int(time.time() * 1000)
+        })
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] PnL Summary failed: {e}")
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "data": {}
+        }), 500
+
+
+@app.route('/api/journal/stats')
+def api_journal_stats():
+    """Get trade journal statistics for dashboard"""
+    try:
+        from trade_journal import get_journal
+        journal = get_journal()
+        stats = journal.get_stats()
+        return jsonify({
+            "ok": True,
+            "data": stats,
+            "server_time_ms": int(time.time() * 1000)
+        })
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] Journal stats failed: {e}")
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "data": {}
+        }), 500
+
+
+@app.route('/api/session')
+def api_session():
+    """Get current trading session info (Asia, London, NY, etc.)"""
+    now = datetime.now(timezone.utc)
+    hour = now.hour
+    weekday = now.weekday()
+    is_weekend = weekday >= 5
+    
+    if is_weekend:
+        session = "WEEKEND"
+    elif 0 <= hour < 8:
+        session = "ASIA"
+    elif 8 <= hour < 13:
+        session = "LONDON"
+    elif 13 <= hour < 17:
+        session = "OVERLAP_LONDON_NY"
+    elif 17 <= hour < 22:
+        session = "NEW_YORK"
+    else:
+        session = "QUIET"
+    
+    return jsonify({
+        "ok": True,
+        "data": {
+            "session": session,
+            "current_time_utc": now.isoformat(),
+            "is_weekend": is_weekend
+        },
+        "server_time_ms": int(time.time() * 1000)
+    })
+
+
 @app.route('/api/pnl/history')
 @app.route('/api/history')
 @app.route('/api/pnl')

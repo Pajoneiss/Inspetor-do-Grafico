@@ -1,13 +1,65 @@
 
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import {
     Wallet, Activity, Globe, ArrowUpRight, ArrowDownRight, LayoutDashboard,
     BrainCircuit, Target, CheckCircle, Clock, ChevronLeft, ChevronRight, Layers
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardData } from "@/app/page";
+
+// --- Mini TradingView Chart Component ---
+const MiniTradingViewChart = ({ symbol }: { symbol: string }) => {
+    const containerId = React.useId().replace(/:/g, '');
+
+    useEffect(() => {
+        const scriptId = 'tradingview-widget-script';
+        let script = document.getElementById(scriptId) as HTMLScriptElement;
+
+        const initWidget = () => {
+            const gWindow = (window as unknown as { TradingView?: { widget: new (p: Record<string, unknown>) => void } });
+            if (gWindow.TradingView) {
+                new gWindow.TradingView.widget({
+                    "autosize": true,
+                    "symbol": `BINANCE:${symbol}USDT.P`,
+                    "interval": "15",
+                    "timezone": "Etc/UTC",
+                    "theme": "dark",
+                    "style": "3", // Area chart style
+                    "locale": "en",
+                    "enable_publishing": false,
+                    "hide_top_toolbar": true,
+                    "hide_legend": true,
+                    "hide_side_toolbar": true,
+                    "allow_symbol_change": false,
+                    "save_image": false,
+                    "container_id": containerId,
+                    "backgroundColor": "rgba(0, 0, 0, 0)",
+                    "gridColor": "rgba(255, 255, 255, 0.02)",
+                });
+            }
+        };
+
+        if (!script) {
+            script = document.createElement('script');
+            script.id = scriptId;
+            script.src = 'https://s3.tradingview.com/tv.js';
+            script.async = true;
+            script.onload = initWidget;
+            document.head.appendChild(script);
+        } else {
+            // Script already loaded, initialize
+            setTimeout(initWidget, 100);
+        }
+    }, [symbol, containerId]);
+
+    return (
+        <div className="w-[180px] h-[100px] rounded-xl overflow-hidden border border-white/10 bg-black/40 shrink-0">
+            <div id={containerId} className="w-full h-full" />
+        </div>
+    );
+};
 
 // --- Types ---
 interface Position {
@@ -62,6 +114,10 @@ interface FullAnalytics {
     history: Array<{ time: string | number; value: number }>;
     pnl_24h?: number;
     pnl_total?: number;
+    win_rate?: number;
+    profit_factor?: number;
+    total_trades?: number;
+    volume?: number;
 }
 
 interface UnifiedOverviewProps {
@@ -448,36 +504,38 @@ export default function UnifiedOverviewCard({
                     </div>
                 </div>
 
-                {/* Advanced Metrics Row */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                {/* Advanced Metrics Row - Data from Hyperliquid Blockchain */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                    <div className="text-center">
+                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-1">
+                            Win Rate
+                        </p>
+                        <p className={cn("text-lg font-bold", (fullAnalytics?.win_rate || 0) >= 50 ? "text-primary" : "text-red-400")}>
+                            {fullAnalytics?.win_rate !== undefined ? `${fullAnalytics.win_rate.toFixed(1)}%` : (journalStats?.win_rate !== undefined ? `${Number(journalStats.win_rate).toFixed(1)}%` : '---')}
+                        </p>
+                    </div>
                     <div className="text-center">
                         <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-1">
                             {isPt ? 'Fator de Lucro' : 'Profit Factor'}
                         </p>
-                        <p className={cn("text-lg font-bold", (journalStats?.total_pnl_usd || 0) >= 0 ? "text-primary" : "text-red-400")}>
-                            {journalStats?.total_pnl_usd && journalStats.total_pnl_usd !== 0
-                                ? Math.abs(journalStats.total_pnl_usd / Math.abs(journalStats.worst_trade_pct || 1)).toFixed(2)
-                                : '---'}
+                        <p className={cn("text-lg font-bold", (fullAnalytics?.profit_factor || 1) >= 1 ? "text-primary" : "text-red-400")}>
+                            {fullAnalytics?.profit_factor !== undefined ? fullAnalytics.profit_factor.toFixed(2) : '---'}
                         </p>
                     </div>
                     <div className="text-center">
                         <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-1">
-                            {isPt ? 'Melhor Trade' : 'Best Trade'}
-                        </p>
-                        <p className="text-lg font-bold text-primary">
-                            {journalStats?.best_trade_pct ? `+${journalStats.best_trade_pct.toFixed(1)}%` : '---'}
-                        </p>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-1">
-                            {isPt ? 'Duração Média' : 'Avg Duration'}
+                            {isPt ? 'Total Trades' : 'Total Trades'}
                         </p>
                         <p className="text-lg font-bold text-white/80">
-                            {journalStats?.avg_duration_minutes
-                                ? journalStats.avg_duration_minutes < 60
-                                    ? `${journalStats.avg_duration_minutes.toFixed(0)}m`
-                                    : `${(journalStats.avg_duration_minutes / 60).toFixed(1)}h`
-                                : '---'}
+                            {fullAnalytics?.total_trades !== undefined ? fullAnalytics.total_trades : (journalStats?.total_trades || '---')}
+                        </p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-1">
+                            {isPt ? 'Volume' : 'Volume'}
+                        </p>
+                        <p className="text-lg font-bold text-white/80">
+                            {fullAnalytics?.volume !== undefined ? `$${(fullAnalytics.volume / 1000).toFixed(1)}K` : '---'}
                         </p>
                     </div>
                     <div className="text-center">
@@ -487,6 +545,63 @@ export default function UnifiedOverviewCard({
                         <p className={cn("text-lg font-bold", (status?.margin_usage || 0) > 50 ? "text-yellow-400" : "text-white/80")}>
                             {status?.margin_usage ? `${status.margin_usage.toFixed(1)}%` : '---'}
                         </p>
+                    </div>
+                </div>
+
+                {/* Secondary Info: Journal Details + Execution Logs (2 columns) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    {/* Journal Details Mini Box */}
+                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                        <p className="text-[9px] font-bold text-purple-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <BrainCircuit className="w-3 h-3" />
+                            {isPt ? 'Detalhes do Journal' : 'Journal Details'}
+                        </p>
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                                <p className="text-white/40 text-[9px] uppercase">Best Trade</p>
+                                <p className="text-primary font-bold">{journalStats?.best_trade_pct ? `+${Number(journalStats.best_trade_pct).toFixed(1)}%` : '---'}</p>
+                            </div>
+                            <div>
+                                <p className="text-white/40 text-[9px] uppercase">Worst Trade</p>
+                                <p className="text-red-400 font-bold">{journalStats?.worst_trade_pct ? `${Number(journalStats.worst_trade_pct).toFixed(1)}%` : '---'}</p>
+                            </div>
+                            <div>
+                                <p className="text-white/40 text-[9px] uppercase">Avg Duration</p>
+                                <p className="text-white/80 font-bold">
+                                    {journalStats?.avg_duration_minutes
+                                        ? Number(journalStats.avg_duration_minutes) < 60
+                                            ? `${Number(journalStats.avg_duration_minutes).toFixed(0)}m`
+                                            : `${(Number(journalStats.avg_duration_minutes) / 60).toFixed(1)}h`
+                                        : '---'}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-white/40 text-[9px] uppercase">Total PnL</p>
+                                <p className={cn("font-bold", (journalStats?.total_pnl_usd || 0) >= 0 ? "text-primary" : "text-red-400")}>
+                                    {journalStats?.total_pnl_usd ? `${Number(journalStats.total_pnl_usd) >= 0 ? '+' : ''}$${Number(journalStats.total_pnl_usd).toFixed(2)}` : '---'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Execution Logs Mini Box */}
+                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                        <p className="text-[9px] font-bold text-cyan-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <Activity className="w-3 h-3" />
+                            {isPt ? 'Logs de Execução' : 'Execution Logs'}
+                        </p>
+                        <div className="space-y-2 max-h-[80px] overflow-y-auto text-[10px] font-mono">
+                            {thoughts && thoughts.length > 0 ? (
+                                thoughts.slice(0, 3).map((thought, idx) => (
+                                    <div key={idx} className="flex items-start gap-2 text-white/60">
+                                        <span className="text-primary shrink-0">›</span>
+                                        <span className="truncate">{thought.summary || thought.thought || 'AI analyzing...'}</span>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-white/30 text-center py-4">{isPt ? 'Sem logs recentes' : 'No recent logs'}</p>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -501,30 +616,36 @@ export default function UnifiedOverviewCard({
                 </div>
 
                 {positions && positions.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {positions.map((pos, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/[0.08] transition-all group/item">
-                                <div className="flex items-center gap-4">
-                                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs transition-colors",
-                                        pos.side === 'LONG' ? "bg-primary/20 text-primary group-hover/item:bg-primary/30" : "bg-secondary/20 text-secondary group-hover/item:bg-secondary/30")}>
-                                        {(pos.symbol || "??").substring(0, 2)}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold tracking-tight">{pos.symbol || "Unknown"}</p>
-                                        <div className="flex items-center gap-2">
-                                            <span className={cn("text-[10px] font-bold uppercase tracking-widest", pos.side === 'LONG' ? "text-primary" : "text-secondary")}>
-                                                {(pos.side || "").toUpperCase()} {pos.leverage || 1}x
-                                            </span>
+                            <div key={idx} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/[0.08] transition-all group/item">
+                                {/* Mini Chart */}
+                                <MiniTradingViewChart symbol={pos.symbol || "BTC"} />
+
+                                {/* Position Info */}
+                                <div className="flex-1 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs transition-colors",
+                                            pos.side === 'LONG' ? "bg-primary/20 text-primary group-hover/item:bg-primary/30" : "bg-secondary/20 text-secondary group-hover/item:bg-secondary/30")}>
+                                            {(pos.symbol || "??").substring(0, 2)}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold tracking-tight">{pos.symbol || "Unknown"}</p>
+                                            <div className="flex items-center gap-2">
+                                                <span className={cn("text-[10px] font-bold uppercase tracking-widest", pos.side === 'LONG' ? "text-primary" : "text-secondary")}>
+                                                    {(pos.side || "").toUpperCase()} {pos.leverage || 1}x
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-bold tracking-tight">${Number(pos.entry_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                                    <div className="flex items-center justify-end gap-1">
-                                        <p className={cn("text-xs font-bold", (pos.unrealized_pnl || 0) >= 0 ? "text-primary" : "text-secondary")}>
-                                            {(pos.unrealized_pnl || 0) >= 0 ? '+' : ''}{Number(pos.unrealized_pnl || 0).toFixed(2)}
-                                        </p>
-                                        {(pos.unrealized_pnl || 0) >= 0 ? <ArrowUpRight className="w-3 h-3 text-primary" /> : <ArrowDownRight className="w-3 h-3 text-secondary" />}
+                                    <div className="text-right">
+                                        <p className="text-sm font-bold tracking-tight">${Number(pos.entry_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                        <div className="flex items-center justify-end gap-1">
+                                            <p className={cn("text-xs font-bold", (pos.unrealized_pnl || 0) >= 0 ? "text-primary" : "text-secondary")}>
+                                                {(pos.unrealized_pnl || 0) >= 0 ? '+' : ''}{Number(pos.unrealized_pnl || 0).toFixed(2)}
+                                            </p>
+                                            {(pos.unrealized_pnl || 0) >= 0 ? <ArrowUpRight className="w-3 h-3 text-primary" /> : <ArrowDownRight className="w-3 h-3 text-secondary" />}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

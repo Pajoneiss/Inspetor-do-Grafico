@@ -11,7 +11,10 @@ from typing import Dict, Any, Optional, List
 _pnl_cache: Optional[Dict[str, Any]] = None
 _pnl_cache_time: float = 0
 PNL_CACHE_TTL = 120  # 2 minutes
-HISTORY_FILE = os.path.join(os.path.dirname(__file__), "pnl_history.json")
+
+# History file path - Use environment variable for Railway Volume persistence
+_DATA_DIR = os.environ.get("DATA_VOLUME_PATH", os.path.dirname(__file__))
+HISTORY_FILE = os.path.join(_DATA_DIR, "pnl_history.json")
 MAX_HISTORY_POINTS = 1000  # Keep last 1000 points
 
 # Global hl_client reference (set by main.py)

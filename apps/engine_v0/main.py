@@ -27,6 +27,7 @@ from config import (
 from hl_client import HLClient
 from executor import execute
 from data_sources import get_all_external_data
+from reconciler import reconcile_open_trades  # v18.0: Reconcile passive exits
 
 # v11.0: Telegram bot integration
 try:
@@ -201,6 +202,13 @@ def main():
                     # Get recent fills
                     recent_fills = hl.get_recent_fills(limit=10)
                     state["recent_fills"] = recent_fills
+                    
+                    # v18.0: RECONCILIATION - Check for passive exits (SL/TP)
+                    try:
+                        from trade_journal import get_journal
+                        reconcile_open_trades(hl, get_journal())
+                    except Exception as e:
+                        print(f"[RECONCILE][WARN] Failed: {e}")
                     
                     # Get open orders (MCP-first)
                     open_orders = hl.get_open_orders()
