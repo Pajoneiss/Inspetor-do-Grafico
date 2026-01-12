@@ -131,12 +131,12 @@ const EquityChart = ({
         const endVal = chartData[chartData.length - 1].value;
         const isPositive = endVal >= startVal;
 
-        const lineColor = isPositive ? '#22c55e' : '#ef4444';
-        const gradientTop = isPositive ? 'rgba(34, 197, 94, 0.35)' : 'rgba(239, 68, 68, 0.35)';
-        const gradientMid = isPositive ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+        const lineColor = isPositive ? '#00FF41' : '#FF0000';
+        const gradientTop = isPositive ? 'rgba(0, 255, 65, 0.1)' : 'rgba(255, 0, 0, 0.1)';
+        const gradientMid = isPositive ? 'rgba(0, 255, 65, 0.05)' : 'rgba(255, 0, 0, 0.05)';
 
         // Draw grid
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+        ctx.strokeStyle = '#002200';
         ctx.lineWidth = 1;
         for (let i = 0; i <= 5; i++) {
             const y = (height / 5) * i;
@@ -175,12 +175,10 @@ const EquityChart = ({
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Draw current value dot
+        // Draw current value dot (Square)
         const lastPoint = points[points.length - 1];
-        ctx.beginPath();
-        ctx.arc(lastPoint[0], lastPoint[1], 3, 0, Math.PI * 2);
         ctx.fillStyle = lineColor;
-        ctx.fill();
+        ctx.fillRect(lastPoint[0] - 3, lastPoint[1] - 3, 6, 6);
 
         // Draw trade markers
         const minTime = chartData[0].time;
@@ -210,34 +208,28 @@ const EquityChart = ({
                     yPos = y1 + (y2 - y1) * ratio;
                 }
 
-                // Draw marker
+                // Draw marker (Square 8-bit style)
                 const isBuy = trade.side?.toLowerCase() === 'buy' || trade.side?.toLowerCase() === 'b';
                 const isPnlPositive = (trade.closed_pnl || 0) >= 0;
-                const markerColor = isBuy ? '#22c55e' : isPnlPositive ? '#22c55e' : '#ef4444';
+                const markerColor = isBuy ? '#00FF41' : isPnlPositive ? '#00FF41' : '#FF0000';
 
-                // Outer circle (glow)
-                ctx.beginPath();
-                ctx.arc(xPos, yPos, 6, 0, Math.PI * 2);
+                // Outer square (glow)
                 ctx.fillStyle = markerColor + '40';
-                ctx.fill();
+                ctx.fillRect(xPos - 6, yPos - 6, 12, 12);
 
-                // Inner circle
-                ctx.beginPath();
-                ctx.arc(xPos, yPos, 4, 0, Math.PI * 2);
+                // Inner square
                 ctx.fillStyle = markerColor;
-                ctx.fill();
+                ctx.fillRect(xPos - 4, yPos - 4, 8, 8);
 
-                // White center
-                ctx.beginPath();
-                ctx.arc(xPos, yPos, 2, 0, Math.PI * 2);
-                ctx.fillStyle = '#fff';
-                ctx.fill();
+                // Center dot
+                ctx.fillStyle = '#000';
+                ctx.fillRect(xPos - 2, yPos - 2, 4, 4);
             }
         });
 
         // Draw time labels
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.font = '10px Inter, sans-serif';
+        ctx.fillStyle = '#00FF41';
+        ctx.font = '10px "Courier New", monospace';
         const labelCount = 6;
         for (let i = 0; i < labelCount; i++) {
             const idx = Math.floor((i / (labelCount - 1)) * (data.length - 1));
@@ -262,7 +254,7 @@ const EquityChart = ({
         <div className="relative w-full h-full">
             {/* PnL Badge - Top Right */}
             <div className="absolute top-2 right-2 z-10">
-                <div className={`px-3 py-1.5 rounded-lg ${pnlValue >= 0 ? 'bg-green-500/20 border border-green-500/30' : 'bg-red-500/20 border border-red-500/30'}`}>
+                <div className={`px-3 py-1.5 border ${pnlValue >= 0 ? 'bg-green-900/20 border-green-500' : 'bg-red-900/20 border-red-500'}`}>
                     <div className="text-[10px] text-white/50 uppercase tracking-wider">{pnlPeriod} PERPS PNL</div>
                     <div className={`text-sm font-bold ${pnlValue >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {pnlValue >= 0 ? '+' : '-'}US$ {Math.abs(pnlValue).toFixed(2)}

@@ -31,7 +31,7 @@ import {
 import { cn } from "@/lib/utils";
 import SettingsModal from "@/components/SettingsModal";
 import { useSettings } from "@/hooks/useSettings";
-import AnimatedBackground from "@/components/AnimatedBackground";
+// AnimatedBackground removed for Matrix theme
 // UnifiedOverviewCard replaced by HyperDashOverview
 import HyperDashOverview from "@/components/HyperDashOverview";
 import Link from "next/link";
@@ -173,7 +173,7 @@ interface TransferInfo {
 const GlassCard = ({ children, className, delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) => (
   <div
     className={cn(
-      "glass-card rounded-[32px] p-6 overflow-hidden relative group transition-all duration-500 animate-in fade-in slide-in-from-bottom-4",
+      "glass-card p-6 overflow-hidden relative group transition-all duration-500 animate-in fade-in slide-in-from-bottom-4",
       "hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] hover:border-white/20 hover:-translate-y-1",
       className
     )}
@@ -1682,8 +1682,7 @@ function DashboardContent() {
         </footer>
       </main >
 
-      {/* Animated Background with Floating BTC/ETH Coins */}
-      < AnimatedBackground />
+      {/* Background Grid handled by global CSS */}
 
       {/* Settings Modal */}
       < SettingsModal
