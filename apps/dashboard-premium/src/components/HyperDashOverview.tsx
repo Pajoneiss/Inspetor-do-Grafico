@@ -422,7 +422,6 @@ export default function HyperDashOverview({
         if (!chartData || chartData.length === 0) return [];
         if (period === 'ALL') return chartData;
 
-        const now = Date.now();
         // If data is significantly old (> 1 day gap), we ideally align to the last data point for better UX,
         // but standard practice is wall-clock time. I'll stick to wall-clock for now.
         // Actually, let's use the LATEST data point timestamp to ensure we show *something* relevant if the bot was offline.
