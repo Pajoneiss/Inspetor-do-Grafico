@@ -286,8 +286,13 @@ export default function HyperDashOverview({
 
     // Format chart data - use history (equity) or fall back to pnl_history
     const chartData = useMemo(() => {
+        console.log('[CHART DEBUG] fullAnalytics:', fullAnalytics);
+        console.log('[CHART DEBUG] history length:', fullAnalytics?.history?.length);
+        console.log('[CHART DEBUG] pnl_history length:', fullAnalytics?.pnl_history?.length);
+
         // Try equity history first
         if (fullAnalytics?.history && fullAnalytics.history.length > 1) {
+            console.log('[CHART DEBUG] Using equity history');
             return fullAnalytics.history.map(h => ({
                 time: typeof h.time === 'number' ? h.time : new Date(h.time).getTime(),
                 value: h.value
@@ -295,6 +300,7 @@ export default function HyperDashOverview({
         }
         // Fall back to PnL history if equity history is empty
         if (fullAnalytics?.pnl_history && fullAnalytics.pnl_history.length > 1) {
+            console.log('[CHART DEBUG] Using pnl_history fallback');
             // Convert PnL to simulated equity (starting from current equity - total pnl)
             const baseEquity = equity - pnlTotal;
             return fullAnalytics.pnl_history.map(h => ({
@@ -302,6 +308,7 @@ export default function HyperDashOverview({
                 value: baseEquity + h.value
             }));
         }
+        console.log('[CHART DEBUG] No data available');
         return [];
     }, [fullAnalytics?.history, fullAnalytics?.pnl_history, equity, pnlTotal]);
 
