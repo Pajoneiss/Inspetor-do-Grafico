@@ -721,12 +721,14 @@ def api_analytics():
                                     pnl_total = current_pnl
                                     # Get equity history for chart (like HyperDash)
                                     acc_hist = period_data.get("accountValueHistory", [])
+                                    print(f"[ANALYTICS] allTime accountValueHistory has {len(acc_hist)} entries")
                                     for entry in acc_hist:
                                         equity_history.append({
                                             "time": entry[0],  # timestamp in ms
                                             "value": float(entry[1])
                                         })
                                     # Also get PnL history for chart
+                                    print(f"[ANALYTICS] allTime pnlHistory has {len(pnl_hist)} entries")
                                     for entry in pnl_hist:
                                         pnl_history_alltime.append({
                                             "time": entry[0],
@@ -734,6 +736,7 @@ def api_analytics():
                                         })
                         
                         print(f"[ANALYTICS] PnL fetched from Hyperliquid: 24h=${pnl_24h:.2f}, 7d=${pnl_7d:.2f}, 30d=${pnl_30d:.2f}, allTime=${pnl_total:.2f}")
+                        print(f"[ANALYTICS] History counts: equity={len(equity_history)}, pnl={len(pnl_history_alltime)}")
             except Exception as e:
                 print(f"[ANALYTICS] Portfolio API error: {e}")
                 import traceback
