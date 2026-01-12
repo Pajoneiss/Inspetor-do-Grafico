@@ -454,7 +454,7 @@ function DashboardContent() {
       if (allThoughtRes.ok) setAllThoughts(allThoughtRes.data);
       if (thoughtRes.ok) setThoughts(thoughtRes.data);
       if (pnlRes.ok) { /* setPnlData(pnlRes.data); - pnlData removed as unused */ }
-      if (historyRes.ok && Array.isArray(historyRes.data)) setPnlHistory(historyRes.data);
+      if (historyRes.ok && Array.isArray(historyRes.data)) _setPnlHistory(historyRes.data);
       if (tradeLogsRes.ok && tradeLogsRes.data && tradeLogsRes.data.length > 0) {
         setTradeLog(tradeLogsRes.data[0]);
         _setTradeLogs(tradeLogsRes.data);
