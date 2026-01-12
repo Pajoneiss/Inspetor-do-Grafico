@@ -205,31 +205,44 @@ export default function UnifiedOverviewCard({
         }
     }, [positions]);
 
-    // Safely calculate PnL (realized from history + unrealized from open positions)
+    // Safely calculate PnL from fullAnalytics based on selected period
     const pnlValue = useMemo(() => {
-        if (pnlPeriod === 'ALL' && fullAnalytics?.pnl_total !== undefined) {
-            return fullAnalytics.pnl_total;
+        // Use fullAnalytics values from Hyperliquid API based on period
+        if (fullAnalytics) {
+            const activePeriod = pnlPeriod || period;
+            switch (activePeriod) {
+                case '24H':
+                    if (fullAnalytics.pnl_24h !== undefined) return fullAnalytics.pnl_24h;
+                    break;
+                case '7D':
+                    if (fullAnalytics.pnl_7d !== undefined) return fullAnalytics.pnl_7d;
+                    break;
+                case '30D':
+                    if (fullAnalytics.pnl_30d !== undefined) return fullAnalytics.pnl_30d;
+                    break;
+                case 'ALL':
+                    if (fullAnalytics.pnl_total !== undefined) return fullAnalytics.pnl_total;
+                    break;
+            }
         }
 
+        // Fallback: try to calculate from history
         try {
-            let realizedPnl = 0;
             const currentHistory = fullAnalytics?.history || history;
-            if (currentHistory && currentHistory.length > 1 && currentHistory[0]?.value !== undefined && currentHistory[currentHistory.length - 1]?.value !== undefined) {
+            if (currentHistory && currentHistory.length > 1) {
                 const start = Number(currentHistory[0].value);
                 const end = Number(currentHistory[currentHistory.length - 1].value);
                 if (!isNaN(start) && !isNaN(end)) {
-                    realizedPnl = end - start;
+                    return end - start + unrealizedPnl;
                 }
-            } else {
-                realizedPnl = Number(status?.pnl_24h || 0);
             }
-            // Add unrealized PnL for complete picture
-            return realizedPnl + unrealizedPnl;
         } catch (error) {
             console.error("PnL Calc error:", error);
-            return unrealizedPnl; // At least show unrealized if calculation fails
         }
-    }, [history, fullAnalytics, status, unrealizedPnl, pnlPeriod]);
+
+        // Last fallback: unrealized only
+        return unrealizedPnl;
+    }, [history, fullAnalytics, status, unrealizedPnl, pnlPeriod, period]);
 
     const pnlPercent = useMemo(() => {
         try {
