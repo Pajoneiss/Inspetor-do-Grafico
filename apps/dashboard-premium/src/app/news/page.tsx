@@ -11,7 +11,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
-import AnimatedBackground from "@/components/AnimatedBackground";
+// AnimatedBackground removed for Matrix theme
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/hooks/useSettings";
 
@@ -122,8 +122,7 @@ export default function NewsPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-6 lg:p-10 relative overflow-hidden">
-      {/* Animated Background with Floating Coins */}
-      <AnimatedBackground />
+      {/* Background Grid handled by global CSS */}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/10">
