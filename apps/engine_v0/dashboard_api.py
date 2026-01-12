@@ -672,21 +672,45 @@ def api_analytics():
     """
     Get comprehensive analytics data from Hyperliquid blockchain.
     Calculates ALL metrics from fills: Win Rate, Best/Worst Trade, Profit Factor, etc.
+    Fetches PnL directly from Hyperliquid Portfolio API (no hl_client needed).
     """
     try:
-        from pnl_tracker import get_pnl_windows, get_pnl_history
+        from pnl_tracker import get_pnl_history
         
-        # Get PnL from Hyperliquid Portfolio API
-        pnl_data = get_pnl_windows()
+        # Get wallet address
+        wallet = os.environ.get("HYPERLIQUID_WALLET_ADDRESS", "")
+        
+        # Initialize PnL values
+        pnl_24h = 0
+        pnl_7d = 0
+        pnl_30d = 0
+        pnl_total = 0
+        
+        # Fetch PnL directly from Hyperliquid Portfolio API
+        if wallet:
+            try:
+                portfolio_resp = requests.post(
+                    "https://api.hyperliquid.xyz/info",
+                    json={"type": "portfolio", "user": wallet},
+                    timeout=15
+                )
+                if portfolio_resp.status_code == 200:
+                    portfolio_data = portfolio_resp.json()
+                    if portfolio_data and isinstance(portfolio_data, list) and len(portfolio_data) > 0:
+                        latest = portfolio_data[-1]
+                        if isinstance(latest, list) and len(latest) >= 2:
+                            pnl_obj = latest[1]
+                            pnl_24h = float(pnl_obj.get("day", {}).get("pnl", 0))
+                            pnl_7d = float(pnl_obj.get("week", {}).get("pnl", 0))
+                            pnl_30d = float(pnl_obj.get("month", {}).get("pnl", 0))
+                            pnl_total = float(pnl_obj.get("allTime", {}).get("pnl", 0))
+                            print(f"[ANALYTICS] PnL fetched: 24h=${pnl_24h:.2f}, 7d=${pnl_7d:.2f}, 30d=${pnl_30d:.2f}, all=${pnl_total:.2f}")
+            except Exception as e:
+                print(f"[ANALYTICS] Portfolio API error: {e}")
         
         # Get history for chart
         history = get_pnl_history()
         
-        # Extract PnL values from Hyperliquid
-        pnl_24h = pnl_data.get("24h", {}).get("pnl", 0) if isinstance(pnl_data.get("24h"), dict) else 0
-        pnl_7d = pnl_data.get("7d", {}).get("pnl", 0) if isinstance(pnl_data.get("7d"), dict) else 0
-        pnl_30d = pnl_data.get("30d", {}).get("pnl", 0) if isinstance(pnl_data.get("30d"), dict) else 0
-        pnl_total = pnl_data.get("allTime", {}).get("pnl", 0) if isinstance(pnl_data.get("allTime"), dict) else 0
         
         # Initialize metrics
         total_trades = 0
