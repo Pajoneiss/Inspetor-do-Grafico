@@ -256,6 +256,7 @@ export default function HyperDashOverview({
     fullAnalytics,
     positions,
     recentFills,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _openOrders = [],
     period,
     setPeriod,
