@@ -49,6 +49,7 @@ interface FillInfo {
     size: number;
     value: number;
     closed_pnl?: number;
+    dir?: string;
 }
 
 interface OrderInfo {
@@ -611,22 +612,70 @@ export default function HyperDashOverview({
                                     <div className="text-center py-6 text-white/30 text-xs">No active positions</div>
                                 )
                             )}
+                            )}
+                            {activeTab === 'BALANCES' && (
+                                <div className="space-y-1">
+                                    <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-[10px] font-bold">U</div>
+                                            <span className="text-white font-medium">USDC</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-white font-mono">${(status?.equity || 0).toFixed(2)}</div>
+                                            <div className="text-[9px] text-white/40">Collateral</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {activeTab === 'TRADES' && (
+                                recentFills.length > 0 ? (
+                                    <div className="space-y-1">
+                                        {recentFills.slice(0, 10).map((fill, idx) => {
+                                            const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
+                                            return (
+                                                <div key={idx} className="flex items-center justify-between py-1 border-b border-white/5">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-white font-medium">{fill.symbol}</span>
+                                                        <span className={`text-[8px] px-1 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                            {isLong ? 'LONG' : 'SHORT'}
+                                                        </span>
+                                                    </div>
+                                                    <span className={`${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : `$${fill.price.toFixed(2)}`}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-6 text-white/30 text-xs">No recent trades</div>
+                                )
+                            )}
+                            {activeTab === 'TWAP' && (
+                                <div className="text-center py-6 text-white/30 text-xs">No active TWAP orders</div>
+                            )}
+                            {activeTab === 'TRANSFERS' && (
+                                <div className="text-center py-6 text-white/30 text-xs">No recent transfers</div>
+                            )}
                             {activeTab === 'FILLS' && (
                                 recentFills.length > 0 ? (
                                     <div className="space-y-1">
-                                        {recentFills.slice(0, 5).map((fill, idx) => (
-                                            <div key={idx} className="flex items-center justify-between py-1 border-b border-white/5">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-white font-medium">{fill.symbol}</span>
-                                                    <span className={`text-[8px] px-1 rounded ${fill.side === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                        {fill.side.toUpperCase()}
+                                        {recentFills.slice(0, 5).map((fill, idx) => {
+                                            const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
+                                            return (
+                                                <div key={idx} className="flex items-center justify-between py-1 border-b border-white/5">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-white font-medium">{fill.symbol}</span>
+                                                        <span className={`text-[8px] px-1 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                            {isLong ? 'LONG' : 'SHORT'}
+                                                        </span>
+                                                    </div>
+                                                    <span className={`${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : `$${fill.price.toFixed(2)}`}
                                                     </span>
                                                 </div>
-                                                <span className={`${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                    {fill.closed_pnl ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : `$${fill.price.toFixed(2)}`}
-                                                </span>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <div className="text-center py-6 text-white/30 text-xs">No recent fills</div>
@@ -718,28 +767,31 @@ export default function HyperDashOverview({
                                     <span className="text-[10px] text-white/40 uppercase tracking-wider">Live Trade History</span>
                                 </div>
                                 {recentFills.length > 0 ? (
-                                    recentFills.slice(0, 15).map((fill, idx) => (
-                                        <div key={idx} className="p-2 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-[8px] font-bold">
-                                                        {fill.symbol.substring(0, 2)}
+                                    recentFills.slice(0, 15).map((fill, idx) => {
+                                        const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
+                                        return (
+                                            <div key={idx} className="p-2 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-[8px] font-bold">
+                                                            {fill.symbol.substring(0, 2)}
+                                                        </div>
+                                                        <span className="text-xs font-medium text-white">{fill.symbol}</span>
+                                                        <span className={`text-[9px] px-1.5 py-0.5 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                            {isLong ? 'Long' : 'Short'}
+                                                        </span>
                                                     </div>
-                                                    <span className="text-xs font-medium text-white">{fill.symbol}</span>
-                                                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${(fill.side?.toLowerCase() === 'buy' || fill.side?.toLowerCase() === 'long') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                        {(fill.side?.toLowerCase() === 'buy' || fill.side?.toLowerCase() === 'long') ? 'Long' : 'Short'}
+                                                    <span className={`text-xs font-bold ${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : '--'}
                                                     </span>
                                                 </div>
-                                                <span className={`text-xs font-bold ${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                    {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : '--'}
-                                                </span>
+                                                <div className="flex items-center justify-between text-[9px] text-white/40">
+                                                    <span>${fill.price.toFixed(2)} × {fill.size}</span>
+                                                    <span>{fill.timestamp ? new Date(fill.timestamp).toLocaleString() : '--'}</span>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center justify-between text-[9px] text-white/40">
-                                                <span>${fill.price.toFixed(2)} × {fill.size}</span>
-                                                <span>{fill.timestamp ? new Date(fill.timestamp).toLocaleString() : '--'}</span>
-                                            </div>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 ) : (
                                     <div className="text-center py-8 text-white/30 text-xs">No trade history</div>
                                 )}

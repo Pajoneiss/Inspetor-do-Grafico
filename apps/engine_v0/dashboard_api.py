@@ -1144,7 +1144,7 @@ def api_user_trades():
                 "fee": float(fill.get("fee", 0)),
                 "timestamp": fill.get("time"),
                 "hash": fill.get("hash"),
-                "closed_pnl": float(fill.get("closedPnl", 0)),
+                "closed_pnl": float(fill.get("closedPnl")) if fill.get("closedPnl") is not None else None,
                 "dir": fill.get("dir", ""),
                 "oid": fill.get("oid")
             })
