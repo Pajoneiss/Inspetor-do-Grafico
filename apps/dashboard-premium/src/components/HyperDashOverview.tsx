@@ -118,14 +118,15 @@ const EquityChart = ({
 
         ctx.clearRect(0, 0, width, height);
 
-        const values = data.map(d => d.value);
+        const chartData = [...data].sort((a, b) => a.time - b.time);
+        const values = chartData.map(d => d.value);
         const minVal = Math.min(...values);
         const maxVal = Math.max(...values);
         const range = maxVal - minVal || 1;
         const padding = range * 0.1;
 
-        const startVal = data[0].value;
-        const endVal = data[data.length - 1].value;
+        const startVal = chartData[0].value;
+        const endVal = chartData[chartData.length - 1].value;
         const isPositive = endVal >= startVal;
 
         const lineColor = isPositive ? '#22c55e' : '#ef4444';
@@ -144,8 +145,8 @@ const EquityChart = ({
         }
 
         // Calculate points
-        const points: [number, number][] = data.map((d, i) => {
-            const x = (i / (data.length - 1)) * width;
+        const points: [number, number][] = chartData.map((d, i) => {
+            const x = (i / (chartData.length - 1)) * width;
             const y = height - ((d.value - minVal + padding) / (range + padding * 2)) * height;
             return [x, y];
         });
@@ -180,8 +181,8 @@ const EquityChart = ({
         ctx.fill();
 
         // Draw trade markers
-        const minTime = data[0].time;
-        const maxTime = data[data.length - 1].time;
+        const minTime = chartData[0].time;
+        const maxTime = chartData[chartData.length - 1].time;
         const timeRange = maxTime - minTime;
 
         trades.forEach(trade => {
@@ -191,16 +192,16 @@ const EquityChart = ({
                 const xPos = ((tradeTime - minTime) / timeRange) * width;
 
                 // Find closest data points for y position (Linear Interpolation)
-                let nextIdx = data.findIndex(d => d.time > tradeTime);
-                if (nextIdx === -1) nextIdx = data.length - 1; // After last point
+                let nextIdx = chartData.findIndex(d => d.time > tradeTime);
+                if (nextIdx === -1) nextIdx = chartData.length - 1; // After last point
                 const prevIdx = Math.max(0, nextIdx > 0 ? nextIdx - 1 : 0);
 
                 let yPos;
                 if (prevIdx === nextIdx) {
                     yPos = points[prevIdx][1];
                 } else {
-                    const t1 = data[prevIdx].time;
-                    const t2 = data[nextIdx].time;
+                    const t1 = chartData[prevIdx].time;
+                    const t2 = chartData[nextIdx].time;
                     const y1 = points[prevIdx][1];
                     const y2 = points[nextIdx][1];
                     const ratio = (tradeTime - t1) / (t2 - t1);
@@ -355,7 +356,7 @@ const MiniTradingViewChart = ({ symbol }: { symbol: string }) => {
     }, [symbol, containerId]);
 
     return (
-        <div id={containerId} className="w-full h-[40px] rounded overflow-hidden opacity-80" />
+        <div id={containerId} className="w-full h-full rounded overflow-hidden" />
     );
 };
 
@@ -593,7 +594,7 @@ export default function HyperDashOverview({
                                                         </div>
                                                     </td>
                                                     <td className="py-1.5">
-                                                        <div className="w-24 h-10 mx-auto opacity-70">
+                                                        <div className="w-32 h-16 mx-auto">
                                                             <MiniTradingViewChart symbol={pos.symbol} />
                                                         </div>
                                                     </td>
