@@ -712,12 +712,12 @@ export default function HyperDashOverview({
                                                         {fill.symbol.substring(0, 2)}
                                                     </div>
                                                     <span className="text-xs font-medium text-white">{fill.symbol}</span>
-                                                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${fill.side === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                        {fill.side === 'buy' ? 'Long' : 'Short'}
+                                                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${(fill.side?.toLowerCase() === 'buy' || fill.side?.toLowerCase() === 'long') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                        {(fill.side?.toLowerCase() === 'buy' || fill.side?.toLowerCase() === 'long') ? 'Long' : 'Short'}
                                                     </span>
                                                 </div>
                                                 <span className={`text-xs font-bold ${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                    {fill.closed_pnl ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : '--'}
+                                                    {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : '--'}
                                                 </span>
                                             </div>
                                             <div className="flex items-center justify-between text-[9px] text-white/40">
