@@ -667,6 +667,95 @@ def api_pnl_summary():
         }), 500
 
 
+@app.route('/api/analytics')
+def api_analytics():
+    """
+    Get comprehensive analytics data from Hyperliquid blockchain.
+    Returns history, win_rate, profit_factor, total_trades, volume, pnl values.
+    """
+    try:
+        from pnl_tracker import get_pnl_windows, get_pnl_history
+        from trade_journal import get_journal
+        
+        # Get PnL from Hyperliquid
+        pnl_data = get_pnl_windows()
+        
+        # Get history for chart
+        history = get_pnl_history()
+        
+        # Get stats from journal
+        journal = get_journal()
+        journal_stats = journal.get_stats()
+        
+        # Extract PnL values
+        pnl_24h = pnl_data.get("24h", {}).get("pnl", 0) if isinstance(pnl_data.get("24h"), dict) else 0
+        pnl_total = pnl_data.get("allTime", {}).get("pnl", 0) if isinstance(pnl_data.get("allTime"), dict) else 0
+        
+        # Calculate profit factor from journal
+        wins = journal_stats.get("wins", 0)
+        losses = journal_stats.get("losses", 0)
+        total_trades = journal_stats.get("total_trades", 0)
+        
+        # Win rate
+        win_rate = 0
+        if total_trades > 0:
+            win_rate = (wins / total_trades) * 100
+        
+        # Profit factor (rough estimate)
+        profit_factor = 1.0
+        total_pnl = journal_stats.get("total_pnl_usd", 0)
+        if total_pnl > 0 and losses > 0:
+            profit_factor = abs(total_pnl / (losses * 10))  # Rough estimate
+        
+        # Volume estimate from fills
+        volume = 0
+        try:
+            wallet = os.environ.get("HYPERLIQUID_WALLET_ADDRESS", "")
+            if wallet:
+                fills_url = f"https://api.hyperliquid.xyz/info"
+                fills_resp = requests.post(fills_url, json={
+                    "type": "userFills",
+                    "user": wallet
+                }, timeout=10)
+                if fills_resp.status_code == 200:
+                    fills = fills_resp.json()
+                    for fill in fills[:100]:  # Last 100 fills
+                        volume += abs(float(fill.get("sz", 0)) * float(fill.get("px", 0)))
+        except Exception as e:
+            print(f"[ANALYTICS] Volume calc error: {e}")
+        
+        return jsonify({
+            "ok": True,
+            "data": {
+                "history": history,
+                "pnl_24h": pnl_24h,
+                "pnl_total": pnl_total,
+                "win_rate": round(win_rate, 1),
+                "profit_factor": round(profit_factor, 2),
+                "total_trades": total_trades,
+                "volume": round(volume, 2)
+            },
+            "server_time_ms": int(time.time() * 1000)
+        })
+    except Exception as e:
+        print(f"[DASHBOARD][ERROR] Analytics failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "data": {
+                "history": [],
+                "pnl_24h": 0,
+                "pnl_total": 0,
+                "win_rate": 0,
+                "profit_factor": 1.0,
+                "total_trades": 0,
+                "volume": 0
+            }
+        }), 500
+
+
 @app.route('/api/pnl/history')
 @app.route('/api/history')
 @app.route('/api/pnl')
