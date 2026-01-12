@@ -306,9 +306,9 @@ const MiniTradingViewChart = ({ symbol }: { symbol: string }) => {
         let script = document.getElementById(scriptId) as HTMLScriptElement;
 
         const initWidget = () => {
-            // @ts-ignore
+            // @ts-expect-error TradingView global
             if (window.TradingView) {
-                // @ts-ignore
+                // @ts-expect-error TradingView constructor
                 new window.TradingView.widget({
                     "autosize": true,
                     "symbol": `${symbol}USDT.P`, // Assuming symbol format
