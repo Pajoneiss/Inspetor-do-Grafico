@@ -874,9 +874,13 @@ function DashboardContent() {
                 fullAnalytics={fullAnalytics}
                 positions={positions}
                 recentFills={recentFills}
+                openOrders={openOrders}
                 period={pnlPeriod}
                 setPeriod={setPnlPeriod}
                 isLoading={loading}
+                thoughts={thoughts}
+                aiMood={aiMood}
+                sessionInfo={sessionInfo}
               />
             </div>
 
