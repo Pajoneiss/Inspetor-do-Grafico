@@ -875,7 +875,7 @@ function DashboardContent() {
                 period={pnlPeriod}
                 setPeriod={setPnlPeriod}
                 isLoading={loading}
-                thoughts={thoughts}
+                thoughts={allThoughts}
                 aiMood={aiMood}
                 sessionInfo={sessionInfo}
               />
