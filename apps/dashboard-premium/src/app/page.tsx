@@ -367,7 +367,7 @@ function DashboardContent() {
   const [time, setTime] = useState(new Date());
   const [status, setStatus] = useState<DashboardData | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
-  const [thoughts, setThoughts] = useState<AIThought[]>([]);
+  // const [thoughts, setThoughts] = useState<AIThought[]>([]); // Removed as unused, using allThoughts
   const [allThoughts, setAllThoughts] = useState<AIThought[]>([]); // Full logs including HOLDs
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -452,7 +452,7 @@ function DashboardContent() {
       if (statusRes.ok) setStatus(statusRes.data);
       if (posRes.ok) setPositions(posRes.data);
       if (allThoughtRes.ok) setAllThoughts(allThoughtRes.data);
-      if (thoughtRes.ok) setThoughts(thoughtRes.data);
+      // if (thoughtRes.ok) setThoughts(thoughtRes.data); // Unused state
       if (pnlRes.ok) { /* setPnlData(pnlRes.data); - pnlData removed as unused */ }
       if (historyRes.ok && Array.isArray(historyRes.data)) _setPnlHistory(historyRes.data);
       if (tradeLogsRes.ok && tradeLogsRes.data && tradeLogsRes.data.length > 0) {
