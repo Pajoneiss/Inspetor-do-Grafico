@@ -545,7 +545,7 @@ function DashboardContent() {
     try {
       const res = await fetch(`${API_URL}/api/pnl/history?period=${pnlPeriod}`);
       const data = await res.json();
-      if (data.ok && Array.isArray(data.data)) setPnlHistory(data.data);
+      if (data.ok && Array.isArray(data.data)) _setPnlHistory(data.data);
     } catch (e) {
       console.error("History fetch error:", e);
     }
