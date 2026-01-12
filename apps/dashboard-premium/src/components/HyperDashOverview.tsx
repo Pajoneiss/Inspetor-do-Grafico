@@ -90,12 +90,14 @@ const EquityChart = ({
     data,
     isLoading,
     pnlValue,
-    pnlPeriod
+    pnlPeriod,
+    trades = []
 }: {
     data: Array<{ time: number; value: number }>;
     isLoading: boolean;
     pnlValue: number;
     pnlPeriod: string;
+    trades?: Array<{ timestamp?: string; time?: number; side: string; closed_pnl?: number }>;
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -177,6 +179,46 @@ const EquityChart = ({
         ctx.fillStyle = lineColor;
         ctx.fill();
 
+        // Draw trade markers
+        const minTime = data[0].time;
+        const maxTime = data[data.length - 1].time;
+        const timeRange = maxTime - minTime;
+
+        trades.forEach(trade => {
+            const tradeTime = trade.time || (trade.timestamp ? new Date(trade.timestamp).getTime() : 0);
+            if (tradeTime >= minTime && tradeTime <= maxTime) {
+                // Find x position based on time
+                const xPos = ((tradeTime - minTime) / timeRange) * width;
+
+                // Find closest data point for y position
+                const closestIdx = data.findIndex(d => d.time >= tradeTime) || data.length - 1;
+                const yPos = points[Math.min(closestIdx, points.length - 1)][1];
+
+                // Draw marker
+                const isBuy = trade.side?.toLowerCase() === 'buy' || trade.side?.toLowerCase() === 'b';
+                const isPnlPositive = (trade.closed_pnl || 0) >= 0;
+                const markerColor = isBuy ? '#22c55e' : isPnlPositive ? '#22c55e' : '#ef4444';
+
+                // Outer circle (glow)
+                ctx.beginPath();
+                ctx.arc(xPos, yPos, 6, 0, Math.PI * 2);
+                ctx.fillStyle = markerColor + '40';
+                ctx.fill();
+
+                // Inner circle
+                ctx.beginPath();
+                ctx.arc(xPos, yPos, 4, 0, Math.PI * 2);
+                ctx.fillStyle = markerColor;
+                ctx.fill();
+
+                // White center
+                ctx.beginPath();
+                ctx.arc(xPos, yPos, 2, 0, Math.PI * 2);
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+            }
+        });
+
         // Draw time labels
         ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.font = '10px Inter, sans-serif';
@@ -190,7 +232,7 @@ const EquityChart = ({
             ctx.fillText(label, x - 15, height - 5);
         }
 
-    }, [data]);
+    }, [data, trades]);
 
     if (isLoading || !data || data.length < 2) {
         return (
@@ -251,6 +293,58 @@ const MetricRow = ({ label, value, valueColor = 'text-white' }: {
         <span className={`text-xs font-medium ${valueColor}`}>{value}</span>
     </div>
 );
+
+// --- Mini TradingView Chart Component ---
+const MiniTradingViewChart = ({ symbol }: { symbol: string }) => {
+    // Generate a sanitized ID
+    const containerId = React.useMemo(() =>
+        `tv_mini_${symbol.replace(/[^a-zA-Z0-9]/g, '')}_${Math.random().toString(36).substr(2, 9)}`,
+        [symbol]);
+
+    useEffect(() => {
+        const scriptId = 'tradingview-widget-script';
+        let script = document.getElementById(scriptId) as HTMLScriptElement;
+
+        const initWidget = () => {
+            // @ts-ignore
+            if (window.TradingView) {
+                // @ts-ignore
+                new window.TradingView.widget({
+                    "autosize": true,
+                    "symbol": `${symbol}USDT.P`, // Assuming symbol format
+                    "interval": "60",
+                    "timezone": "Etc/UTC",
+                    "theme": "dark",
+                    "style": "3", // Area chart
+                    "locale": "en",
+                    "enable_publishing": false,
+                    "hide_top_toolbar": true,
+                    "hide_legend": true,
+                    "hide_side_toolbar": true,
+                    "allow_symbol_change": false,
+                    "container_id": containerId,
+                    "backgroundColor": "rgba(0, 0, 0, 0)",
+                    "hide_volume": true
+                });
+            }
+        };
+
+        if (!script) {
+            script = document.createElement('script');
+            script.id = scriptId;
+            script.src = 'https://s3.tradingview.com/tv.js';
+            script.async = true;
+            script.onload = initWidget;
+            document.head.appendChild(script);
+        } else {
+            initWidget();
+        }
+    }, [symbol, containerId]);
+
+    return (
+        <div id={containerId} className="w-full h-[40px] rounded overflow-hidden opacity-80" />
+    );
+};
 
 // Main Component
 export default function HyperDashOverview({
@@ -431,6 +525,7 @@ export default function HyperDashOverview({
                             isLoading={isLoading}
                             pnlValue={currentPnl}
                             pnlPeriod={period}
+                            trades={recentFills}
                         />
                     </div>
 
@@ -462,6 +557,7 @@ export default function HyperDashOverview({
                                         <thead>
                                             <tr className="text-white/40 border-b border-white/5">
                                                 <th className="text-left py-1.5 font-medium">ASSET</th>
+                                                <th className="text-center py-1.5 font-medium">CHART</th>
                                                 <th className="text-right py-1.5 font-medium">SIZE</th>
                                                 <th className="text-right py-1.5 font-medium">LEV</th>
                                                 <th className="text-right py-1.5 font-medium">VALUE</th>
@@ -481,6 +577,11 @@ export default function HyperDashOverview({
                                                             <span className={`text-[8px] px-1 rounded ${pos.side === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                                                                 {pos.side}
                                                             </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-1.5">
+                                                        <div className="w-24 h-10 mx-auto opacity-70">
+                                                            <MiniTradingViewChart symbol={pos.symbol} />
                                                         </div>
                                                     </td>
                                                     <td className="py-1.5 text-right text-white/60">{pos.size.toFixed(4)}</td>

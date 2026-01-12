@@ -881,163 +881,165 @@ function DashboardContent() {
               />
             </div>
 
-            {/* Portfolio History Section (Restored from Analytics) */}
-            <GlassCard className="min-h-[400px] flex flex-col border border-white/5 bg-[#0b0c10]/50 mt-8" delay={0.2}>
-              <div className="flex-1">
-                {/* Tabs */}
-                <div className="flex items-center gap-1 mb-6 overflow-x-auto no-scrollbar border-b border-white/5 pb-4">
-                  {(['Open Orders', 'Recent Fills', 'Completed Trades', 'TWAP', 'Deposits & Withdrawals'] as const).map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveFleetTab(tab)}
-                      className={cn(
-                        "px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all",
-                        activeFleetTab === tab
-                          ? "bg-primary/20 text-primary shadow-sm ring-1 ring-primary/30"
-                          : "text-muted-foreground hover:text-white"
-                      )}
-                    >
-                      {isPt ? {
-                        'Asset Positions': 'Posições',
-                        'Open Orders': 'Ordens Abertas',
-                        'Recent Fills': 'Execuções Recentes',
-                        'Completed Trades': 'Trades Completos',
-                        'TWAP': 'TWAP',
-                        'Deposits & Withdrawals': 'Depósitos & Saques'
-                      }[tab] : tab}
-                    </button>
-                  ))}
+            {/* Portfolio History Section - functionality unified in HyperDashOverview */}
+            {false && (
+              <GlassCard className="min-h-[400px] flex flex-col border border-white/5 bg-[#0b0c10]/50 mt-8" delay={0.2}>
+                <div className="flex-1">
+                  {/* Tabs */}
+                  <div className="flex items-center gap-1 mb-6 overflow-x-auto no-scrollbar border-b border-white/5 pb-4">
+                    {(['Open Orders', 'Recent Fills', 'Completed Trades', 'TWAP', 'Deposits & Withdrawals'] as const).map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveFleetTab(tab)}
+                        className={cn(
+                          "px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all",
+                          activeFleetTab === tab
+                            ? "bg-primary/20 text-primary shadow-sm ring-1 ring-primary/30"
+                            : "text-muted-foreground hover:text-white"
+                        )}
+                      >
+                        {isPt ? {
+                          'Asset Positions': 'Posições',
+                          'Open Orders': 'Ordens Abertas',
+                          'Recent Fills': 'Execuções Recentes',
+                          'Completed Trades': 'Trades Completos',
+                          'TWAP': 'TWAP',
+                          'Deposits & Withdrawals': 'Depósitos & Saques'
+                        }[tab] : tab}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Dynamic Table Content */}
+                  <div className="overflow-x-auto min-h-[300px]">
+                    {activeFleetTab === 'Open Orders' && (
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] border-b border-white/5">
+                            <th className="pb-4 pl-2 font-bold">Symbol</th>
+                            <th className="pb-4 font-bold">Type</th>
+                            <th className="pb-4 font-bold">Side</th>
+                            <th className="pb-4 font-bold text-right">Price</th>
+                            <th className="pb-4 font-bold text-right">Size</th>
+                            <th className="pb-4 pr-2 font-bold text-right">Trigger</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-sm">
+                          {openOrders.length > 0 ? (
+                            openOrders.map((order, idx) => (
+                              <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                                <td className="py-4 pl-2 font-bold text-white">{order.symbol}</td>
+                                <td className="py-4 font-mono text-muted-foreground text-xs">{order.type}</td>
+                                <td className="py-4">
+                                  <span className={cn("px-2 py-0.5 rounded text-[9px] font-black uppercase", order.side === 'BUY' ? "bg-primary/10 text-primary" : "bg-red-500/10 text-red-400")}>
+                                    {order.side}
+                                  </span>
+                                </td>
+                                <td className="py-4 font-mono text-white text-right">${Number(order.price)?.toFixed(2)}</td>
+                                <td className="py-4 font-mono text-muted-foreground text-right">{order.size}</td>
+                                <td className="py-4 pr-2 text-right font-mono text-muted-foreground text-xs">{order.trigger_px ? `$${Number(order.trigger_px).toFixed(2)}` : '—'}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr className="border-b border-white/5">
+                              <td colSpan={6} className="py-20 text-center text-muted-foreground/30 text-xs uppercase tracking-widest font-bold">
+                                No open orders found in current session
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+
+                    {activeFleetTab === 'Recent Fills' && (
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] border-b border-white/5">
+                            <th className="pb-4 pl-2 font-bold">Time</th>
+                            <th className="pb-4 font-bold">Symbol</th>
+                            <th className="pb-4 font-bold">Side</th>
+                            <th className="pb-4 font-bold text-right">Price</th>
+                            <th className="pb-4 font-bold text-right">Value</th>
+                            <th className="pb-4 pr-2 font-bold text-right">PnL</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-sm">
+                          {recentFills.length > 0 ? (
+                            recentFills.map((fill, idx) => (
+                              <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                                <td className="py-4 pl-2 font-mono text-muted-foreground text-[10px]">{fill.timestamp ? new Date(fill.timestamp).toLocaleString() : '—'}</td>
+                                <td className="py-4 font-bold text-white">{fill.symbol}</td>
+                                <td className="py-4">
+                                  <span className={cn("px-2 py-0.5 rounded text-[9px] font-black uppercase", fill.side === 'BUY' ? "bg-primary/10 text-primary" : "bg-red-500/10 text-red-400")}>
+                                    {fill.side}
+                                  </span>
+                                </td>
+                                <td className="py-4 font-mono text-white text-right">${Number(fill.price)?.toFixed(2)}</td>
+                                <td className="py-4 font-mono text-muted-foreground text-right">${Number(fill.value)?.toFixed(2)}</td>
+                                <td className={cn("py-4 pr-2 text-right font-mono font-bold", (fill.closed_pnl ?? 0) >= 0 ? "text-primary" : "text-red-400")}>
+                                  {fill.closed_pnl !== undefined ? `${fill.closed_pnl >= 0 ? '+' : ''}$${Number(fill.closed_pnl).toFixed(2)}` : '—'}
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr className="border-b border-white/5">
+                              <td colSpan={6} className="py-20 text-center text-muted-foreground/30 text-xs uppercase tracking-widest font-bold">
+                                No recent portfolio history detected
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+
+                    {activeFleetTab === 'Deposits & Withdrawals' && (
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] border-b border-white/5">
+                            <th className="pb-4 pl-2 font-bold">Time</th>
+                            <th className="pb-4 font-bold">Type</th>
+                            <th className="pb-4 font-bold text-right">Amount</th>
+                            <th className="pb-4 pr-2 font-bold text-right">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-sm">
+                          {transfers.length > 0 ? (
+                            transfers.map((transfer, idx) => (
+                              <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                                <td className="py-4 pl-2 font-mono text-muted-foreground text-[10px]">{transfer.timestamp ? new Date(transfer.timestamp).toLocaleDateString() : '—'}</td>
+                                <td className="py-4">
+                                  <span className={cn("px-2 py-0.5 rounded text-[9px] font-black uppercase", transfer.type === 'DEPOSIT' ? "bg-primary/10 text-primary" : "bg-red-500/10 text-red-400")}>
+                                    {transfer.type}
+                                  </span>
+                                </td>
+                                <td className={cn("py-4 font-mono font-bold text-right", transfer.amount >= 0 ? "text-primary" : "text-red-400")}>
+                                  {transfer.amount >= 0 ? '+' : ''}${Math.abs(transfer.amount).toFixed(2)}
+                                </td>
+                                <td className="py-4 pr-2 text-right font-mono text-primary text-[10px] uppercase font-black">{transfer.status}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr className="border-b border-white/5">
+                              <td colSpan={4} className="py-20 text-center text-muted-foreground/30 text-xs uppercase tracking-widest font-bold">
+                                No transfer history available
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    )}
+
+                    {['Completed Trades', 'TWAP'].includes(activeFleetTab) && (
+                      <div className="py-20 flex flex-col items-center justify-center text-muted-foreground/30">
+                        <Layers className="w-12 h-12 mb-4 opacity-10" />
+                        <span className="text-xs uppercase tracking-widest font-bold mb-2">Detailed {activeFleetTab} analysis coming soon</span>
+                        <span className="text-[10px]">Syncing with Hyperliquid nodes...</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-
-                {/* Dynamic Table Content */}
-                <div className="overflow-x-auto min-h-[300px]">
-                  {activeFleetTab === 'Open Orders' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] border-b border-white/5">
-                          <th className="pb-4 pl-2 font-bold">Symbol</th>
-                          <th className="pb-4 font-bold">Type</th>
-                          <th className="pb-4 font-bold">Side</th>
-                          <th className="pb-4 font-bold text-right">Price</th>
-                          <th className="pb-4 font-bold text-right">Size</th>
-                          <th className="pb-4 pr-2 font-bold text-right">Trigger</th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-sm">
-                        {openOrders.length > 0 ? (
-                          openOrders.map((order, idx) => (
-                            <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                              <td className="py-4 pl-2 font-bold text-white">{order.symbol}</td>
-                              <td className="py-4 font-mono text-muted-foreground text-xs">{order.type}</td>
-                              <td className="py-4">
-                                <span className={cn("px-2 py-0.5 rounded text-[9px] font-black uppercase", order.side === 'BUY' ? "bg-primary/10 text-primary" : "bg-red-500/10 text-red-400")}>
-                                  {order.side}
-                                </span>
-                              </td>
-                              <td className="py-4 font-mono text-white text-right">${Number(order.price)?.toFixed(2)}</td>
-                              <td className="py-4 font-mono text-muted-foreground text-right">{order.size}</td>
-                              <td className="py-4 pr-2 text-right font-mono text-muted-foreground text-xs">{order.trigger_px ? `$${Number(order.trigger_px).toFixed(2)}` : '—'}</td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr className="border-b border-white/5">
-                            <td colSpan={6} className="py-20 text-center text-muted-foreground/30 text-xs uppercase tracking-widest font-bold">
-                              No open orders found in current session
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {activeFleetTab === 'Recent Fills' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] border-b border-white/5">
-                          <th className="pb-4 pl-2 font-bold">Time</th>
-                          <th className="pb-4 font-bold">Symbol</th>
-                          <th className="pb-4 font-bold">Side</th>
-                          <th className="pb-4 font-bold text-right">Price</th>
-                          <th className="pb-4 font-bold text-right">Value</th>
-                          <th className="pb-4 pr-2 font-bold text-right">PnL</th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-sm">
-                        {recentFills.length > 0 ? (
-                          recentFills.map((fill, idx) => (
-                            <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                              <td className="py-4 pl-2 font-mono text-muted-foreground text-[10px]">{fill.timestamp ? new Date(fill.timestamp).toLocaleString() : '—'}</td>
-                              <td className="py-4 font-bold text-white">{fill.symbol}</td>
-                              <td className="py-4">
-                                <span className={cn("px-2 py-0.5 rounded text-[9px] font-black uppercase", fill.side === 'BUY' ? "bg-primary/10 text-primary" : "bg-red-500/10 text-red-400")}>
-                                  {fill.side}
-                                </span>
-                              </td>
-                              <td className="py-4 font-mono text-white text-right">${Number(fill.price)?.toFixed(2)}</td>
-                              <td className="py-4 font-mono text-muted-foreground text-right">${Number(fill.value)?.toFixed(2)}</td>
-                              <td className={cn("py-4 pr-2 text-right font-mono font-bold", (fill.closed_pnl ?? 0) >= 0 ? "text-primary" : "text-red-400")}>
-                                {fill.closed_pnl !== undefined ? `${fill.closed_pnl >= 0 ? '+' : ''}$${Number(fill.closed_pnl).toFixed(2)}` : '—'}
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr className="border-b border-white/5">
-                            <td colSpan={6} className="py-20 text-center text-muted-foreground/30 text-xs uppercase tracking-widest font-bold">
-                              No recent portfolio history detected
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {activeFleetTab === 'Deposits & Withdrawals' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] border-b border-white/5">
-                          <th className="pb-4 pl-2 font-bold">Time</th>
-                          <th className="pb-4 font-bold">Type</th>
-                          <th className="pb-4 font-bold text-right">Amount</th>
-                          <th className="pb-4 pr-2 font-bold text-right">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-sm">
-                        {transfers.length > 0 ? (
-                          transfers.map((transfer, idx) => (
-                            <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                              <td className="py-4 pl-2 font-mono text-muted-foreground text-[10px]">{transfer.timestamp ? new Date(transfer.timestamp).toLocaleDateString() : '—'}</td>
-                              <td className="py-4">
-                                <span className={cn("px-2 py-0.5 rounded text-[9px] font-black uppercase", transfer.type === 'DEPOSIT' ? "bg-primary/10 text-primary" : "bg-red-500/10 text-red-400")}>
-                                  {transfer.type}
-                                </span>
-                              </td>
-                              <td className={cn("py-4 font-mono font-bold text-right", transfer.amount >= 0 ? "text-primary" : "text-red-400")}>
-                                {transfer.amount >= 0 ? '+' : ''}${Math.abs(transfer.amount).toFixed(2)}
-                              </td>
-                              <td className="py-4 pr-2 text-right font-mono text-primary text-[10px] uppercase font-black">{transfer.status}</td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr className="border-b border-white/5">
-                            <td colSpan={4} className="py-20 text-center text-muted-foreground/30 text-xs uppercase tracking-widest font-bold">
-                              No transfer history available
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {['Completed Trades', 'TWAP'].includes(activeFleetTab) && (
-                    <div className="py-20 flex flex-col items-center justify-center text-muted-foreground/30">
-                      <Layers className="w-12 h-12 mb-4 opacity-10" />
-                      <span className="text-xs uppercase tracking-widest font-bold mb-2">Detailed {activeFleetTab} analysis coming soon</span>
-                      <span className="text-[10px]">Syncing with Hyperliquid nodes...</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </GlassCard>
+              </GlassCard>
+            )}
 
             {/* AI Strategy & Active Positions are now unified in the card above */}
           </div>
