@@ -878,6 +878,7 @@ function DashboardContent() {
                 thoughts={allThoughts}
                 aiMood={aiMood}
                 sessionInfo={sessionInfo}
+                transfers={transfers}
               />
             </div>
 

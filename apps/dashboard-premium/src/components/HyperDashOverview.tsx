@@ -62,6 +62,13 @@ interface OrderInfo {
     trigger_px?: number;
 }
 
+interface TransferInfo {
+    timestamp?: string;
+    type: string;
+    amount: number;
+    status: string;
+}
+
 interface AIThought {
     id?: string;
     timestamp: string;
@@ -85,6 +92,7 @@ interface HyperDashOverviewProps {
     thoughts?: AIThought[];
     aiMood?: 'aggressive' | 'defensive' | 'observing';
     sessionInfo?: { session: string; current_time_utc: string; is_weekend: boolean } | null;
+    transfers?: TransferInfo[];
 }
 
 // Equity Chart Component - HyperDash style
@@ -325,7 +333,8 @@ export default function HyperDashOverview({
     isLoading,
     thoughts = [],
     aiMood = 'observing',
-    sessionInfo
+    sessionInfo,
+    transfers = []
 }: HyperDashOverviewProps) {
 
     const [activeTab, setActiveTab] = useState<'POSITIONS' | 'BALANCES' | 'ORDERS' | 'FILLS' | 'TRADES' | 'TWAP' | 'TRANSFERS'>('POSITIONS');
@@ -611,6 +620,37 @@ export default function HyperDashOverview({
                                 )
                             )}
 
+                            {activeTab === 'TWAP' && (
+                                openOrders.filter(o => o.type === 'TWAP' || o.type.includes('Twap')).length > 0 ? (
+                                    <table className="w-full text-[10px]">
+                                        <thead>
+                                            <tr className="text-white/40 border-b border-white/5">
+                                                <th className="text-left py-1.5 font-medium">ASSET</th>
+                                                <th className="text-right py-1.5 font-medium">SIDE</th>
+                                                <th className="text-right py-1.5 font-medium">SIZE</th>
+                                                <th className="text-right py-1.5 font-medium">PRICE</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {openOrders.filter(o => o.type === 'TWAP' || o.type.includes('Twap')).map((order, idx) => (
+                                                <tr key={idx} className="border-b border-white/5 bg-black">
+                                                    <td className="py-1.5 text-white font-medium">{order.symbol}</td>
+                                                    <td className="py-1.5 text-right">
+                                                        <span className={`text-[8px] px-1 rounded ${order.side === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                            {order.side.toUpperCase()}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-1.5 text-right text-white/60">{order.size}</td>
+                                                    <td className="py-1.5 text-right text-white/60">${order.price.toFixed(2)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div className="text-center py-6 text-white/30 text-xs">No active TWAP orders</div>
+                                )
+                            )}
+
                             {activeTab === 'BALANCES' && (
                                 <div className="space-y-1">
                                     <div className="flex items-center justify-between py-2 border-b border-white/5">
@@ -626,226 +666,286 @@ export default function HyperDashOverview({
                                 </div>
                             )}
                             {activeTab === 'TRADES' && (
-                                recentFills.length > 0 ? (
-                                    <div className="space-y-1">
-                                        {recentFills.slice(0, 10).map((fill, idx) => {
-                                            const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
-                                            return (
-                                                <div key={idx} className="flex items-center justify-between py-1 border-b border-white/5">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-white font-medium">{fill.symbol}</span>
-                                                        <span className={`text-[8px] px-1 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                            {isLong ? 'LONG' : 'SHORT'}
-                                                        </span>
-                                                    </div>
-                                                    <span className={`${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                        {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : `$${fill.price.toFixed(2)}`}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-6 text-white/30 text-xs">No recent trades</div>
-                                )
-                            )}
-                            {activeTab === 'TWAP' && (
-                                <div className="text-center py-6 text-white/30 text-xs">No active TWAP orders</div>
-                            )}
-                            {activeTab === 'TRANSFERS' && (
-                                <div className="text-center py-6 text-white/30 text-xs">No recent transfers</div>
-                            )}
-                            {activeTab === 'FILLS' && (
-                                recentFills.length > 0 ? (
-                                    <div className="space-y-1">
-                                        {recentFills.slice(0, 5).map((fill, idx) => {
-                                            const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
-                                            return (
-                                                <div key={idx} className="flex items-center justify-between py-1 border-b border-white/5">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-white font-medium">{fill.symbol}</span>
-                                                        <span className={`text-[8px] px-1 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                            {isLong ? 'LONG' : 'SHORT'}
-                                                        </span>
-                                                    </div>
-                                                    <span className={`${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                        {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : `$${fill.price.toFixed(2)}`}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-6 text-white/30 text-xs">No recent fills</div>
-                                )
-                            )}
-                            {activeTab === 'ORDERS' && (
-                                openOrders.length > 0 ? (
+                                recentFills.filter(f => f.closed_pnl !== undefined && f.closed_pnl !== null).length > 0 ? (
                                     <table className="w-full text-[10px]">
                                         <thead>
                                             <tr className="text-white/40 border-b border-white/5">
-                                                <th className="text-left py-1.5 font-medium">ASSET</th>
-                                                <th className="text-right py-1.5 font-medium">TYPE</th>
-                                                <th className="text-right py-1.5 font-medium">SIDE</th>
-                                                <th className="text-right py-1.5 font-medium">SIZE</th>
-                                                <th className="text-right py-1.5 font-medium">PRICE</th>
+                                                <th className="text-left py-1.5 font-medium">TIME</th>
+                                                <th className="text-left py-1.5 font-medium">SYMBOL</th>
+                                                <th className="text-left py-1.5 font-medium">SIDE</th>
+                                                <th className="text-right py-1.5 font-medium">PnL</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {openOrders.slice(0, 5).map((order, idx) => (
-                                                <tr key={idx} className="border-b border-white/5">
-                                                    <td className="py-1.5 text-white font-medium">{order.symbol}</td>
-                                                    <td className="py-1.5 text-right text-white/60">{order.type}</td>
-                                                    <td className="py-1.5 text-right">
-                                                        <span className={`text-[8px] px-1 rounded ${order.side === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                            {order.side.toUpperCase()}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-1.5 text-right text-white/60">{order.size}</td>
-                                                    <td className="py-1.5 text-right text-white/60">${order.price.toFixed(2)}</td>
-                                                </tr>
-                                            ))}
+                                            {recentFills.filter(f => f.closed_pnl !== undefined && f.closed_pnl !== null).slice(0, 10).map((fill, idx) => {
+                                                const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
+                                                return (
+                                                    <tr key={idx} className="border-b border-white/5 bg-black">
+                                                        <td className="py-1.5 text-white/60">{fill.timestamp ? new Date(fill.timestamp).toLocaleTimeString() : '--:--'}</td>
+                                                        <td className="py-1.5 text-white font-medium">{fill.symbol}</td>
+                                                        <td className="py-1.5">
+                                                            <span className={`text-[8px] px-1 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                                {isLong ? 'LONG' : 'SHORT'}
+                                                            </span>
+                                                        </td>
+                                                        <td className={`py-1.5 text-right font-medium ${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            ${(fill.closed_pnl || 0).toFixed(2)}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 ) : (
-                                    <div className="text-center py-6 text-white/30 text-xs">No open orders</div>
+                                    <div className="text-center py-6 text-white/30 text-xs">No recent trades (Closed PnL)</div>
                                 )
                             )}
-                            {activeTab === 'BALANCES' && (
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between py-2 border-b border-white/5">
-                                        <span className="text-white font-medium">Account Equity</span>
-                                        <span className="text-green-400 font-bold">${equity.toFixed(2)}</span>
+                            <span className={`${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : `$${fill.price.toFixed(2)}`}
+                            </span>
+                        </div>
+                        );
+                                        })}
+                    </div>
+                    ) : (
+                    <div className="text-center py-6 text-white/30 text-xs">No recent trades</div>
+                    )
+                            )}
+                    {activeTab === 'TWAP' && (
+                        <div className="text-center py-6 text-white/30 text-xs">No active TWAP orders</div>
+                    )}
+                    {activeTab === 'TRANSFERS' && (
+                        transfers.length > 0 ? (
+                            <table className="w-full text-[10px]">
+                                <thead>
+                                    <tr className="text-white/40 border-b border-white/5">
+                                        <th className="text-left py-1.5 font-medium">TIME</th>
+                                        <th className="text-left py-1.5 font-medium">TYPE</th>
+                                        <th className="text-right py-1.5 font-medium">AMOUNT</th>
+                                        <th className="text-right py-1.5 font-medium">STATUS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {transfers.slice(0, 10).map((t, idx) => (
+                                        <tr key={idx} className="border-b border-white/5 bg-[#0a0a0a]">
+                                            <td className="py-1.5 text-white/60">{new Date(t.timestamp || Date.now()).toLocaleDateString()}</td>
+                                            <td className="py-1.5">
+                                                <span className={`px-1 rounded text-[8px] ${t.type.toLowerCase().includes('deposit') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                    {t.type.toUpperCase()}
+                                                </span>
+                                            </td>
+                                            <td className="py-1.5 text-right text-white font-medium">${t.amount.toFixed(2)}</td>
+                                            <td className="py-1.5 text-right text-white/40">{t.status}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <div className="text-center py-6 text-white/30 text-xs">No recent transfers</div>
+                        )
+                    )}
+                    {activeTab === 'FILLS' && (
+                        recentFills.length > 0 ? (
+                            <table className="w-full text-[10px]">
+                                <thead>
+                                    <tr className="text-white/40 border-b border-white/5">
+                                        <th className="text-left py-1.5 font-medium">TIME</th>
+                                        <th className="text-left py-1.5 font-medium">SYMBOL</th>
+                                        <th className="text-left py-1.5 font-medium">SIDE</th>
+                                        <th className="text-right py-1.5 font-medium">SIZE</th>
+                                        <th className="text-right py-1.5 font-medium">PRICE</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {recentFills.slice(0, 10).map((fill, idx) => {
+                                        const isBuy = fill.side?.toLowerCase() === 'buy';
+                                        return (
+                                            <tr key={idx} className="border-b border-white/5 bg-black">
+                                                <td className="py-1.5 text-white/60">{fill.timestamp ? new Date(fill.timestamp).toLocaleTimeString() : '--:--'}</td>
+                                                <td className="py-1.5 text-white font-medium">{fill.symbol}</td>
+                                                <td className="py-1.5">
+                                                    <span className={`text-[8px] px-1 rounded ${isBuy ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                        {isBuy ? 'BUY' : 'SELL'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-1.5 text-right text-white/60">{fill.size}</td>
+                                                <td className="py-1.5 text-right text-white/60">${fill.price.toFixed(2)}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <div className="text-center py-6 text-white/30 text-xs">No recent fills</div>
+                        )
+                    )}
+                    {activeTab === 'ORDERS' && (
+                        openOrders.length > 0 ? (
+                            <table className="w-full text-[10px]">
+                                <thead>
+                                    <tr className="text-white/40 border-b border-white/5">
+                                        <th className="text-left py-1.5 font-medium">ASSET</th>
+                                        <th className="text-right py-1.5 font-medium">TYPE</th>
+                                        <th className="text-right py-1.5 font-medium">SIDE</th>
+                                        <th className="text-right py-1.5 font-medium">SIZE</th>
+                                        <th className="text-right py-1.5 font-medium">PRICE</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {openOrders.slice(0, 5).map((order, idx) => (
+                                        <tr key={idx} className="border-b border-white/5">
+                                            <td className="py-1.5 text-white font-medium">{order.symbol}</td>
+                                            <td className="py-1.5 text-right text-white/60">{order.type}</td>
+                                            <td className="py-1.5 text-right">
+                                                <span className={`text-[8px] px-1 rounded ${order.side === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                    {order.side.toUpperCase()}
+                                                </span>
+                                            </td>
+                                            <td className="py-1.5 text-right text-white/60">{order.size}</td>
+                                            <td className="py-1.5 text-right text-white/60">${order.price.toFixed(2)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <div className="text-center py-6 text-white/30 text-xs">No open orders</div>
+                        )
+                    )}
+                    {activeTab === 'BALANCES' && (
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                <span className="text-white font-medium">Account Equity</span>
+                                <span className="text-green-400 font-bold">${equity.toFixed(2)}</span>
+                            </div>
+                            <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                <span className="text-white/60">Unrealized PnL</span>
+                                <span className={unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}>${unrealizedPnl.toFixed(2)}</span>
+                            </div>
+                            <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                <span className="text-white/60">Margin Used</span>
+                                <span className="text-yellow-400">{(marginUsage * 100).toFixed(1)}%</span>
+                            </div>
+                            <div className="flex items-center justify-between py-2">
+                                <span className="text-white/60">Available Balance</span>
+                                <span className="text-white">${(equity * (1 - marginUsage)).toFixed(2)}</span>
+                            </div>
+                        </div>
+                    )}
+                    {(!['POSITIONS', 'BALANCES', 'ORDERS', 'FILLS', 'TRADES', 'TWAP', 'TRANSFERS'].includes(activeTab)) && (
+                        <div className="text-center py-6 text-white/30 text-xs">No data</div>
+                    )}
+                </div>
+            </div>
+        </div>
+
+                {/* Right Sidebar - Recent Activity / AI Strategy - 3 cols */ }
+    <div className="col-span-3 bg-[#080808] flex flex-col">
+        {/* Tabs */}
+        <div className="flex border-b border-white/5">
+            <button
+                onClick={() => setRightTab('BEST_TRADES')}
+                className={`flex-1 px-3 py-2.5 text-[10px] font-medium transition-all ${rightTab === 'BEST_TRADES' ? 'text-white border-b-2 border-primary' : 'text-white/40 hover:text-white'}`}
+            >
+                📊 Recent Activity
+            </button>
+            <button
+                onClick={() => setRightTab('AI_STRATEGY')}
+                className={`flex-1 px-3 py-2.5 text-[10px] font-medium transition-all ${rightTab === 'AI_STRATEGY' ? 'text-white border-b-2 border-primary' : 'text-white/40 hover:text-white'}`}
+            >
+                🤖 AI Strategy
+            </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-3">
+            {rightTab === 'BEST_TRADES' && (
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2 mb-3">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <span className="text-[10px] text-white/40 uppercase tracking-wider">Live Trade History</span>
+                    </div>
+                    {recentFills.length > 0 ? (
+                        recentFills.slice(0, 15).map((fill, idx) => {
+                            const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
+                            return (
+                                <div key={idx} className="p-2 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-[8px] font-bold">
+                                                {fill.symbol.substring(0, 2)}
+                                            </div>
+                                            <span className="text-xs font-medium text-white">{fill.symbol}</span>
+                                            <span className={`text-[9px] px-1.5 py-0.5 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                {isLong ? 'Long' : 'Short'}
+                                            </span>
+                                        </div>
+                                        <span className={`text-xs font-bold ${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                            {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : '--'}
+                                        </span>
                                     </div>
-                                    <div className="flex items-center justify-between py-2 border-b border-white/5">
-                                        <span className="text-white/60">Unrealized PnL</span>
-                                        <span className={unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}>${unrealizedPnl.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between py-2 border-b border-white/5">
-                                        <span className="text-white/60">Margin Used</span>
-                                        <span className="text-yellow-400">{(marginUsage * 100).toFixed(1)}%</span>
-                                    </div>
-                                    <div className="flex items-center justify-between py-2">
-                                        <span className="text-white/60">Available Balance</span>
-                                        <span className="text-white">${(equity * (1 - marginUsage)).toFixed(2)}</span>
+                                    <div className="flex items-center justify-between text-[9px] text-white/40">
+                                        <span>${fill.price.toFixed(2)} × {fill.size}</span>
+                                        <span>{fill.timestamp ? new Date(fill.timestamp).toLocaleString() : '--'}</span>
                                     </div>
                                 </div>
-                            )}
-                            {(!['POSITIONS', 'BALANCES', 'ORDERS', 'FILLS', 'TRADES', 'TWAP', 'TRANSFERS'].includes(activeTab)) && (
-                                <div className="text-center py-6 text-white/30 text-xs">No data</div>
+                            );
+                        })
+                    ) : (
+                        <div className="text-center py-8 text-white/30 text-xs">No trade history</div>
+                    )}
+                </div>
+            )}
+
+            {rightTab === 'AI_STRATEGY' && (
+                <div className="space-y-3">
+                    {/* AI Status */}
+                    <div className={`p-3 rounded-lg ${moodConfig[aiMood].bg} border border-white/5`}>
+                        <div className="flex items-center gap-2 mb-2">
+                            <BrainCircuit className="w-4 h-4 text-primary" />
+                            <span className="text-xs font-bold text-white">AI Strategy Core</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className={`text-xs ${moodConfig[aiMood].color}`}>{moodConfig[aiMood].label}</span>
+                            <span className="text-[10px] text-white/40">{sessionInfo?.session || 'Unknown Session'}</span>
+                        </div>
+                    </div>
+
+                    {/* Execution Logs */}
+                    <div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <Terminal className="w-3 h-3 text-white/40" />
+                            <span className="text-[10px] text-white/40 uppercase tracking-wider">Execution Logs</span>
+                        </div>
+                        <div className="space-y-2">
+                            {thoughts.length > 0 ? (
+                                thoughts.slice(0, 10).map((thought, idx) => (
+                                    <div key={idx} className="p-2 rounded-lg bg-white/[0.02] border border-white/5">
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-sm">{thought.emoji || '🤖'}</span>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[10px] text-white/80 line-clamp-2">{thought.summary}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="text-[9px] text-white/30">
+                                                        {new Date(thought.timestamp).toLocaleTimeString()}
+                                                    </span>
+                                                    <span className={`text-[9px] px-1 rounded ${thought.confidence >= 70 ? 'bg-green-500/20 text-green-400' : thought.confidence >= 40 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                        {thought.confidence}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-6 text-white/30 text-xs">No recent thoughts</div>
                             )}
                         </div>
                     </div>
                 </div>
-
-                {/* Right Sidebar - Recent Activity / AI Strategy - 3 cols */}
-                <div className="col-span-3 bg-[#080808] flex flex-col">
-                    {/* Tabs */}
-                    <div className="flex border-b border-white/5">
-                        <button
-                            onClick={() => setRightTab('BEST_TRADES')}
-                            className={`flex-1 px-3 py-2.5 text-[10px] font-medium transition-all ${rightTab === 'BEST_TRADES' ? 'text-white border-b-2 border-primary' : 'text-white/40 hover:text-white'}`}
-                        >
-                            📊 Recent Activity
-                        </button>
-                        <button
-                            onClick={() => setRightTab('AI_STRATEGY')}
-                            className={`flex-1 px-3 py-2.5 text-[10px] font-medium transition-all ${rightTab === 'AI_STRATEGY' ? 'text-white border-b-2 border-primary' : 'text-white/40 hover:text-white'}`}
-                        >
-                            🤖 AI Strategy
-                        </button>
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 overflow-y-auto p-3">
-                        {rightTab === 'BEST_TRADES' && (
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                    <span className="text-[10px] text-white/40 uppercase tracking-wider">Live Trade History</span>
-                                </div>
-                                {recentFills.length > 0 ? (
-                                    recentFills.slice(0, 15).map((fill, idx) => {
-                                        const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
-                                        return (
-                                            <div key={idx} className="p-2 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-[8px] font-bold">
-                                                            {fill.symbol.substring(0, 2)}
-                                                        </div>
-                                                        <span className="text-xs font-medium text-white">{fill.symbol}</span>
-                                                        <span className={`text-[9px] px-1.5 py-0.5 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                            {isLong ? 'Long' : 'Short'}
-                                                        </span>
-                                                    </div>
-                                                    <span className={`text-xs font-bold ${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                        {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : '--'}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center justify-between text-[9px] text-white/40">
-                                                    <span>${fill.price.toFixed(2)} × {fill.size}</span>
-                                                    <span>{fill.timestamp ? new Date(fill.timestamp).toLocaleString() : '--'}</span>
-                                                </div>
-                                            </div>
-                                        );
-                                    })
-                                ) : (
-                                    <div className="text-center py-8 text-white/30 text-xs">No trade history</div>
-                                )}
-                            </div>
-                        )}
-
-                        {rightTab === 'AI_STRATEGY' && (
-                            <div className="space-y-3">
-                                {/* AI Status */}
-                                <div className={`p-3 rounded-lg ${moodConfig[aiMood].bg} border border-white/5`}>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <BrainCircuit className="w-4 h-4 text-primary" />
-                                        <span className="text-xs font-bold text-white">AI Strategy Core</span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span className={`text-xs ${moodConfig[aiMood].color}`}>{moodConfig[aiMood].label}</span>
-                                        <span className="text-[10px] text-white/40">{sessionInfo?.session || 'Unknown Session'}</span>
-                                    </div>
-                                </div>
-
-                                {/* Execution Logs */}
-                                <div>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <Terminal className="w-3 h-3 text-white/40" />
-                                        <span className="text-[10px] text-white/40 uppercase tracking-wider">Execution Logs</span>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {thoughts.length > 0 ? (
-                                            thoughts.slice(0, 10).map((thought, idx) => (
-                                                <div key={idx} className="p-2 rounded-lg bg-white/[0.02] border border-white/5">
-                                                    <div className="flex items-start gap-2">
-                                                        <span className="text-sm">{thought.emoji || '🤖'}</span>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-[10px] text-white/80 line-clamp-2">{thought.summary}</p>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <span className="text-[9px] text-white/30">
-                                                                    {new Date(thought.timestamp).toLocaleTimeString()}
-                                                                </span>
-                                                                <span className={`text-[9px] px-1 rounded ${thought.confidence >= 70 ? 'bg-green-500/20 text-green-400' : thought.confidence >= 40 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                                    {thought.confidence}%
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="text-center py-6 text-white/30 text-xs">No recent thoughts</div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
+            )}
         </div>
+    </div>
+            </div >
+        </div >
     );
 }
