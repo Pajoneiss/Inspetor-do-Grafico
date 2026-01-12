@@ -284,14 +284,26 @@ export default function HyperDashOverview({
     // Get current period PnL for badge
     const currentPnl = period === '24H' ? pnl24h : period === '7D' ? pnl7d : period === '30D' ? pnl30d : pnlTotal;
 
-    // Format chart data
+    // Format chart data - use history (equity) or fall back to pnl_history
     const chartData = useMemo(() => {
-        if (!fullAnalytics?.history) return [];
-        return fullAnalytics.history.map(h => ({
-            time: typeof h.time === 'number' ? h.time : new Date(h.time).getTime(),
-            value: h.value
-        }));
-    }, [fullAnalytics?.history]);
+        // Try equity history first
+        if (fullAnalytics?.history && fullAnalytics.history.length > 1) {
+            return fullAnalytics.history.map(h => ({
+                time: typeof h.time === 'number' ? h.time : new Date(h.time).getTime(),
+                value: h.value
+            }));
+        }
+        // Fall back to PnL history if equity history is empty
+        if (fullAnalytics?.pnl_history && fullAnalytics.pnl_history.length > 1) {
+            // Convert PnL to simulated equity (starting from current equity - total pnl)
+            const baseEquity = equity - pnlTotal;
+            return fullAnalytics.pnl_history.map(h => ({
+                time: typeof h.time === 'number' ? h.time : new Date(h.time).getTime(),
+                value: baseEquity + h.value
+            }));
+        }
+        return [];
+    }, [fullAnalytics?.history, fullAnalytics?.pnl_history, equity, pnlTotal]);
 
     // Format duration
     const formatDuration = (mins: number) => {
