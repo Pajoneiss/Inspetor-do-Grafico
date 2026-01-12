@@ -836,116 +836,114 @@ export default function HyperDashOverview({
                     )}
                 </div>
             </div>
-        </div>
 
-                {/* Right Sidebar - Recent Activity / AI Strategy - 3 cols */ }
-    <div className="col-span-3 bg-[#080808] flex flex-col">
-        {/* Tabs */}
-        <div className="flex border-b border-white/5">
-            <button
-                onClick={() => setRightTab('BEST_TRADES')}
-                className={`flex-1 px-3 py-2.5 text-[10px] font-medium transition-all ${rightTab === 'BEST_TRADES' ? 'text-white border-b-2 border-primary' : 'text-white/40 hover:text-white'}`}
-            >
-                📊 Recent Activity
-            </button>
-            <button
-                onClick={() => setRightTab('AI_STRATEGY')}
-                className={`flex-1 px-3 py-2.5 text-[10px] font-medium transition-all ${rightTab === 'AI_STRATEGY' ? 'text-white border-b-2 border-primary' : 'text-white/40 hover:text-white'}`}
-            >
-                🤖 AI Strategy
-            </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-3">
-            {rightTab === 'BEST_TRADES' && (
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2 mb-3">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        <span className="text-[10px] text-white/40 uppercase tracking-wider">Live Trade History</span>
-                    </div>
-                    {recentFills.length > 0 ? (
-                        recentFills.slice(0, 15).map((fill, idx) => {
-                            const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
-                            return (
-                                <div key={idx} className="p-2 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-[8px] font-bold">
-                                                {fill.symbol.substring(0, 2)}
-                                            </div>
-                                            <span className="text-xs font-medium text-white">{fill.symbol}</span>
-                                            <span className={`text-[9px] px-1.5 py-0.5 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                {isLong ? 'Long' : 'Short'}
-                                            </span>
-                                        </div>
-                                        <span className={`text-xs font-bold ${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                            {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : '--'}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center justify-between text-[9px] text-white/40">
-                                        <span>${fill.price.toFixed(2)} × {fill.size}</span>
-                                        <span>{fill.timestamp ? new Date(fill.timestamp).toLocaleString() : '--'}</span>
-                                    </div>
-                                </div>
-                            );
-                        })
-                    ) : (
-                        <div className="text-center py-8 text-white/30 text-xs">No trade history</div>
-                    )}
+            <div className="col-span-3 bg-[#080808] flex flex-col">
+                {/* Tabs */}
+                <div className="flex border-b border-white/5">
+                    <button
+                        onClick={() => setRightTab('BEST_TRADES')}
+                        className={`flex-1 px-3 py-2.5 text-[10px] font-medium transition-all ${rightTab === 'BEST_TRADES' ? 'text-white border-b-2 border-primary' : 'text-white/40 hover:text-white'}`}
+                    >
+                        📊 Recent Activity
+                    </button>
+                    <button
+                        onClick={() => setRightTab('AI_STRATEGY')}
+                        className={`flex-1 px-3 py-2.5 text-[10px] font-medium transition-all ${rightTab === 'AI_STRATEGY' ? 'text-white border-b-2 border-primary' : 'text-white/40 hover:text-white'}`}
+                    >
+                        🤖 AI Strategy
+                    </button>
                 </div>
-            )}
 
-            {rightTab === 'AI_STRATEGY' && (
-                <div className="space-y-3">
-                    {/* AI Status */}
-                    <div className={`p-3 rounded-lg ${moodConfig[aiMood].bg} border border-white/5`}>
-                        <div className="flex items-center gap-2 mb-2">
-                            <BrainCircuit className="w-4 h-4 text-primary" />
-                            <span className="text-xs font-bold text-white">AI Strategy Core</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className={`text-xs ${moodConfig[aiMood].color}`}>{moodConfig[aiMood].label}</span>
-                            <span className="text-[10px] text-white/40">{sessionInfo?.session || 'Unknown Session'}</span>
-                        </div>
-                    </div>
-
-                    {/* Execution Logs */}
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <Terminal className="w-3 h-3 text-white/40" />
-                            <span className="text-[10px] text-white/40 uppercase tracking-wider">Execution Logs</span>
-                        </div>
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-3">
+                    {rightTab === 'BEST_TRADES' && (
                         <div className="space-y-2">
-                            {thoughts.length > 0 ? (
-                                thoughts.slice(0, 10).map((thought, idx) => (
-                                    <div key={idx} className="p-2 rounded-lg bg-white/[0.02] border border-white/5">
-                                        <div className="flex items-start gap-2">
-                                            <span className="text-sm">{thought.emoji || '🤖'}</span>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[10px] text-white/80 line-clamp-2">{thought.summary}</p>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-[9px] text-white/30">
-                                                        {new Date(thought.timestamp).toLocaleTimeString()}
-                                                    </span>
-                                                    <span className={`text-[9px] px-1 rounded ${thought.confidence >= 70 ? 'bg-green-500/20 text-green-400' : thought.confidence >= 40 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                        {thought.confidence}%
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                <span className="text-[10px] text-white/40 uppercase tracking-wider">Live Trade History</span>
+                            </div>
+                            {recentFills.length > 0 ? (
+                                recentFills.slice(0, 15).map((fill, idx) => {
+                                    const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
+                                    return (
+                                        <div key={idx} className="p-2 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-[8px] font-bold">
+                                                        {fill.symbol.substring(0, 2)}
+                                                    </div>
+                                                    <span className="text-xs font-medium text-white">{fill.symbol}</span>
+                                                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                        {isLong ? 'Long' : 'Short'}
                                                     </span>
                                                 </div>
+                                                <span className={`text-xs font-bold ${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                    {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : '--'}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between text-[9px] text-white/40">
+                                                <span>${fill.price.toFixed(2)} × {fill.size}</span>
+                                                <span>{fill.timestamp ? new Date(fill.timestamp).toLocaleString() : '--'}</span>
                                             </div>
                                         </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             ) : (
-                                <div className="text-center py-6 text-white/30 text-xs">No recent thoughts</div>
+                                <div className="text-center py-8 text-white/30 text-xs">No trade history</div>
                             )}
                         </div>
-                    </div>
+                    )}
+
+                    {rightTab === 'AI_STRATEGY' && (
+                        <div className="space-y-3">
+                            {/* AI Status */}
+                            <div className={`p-3 rounded-lg ${moodConfig[aiMood].bg} border border-white/5`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <BrainCircuit className="w-4 h-4 text-primary" />
+                                    <span className="text-xs font-bold text-white">AI Strategy Core</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className={`text-xs ${moodConfig[aiMood].color}`}>{moodConfig[aiMood].label}</span>
+                                    <span className="text-[10px] text-white/40">{sessionInfo?.session || 'Unknown Session'}</span>
+                                </div>
+                            </div>
+
+                            {/* Execution Logs */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Terminal className="w-3 h-3 text-white/40" />
+                                    <span className="text-[10px] text-white/40 uppercase tracking-wider">Execution Logs</span>
+                                </div>
+                                <div className="space-y-2">
+                                    {thoughts.length > 0 ? (
+                                        thoughts.slice(0, 10).map((thought, idx) => (
+                                            <div key={idx} className="p-2 rounded-lg bg-white/[0.02] border border-white/5">
+                                                <div className="flex items-start gap-2">
+                                                    <span className="text-sm">{thought.emoji || '🤖'}</span>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-[10px] text-white/80 line-clamp-2">{thought.summary}</p>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className="text-[9px] text-white/30">
+                                                                {new Date(thought.timestamp).toLocaleTimeString()}
+                                                            </span>
+                                                            <span className={`text-[9px] px-1 rounded ${thought.confidence >= 70 ? 'bg-green-500/20 text-green-400' : thought.confidence >= 40 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                                {thought.confidence}%
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-6 text-white/30 text-xs">No recent thoughts</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            )}
-        </div>
-    </div>
-            </div >
+            </div>
+        </div >
         </div >
     );
 }
