@@ -126,7 +126,16 @@ interface RainbowData { ok: boolean; price?: number; band_index?: number; band_n
 interface FullAnalytics {
   history: Array<{ time: string | number; value: number }>;
   pnl_24h?: number;
+  pnl_7d?: number;
+  pnl_30d?: number;
   pnl_total?: number;
+  win_rate?: number;
+  profit_factor?: number;
+  total_trades?: number;
+  volume?: number;
+  best_trade_pnl?: number;
+  worst_trade_pnl?: number;
+  avg_duration_minutes?: number;
 }
 
 interface OrderInfo {
@@ -461,6 +470,14 @@ function DashboardContent() {
           setSessionInfo(sessionRes.data);
         }
       } catch { /* Session info optional */ }
+
+      // Fetch full analytics from Hyperliquid
+      try {
+        const analyticsRes = await fetch(`${API_URL}/api/analytics`).then(r => r.json());
+        if (analyticsRes.ok && analyticsRes.data) {
+          setFullAnalytics(analyticsRes.data);
+        }
+      } catch { /* Analytics optional */ }
 
       if (thoughtRes.ok && thoughtRes.data && thoughtRes.data.length > 0) {
         const latestThought = thoughtRes.data[0];
