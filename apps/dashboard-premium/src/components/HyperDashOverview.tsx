@@ -420,7 +420,7 @@ export default function HyperDashOverview({
     };
 
     return (
-        <div className="w-full bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden">
+        <div className="w-full bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden relative z-10">
             <div className="grid grid-cols-12 min-h-[480px]">
 
                 {/* Left Sidebar - 2 cols */}
@@ -563,7 +563,7 @@ export default function HyperDashOverview({
                         </div>
 
                         {/* Tab Content */}
-                        <div className="p-2 max-h-[150px] overflow-y-auto">
+                        <div className="p-2 max-h-[150px] overflow-y-auto bg-[#0a0a0a] relative z-20">
                             {activeTab === 'POSITIONS' && (
                                 positions.length > 0 ? (
                                     <table className="w-full text-[10px]">
@@ -731,7 +731,7 @@ export default function HyperDashOverview({
                                     </div>
                                 </div>
                             )}
-                            {(activeTab !== 'POSITIONS' && activeTab !== 'FILLS' && activeTab !== 'ORDERS' && activeTab !== 'BALANCES') && (
+                            {(activeTab !== 'POSITIONS' && activeTab !== 'FILLS' && activeTab !== 'ORDERS' && activeTab !== 'BALANCES' && activeTab !== 'TRADES' && activeTab !== 'TWAP' && activeTab !== 'TRANSFERS') && (
                                 <div className="text-center py-6 text-white/30 text-xs">No data</div>
                             )}
                         </div>
