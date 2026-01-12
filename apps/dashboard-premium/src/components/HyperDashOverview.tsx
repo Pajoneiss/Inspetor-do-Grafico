@@ -190,9 +190,22 @@ const EquityChart = ({
                 // Find x position based on time
                 const xPos = ((tradeTime - minTime) / timeRange) * width;
 
-                // Find closest data point for y position
-                const closestIdx = data.findIndex(d => d.time >= tradeTime) || data.length - 1;
-                const yPos = points[Math.min(closestIdx, points.length - 1)][1];
+                // Find closest data points for y position (Linear Interpolation)
+                let nextIdx = data.findIndex(d => d.time > tradeTime);
+                if (nextIdx === -1) nextIdx = data.length - 1; // After last point
+                const prevIdx = Math.max(0, nextIdx > 0 ? nextIdx - 1 : 0);
+
+                let yPos;
+                if (prevIdx === nextIdx) {
+                    yPos = points[prevIdx][1];
+                } else {
+                    const t1 = data[prevIdx].time;
+                    const t2 = data[nextIdx].time;
+                    const y1 = points[prevIdx][1];
+                    const y2 = points[nextIdx][1];
+                    const ratio = (tradeTime - t1) / (t2 - t1);
+                    yPos = y1 + (y2 - y1) * ratio;
+                }
 
                 // Draw marker
                 const isBuy = trade.side?.toLowerCase() === 'buy' || trade.side?.toLowerCase() === 'b';

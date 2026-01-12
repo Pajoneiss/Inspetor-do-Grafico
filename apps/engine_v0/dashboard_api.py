@@ -1137,7 +1137,7 @@ def api_user_trades():
         for fill in fills[:50]:
             formatted_fills.append({
                 "symbol": fill.get("coin", ""),
-                "side": "BUY" if fill.get("side") == "B" else "SELL",
+                "side": "BUY" if str(fill.get("side", "")).upper() == "B" else "SELL",
                 "price": float(fill.get("px", 0)),
                 "size": float(fill.get("sz", 0)),
                 "value": float(fill.get("px", 0)) * float(fill.get("sz", 0)),
