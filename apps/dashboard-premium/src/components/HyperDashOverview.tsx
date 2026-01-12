@@ -256,7 +256,7 @@ export default function HyperDashOverview({
     fullAnalytics,
     positions,
     recentFills,
-    openOrders = [],
+    _openOrders = [],
     period,
     setPeriod,
     isLoading,

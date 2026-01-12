@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
 import SettingsModal from "@/components/SettingsModal";
 import { useSettings } from "@/hooks/useSettings";
 import AnimatedBackground from "@/components/AnimatedBackground";
-import UnifiedOverviewCard from "@/components/UnifiedOverviewCard";
+// UnifiedOverviewCard replaced by HyperDashOverview
 import HyperDashOverview from "@/components/HyperDashOverview";
 import Link from "next/link";
 import Image from "next/image";
@@ -372,7 +372,7 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'charts' | 'news' | 'chat' | 'logs'>('overview');
-  const [pnlHistory, setPnlHistory] = useState<{ time: string | number; value: number }[]>([]);
+  const [_pnlHistory, _setPnlHistory] = useState<{ time: string | number; value: number }[]>([]);
   const [pnlPeriod, setPnlPeriod] = useState<'24H' | '7D' | '30D' | 'ALL'>('24H');
   const [chatMessages, setChatMessages] = useState<{ role: string, content: string }[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -387,10 +387,10 @@ function DashboardContent() {
   const [transfers, setTransfers] = useState<TransferInfo[]>([]);
   const [cryptoPrices, setCryptoPrices] = useState<{ btc: { price: number }, eth: { price: number } } | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [aiNotesLang, setAiNotesLang] = useState<'pt' | 'en'>('pt'); // Language toggle for AI Strategy Core
+  const [_aiNotesLang, _setAiNotesLang] = useState<'pt' | 'en'>('pt'); // Language toggle for AI Strategy Core
 
   // New states for UI improvements (Option B)
-  const [journalStats, setJournalStats] = useState<{
+  const [_journalStats, setJournalStats] = useState<{
     win_rate: number;
     total_trades: number;
     total_pnl_usd: number;
