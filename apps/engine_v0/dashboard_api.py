@@ -680,11 +680,13 @@ def api_analytics():
         # Get wallet address
         wallet = os.environ.get("HYPERLIQUID_WALLET_ADDRESS", "")
         
-        # Initialize PnL values
+        # Initialize PnL values and chart data
         pnl_24h = 0
         pnl_7d = 0
         pnl_30d = 0
         pnl_total = 0
+        equity_history = []  # For the chart like HyperDash
+        pnl_history_alltime = []  # PnL over time for chart
         
         # Fetch PnL directly from Hyperliquid Portfolio API
         if wallet:
@@ -696,20 +698,50 @@ def api_analytics():
                 )
                 if portfolio_resp.status_code == 200:
                     portfolio_data = portfolio_resp.json()
-                    if portfolio_data and isinstance(portfolio_data, list) and len(portfolio_data) > 0:
-                        latest = portfolio_data[-1]
-                        if isinstance(latest, list) and len(latest) >= 2:
-                            pnl_obj = latest[1]
-                            pnl_24h = float(pnl_obj.get("day", {}).get("pnl", 0))
-                            pnl_7d = float(pnl_obj.get("week", {}).get("pnl", 0))
-                            pnl_30d = float(pnl_obj.get("month", {}).get("pnl", 0))
-                            pnl_total = float(pnl_obj.get("allTime", {}).get("pnl", 0))
-                            print(f"[ANALYTICS] PnL fetched: 24h=${pnl_24h:.2f}, 7d=${pnl_7d:.2f}, 30d=${pnl_30d:.2f}, all=${pnl_total:.2f}")
+                    # Format: [["day", {...}], ["week", {...}], ["month", {...}], ["allTime", {...}]]
+                    if portfolio_data and isinstance(portfolio_data, list):
+                        for item in portfolio_data:
+                            if isinstance(item, list) and len(item) >= 2:
+                                period_name = item[0]
+                                period_data = item[1]
+                                
+                                # Get PnL from last entry in pnlHistory
+                                pnl_hist = period_data.get("pnlHistory", [])
+                                current_pnl = 0
+                                if pnl_hist and len(pnl_hist) > 0:
+                                    current_pnl = float(pnl_hist[-1][1])
+                                
+                                if period_name == "day":
+                                    pnl_24h = current_pnl
+                                elif period_name == "week":
+                                    pnl_7d = current_pnl
+                                elif period_name == "month":
+                                    pnl_30d = current_pnl
+                                elif period_name == "allTime":
+                                    pnl_total = current_pnl
+                                    # Get equity history for chart (like HyperDash)
+                                    acc_hist = period_data.get("accountValueHistory", [])
+                                    for entry in acc_hist:
+                                        equity_history.append({
+                                            "time": entry[0],  # timestamp in ms
+                                            "value": float(entry[1])
+                                        })
+                                    # Also get PnL history for chart
+                                    for entry in pnl_hist:
+                                        pnl_history_alltime.append({
+                                            "time": entry[0],
+                                            "value": float(entry[1])
+                                        })
+                        
+                        print(f"[ANALYTICS] PnL fetched from Hyperliquid: 24h=${pnl_24h:.2f}, 7d=${pnl_7d:.2f}, 30d=${pnl_30d:.2f}, allTime=${pnl_total:.2f}")
             except Exception as e:
                 print(f"[ANALYTICS] Portfolio API error: {e}")
+                import traceback
+                traceback.print_exc()
         
-        # Get history for chart
-        history = get_pnl_history()
+        # Use API equity history if available, otherwise fallback to local history
+        history = equity_history if equity_history else get_pnl_history()
+        
         
         
         # Initialize metrics
@@ -796,11 +828,18 @@ def api_analytics():
         profit_factor = (total_profit / total_loss) if total_loss > 0 else (1.0 if total_profit == 0 else 2.0)
         avg_duration = (sum(trade_durations) / len(trade_durations)) if trade_durations else 0
         
+        # Fallback: if Portfolio API returned 0, use fills-based calculation
+        fills_pnl = total_profit - total_loss
+        if pnl_total == 0 and fills_pnl != 0:
+            pnl_total = fills_pnl
+            print(f"[ANALYTICS] Using fills-based PnL as fallback: ${fills_pnl:.2f}")
+        
         return jsonify({
             "ok": True,
             "data": {
-                "history": history,
-                # PnL from Hyperliquid Portfolio API
+                "history": history,  # Equity history for chart (like HyperDash)
+                "pnl_history": pnl_history_alltime,  # PnL over time for chart
+                # PnL values from Hyperliquid Portfolio API
                 "pnl_24h": round(pnl_24h, 2),
                 "pnl_7d": round(pnl_7d, 2),
                 "pnl_30d": round(pnl_30d, 2),
