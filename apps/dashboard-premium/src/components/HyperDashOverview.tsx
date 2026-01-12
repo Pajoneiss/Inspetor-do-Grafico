@@ -256,8 +256,7 @@ export default function HyperDashOverview({
     fullAnalytics,
     positions,
     recentFills,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _openOrders = [],
+    openOrders = [],
     period,
     setPeriod,
     isLoading,
@@ -286,13 +285,8 @@ export default function HyperDashOverview({
 
     // Format chart data - use history (equity) or fall back to pnl_history
     const chartData = useMemo(() => {
-        console.log('[CHART DEBUG] fullAnalytics:', fullAnalytics);
-        console.log('[CHART DEBUG] history length:', fullAnalytics?.history?.length);
-        console.log('[CHART DEBUG] pnl_history length:', fullAnalytics?.pnl_history?.length);
-
         // Try equity history first
         if (fullAnalytics?.history && fullAnalytics.history.length > 1) {
-            console.log('[CHART DEBUG] Using equity history');
             return fullAnalytics.history.map(h => ({
                 time: typeof h.time === 'number' ? h.time : new Date(h.time).getTime(),
                 value: h.value
@@ -300,7 +294,6 @@ export default function HyperDashOverview({
         }
         // Fall back to PnL history if equity history is empty
         if (fullAnalytics?.pnl_history && fullAnalytics.pnl_history.length > 1) {
-            console.log('[CHART DEBUG] Using pnl_history fallback');
             // Convert PnL to simulated equity (starting from current equity - total pnl)
             const baseEquity = equity - pnlTotal;
             return fullAnalytics.pnl_history.map(h => ({
@@ -308,7 +301,6 @@ export default function HyperDashOverview({
                 value: baseEquity + h.value
             }));
         }
-        console.log('[CHART DEBUG] No data available');
         return [];
     }, [fullAnalytics?.history, fullAnalytics?.pnl_history, equity, pnlTotal]);
 
@@ -469,6 +461,7 @@ export default function HyperDashOverview({
                                             <tr className="text-white/40 border-b border-white/5">
                                                 <th className="text-left py-1.5 font-medium">ASSET</th>
                                                 <th className="text-right py-1.5 font-medium">SIZE</th>
+                                                <th className="text-right py-1.5 font-medium">LEV</th>
                                                 <th className="text-right py-1.5 font-medium">VALUE</th>
                                                 <th className="text-right py-1.5 font-medium">ENTRY</th>
                                                 <th className="text-right py-1.5 font-medium">MARK</th>
@@ -489,6 +482,7 @@ export default function HyperDashOverview({
                                                         </div>
                                                     </td>
                                                     <td className="py-1.5 text-right text-white/60">{pos.size.toFixed(4)}</td>
+                                                    <td className="py-1.5 text-right text-yellow-400 font-medium">{pos.leverage || 20}x</td>
                                                     <td className="py-1.5 text-right text-white/60">${(pos.size * pos.mark_price).toFixed(2)}</td>
                                                     <td className="py-1.5 text-right text-white/60">${pos.entry_price.toFixed(2)}</td>
                                                     <td className="py-1.5 text-right text-white/60">${pos.mark_price.toFixed(2)}</td>
@@ -521,7 +515,59 @@ export default function HyperDashOverview({
                                     <div className="text-center py-6 text-white/30 text-xs">No recent fills</div>
                                 )
                             )}
-                            {(activeTab !== 'POSITIONS' && activeTab !== 'FILLS') && (
+                            {activeTab === 'ORDERS' && (
+                                openOrders.length > 0 ? (
+                                    <table className="w-full text-[10px]">
+                                        <thead>
+                                            <tr className="text-white/40 border-b border-white/5">
+                                                <th className="text-left py-1.5 font-medium">ASSET</th>
+                                                <th className="text-right py-1.5 font-medium">TYPE</th>
+                                                <th className="text-right py-1.5 font-medium">SIDE</th>
+                                                <th className="text-right py-1.5 font-medium">SIZE</th>
+                                                <th className="text-right py-1.5 font-medium">PRICE</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {openOrders.slice(0, 5).map((order, idx) => (
+                                                <tr key={idx} className="border-b border-white/5">
+                                                    <td className="py-1.5 text-white font-medium">{order.symbol}</td>
+                                                    <td className="py-1.5 text-right text-white/60">{order.type}</td>
+                                                    <td className="py-1.5 text-right">
+                                                        <span className={`text-[8px] px-1 rounded ${order.side === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                            {order.side.toUpperCase()}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-1.5 text-right text-white/60">{order.size}</td>
+                                                    <td className="py-1.5 text-right text-white/60">${order.price.toFixed(2)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div className="text-center py-6 text-white/30 text-xs">No open orders</div>
+                                )
+                            )}
+                            {activeTab === 'BALANCES' && (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                        <span className="text-white font-medium">Account Equity</span>
+                                        <span className="text-green-400 font-bold">${equity.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                        <span className="text-white/60">Unrealized PnL</span>
+                                        <span className={unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}>${unrealizedPnl.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                        <span className="text-white/60">Margin Used</span>
+                                        <span className="text-yellow-400">{(marginUsage * 100).toFixed(1)}%</span>
+                                    </div>
+                                    <div className="flex items-center justify-between py-2">
+                                        <span className="text-white/60">Available Balance</span>
+                                        <span className="text-white">${(equity * (1 - marginUsage)).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            )}
+                            {(activeTab !== 'POSITIONS' && activeTab !== 'FILLS' && activeTab !== 'ORDERS' && activeTab !== 'BALANCES') && (
                                 <div className="text-center py-6 text-white/30 text-xs">No data</div>
                             )}
                         </div>
