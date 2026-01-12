@@ -667,59 +667,6 @@ def api_pnl_summary():
         }), 500
 
 
-@app.route('/api/journal/stats')
-def api_journal_stats():
-    """Get trade journal statistics for dashboard"""
-    try:
-        from trade_journal import get_journal
-        journal = get_journal()
-        stats = journal.get_stats()
-        return jsonify({
-            "ok": True,
-            "data": stats,
-            "server_time_ms": int(time.time() * 1000)
-        })
-    except Exception as e:
-        print(f"[DASHBOARD][ERROR] Journal stats failed: {e}")
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-            "data": {}
-        }), 500
-
-
-@app.route('/api/session')
-def api_session():
-    """Get current trading session info (Asia, London, NY, etc.)"""
-    now = datetime.now(timezone.utc)
-    hour = now.hour
-    weekday = now.weekday()
-    is_weekend = weekday >= 5
-    
-    if is_weekend:
-        session = "WEEKEND"
-    elif 0 <= hour < 8:
-        session = "ASIA"
-    elif 8 <= hour < 13:
-        session = "LONDON"
-    elif 13 <= hour < 17:
-        session = "OVERLAP_LONDON_NY"
-    elif 17 <= hour < 22:
-        session = "NEW_YORK"
-    else:
-        session = "QUIET"
-    
-    return jsonify({
-        "ok": True,
-        "data": {
-            "session": session,
-            "current_time_utc": now.isoformat(),
-            "is_weekend": is_weekend
-        },
-        "server_time_ms": int(time.time() * 1000)
-    })
-
-
 @app.route('/api/pnl/history')
 @app.route('/api/history')
 @app.route('/api/pnl')

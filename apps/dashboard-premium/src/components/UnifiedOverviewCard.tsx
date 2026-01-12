@@ -125,7 +125,14 @@ interface UnifiedOverviewProps {
     history: { time: string | number; value: number }[];
     period: '24H' | '7D' | '30D' | 'ALL';
     setPeriod: (p: '24H' | '7D' | '30D' | 'ALL') => void;
-    journalStats: { win_rate?: number; total_trades?: number } | null;
+    journalStats: {
+        win_rate?: number;
+        total_trades?: number;
+        best_trade_pct?: number;
+        worst_trade_pct?: number;
+        avg_duration_minutes?: number;
+        total_pnl_usd?: number;
+    } | null;
     sessionInfo: { session?: string; current_time_utc?: string; is_weekend?: boolean } | null;
     isPt: boolean;
     isLoading: boolean;
