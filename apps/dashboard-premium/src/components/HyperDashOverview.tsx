@@ -429,521 +429,523 @@ export default function HyperDashOverview({
     };
 
     return (
-        <div className="w-full bg-black rounded-xl border border-white/5 overflow-hidden relative z-10" style={{ backgroundColor: '#000000' }}>
-            <div className="grid grid-cols-12 min-h-[480px]">
+        <>
+            <div className="w-full bg-black rounded-xl border border-white/5 overflow-hidden relative z-10" style={{ backgroundColor: '#000000' }}>
+                <div className="grid grid-cols-12 min-h-[480px]">
 
-                {/* Left Sidebar - 2 cols */}
-                <div className="col-span-2 border-r border-white/5 p-3 overflow-y-auto bg-[#080808]">
+                    {/* Left Sidebar - 2 cols */}
+                    <div className="col-span-2 border-r border-white/5 p-3 overflow-y-auto bg-[#080808]">
 
-                    {/* Account Header */}
-                    <div className="mb-3 pb-3 border-b border-white/5">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500 to-pink-500" />
-                            <span className="text-[10px] font-mono text-white/60 truncate">0x96E0...bA24</span>
-                        </div>
-                        <span className={`px-2 py-0.5 text-[8px] rounded ${pnlTotal >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} uppercase`}>
-                            {pnlTotal >= 0 ? 'Profitable' : 'Slightly Unprofitable'}
-                        </span>
-                    </div>
-
-                    {/* Account Value */}
-                    <SidebarSection title="Account Value">
-                        <div className="text-xl font-bold text-white">${equity.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                    </SidebarSection>
-
-                    {/* Account Equity */}
-                    <SidebarSection title="Account Equity">
-                        <MetricRow label="PERPS" value={`$${equity.toFixed(2)}`} />
-                        <MetricRow label="SPOT" value="$0.00" valueColor="text-white/40" />
-                    </SidebarSection>
-
-                    {/* Perps Overview */}
-                    <SidebarSection title="Perps Overview">
-                        <MetricRow
-                            label="UNREALIZED PNL"
-                            value={`${unrealizedPnl >= 0 ? '+' : ''}$${unrealizedPnl.toFixed(2)}`}
-                            valueColor={unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}
-                        />
-                        <MetricRow label="MARGIN USAGE" value={`${marginUsage.toFixed(2)}%`} />
-                        <MetricRow
-                            label="ALL TIME PNL"
-                            value={`${pnlTotal >= 0 ? '+' : ''}$${pnlTotal.toFixed(2)}`}
-                            valueColor={pnlTotal >= 0 ? 'text-green-400' : 'text-red-400'}
-                        />
-                        <MetricRow label="VOLUME" value={`$${volume.toLocaleString('en-US', { minimumFractionDigits: 2 })}`} />
-                    </SidebarSection>
-
-                    {/* Execution Profile */}
-                    <SidebarSection title="Execution Profile" collapsible>
-                        <MetricRow label="TRADING STYLE" value="Intraday" />
-                        <MetricRow label="AVG DURATION" value={formatDuration(avgDuration)} />
-                    </SidebarSection>
-
-                    {/* Performance */}
-                    <SidebarSection title="Performance" collapsible>
-                        <MetricRow label="WIN RATE" value={`${winRate.toFixed(0)}%`} />
-                        <MetricRow label="DRAWDOWN" value="0%" />
-                    </SidebarSection>
-                </div>
-
-                {/* Center - Chart Area - 7 cols */}
-                <div className="col-span-7 flex flex-col border-r border-white/5">
-
-                    {/* Chart Header */}
-                    <div className="flex items-center justify-between p-3 border-b border-white/5">
-                        <div className="flex items-center gap-3">
-                            <div className="flex gap-1">
-                                <button className="px-2 py-1 text-[10px] bg-white/10 text-white rounded">PNL</button>
-                                <button
-                                    onClick={() => setViewMode('CALENDAR')}
-                                    className={`px-2 py-1 text-[10px] transition ${viewMode === 'CALENDAR' ? 'bg-white/10 text-white rounded' : 'text-white/40 hover:text-white'}`}
-                                >
-                                    CALENDAR
-                                </button>
+                        {/* Account Header */}
+                        <div className="mb-3 pb-3 border-b border-white/5">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500 to-pink-500" />
+                                <span className="text-[10px] font-mono text-white/60 truncate">0x96E0...bA24</span>
                             </div>
-                            <div className="flex gap-1">
-                                <button
-                                    onClick={() => setViewMode('PERPS')}
-                                    className={`px-2 py-1 text-[10px] transition ${viewMode === 'PERPS' ? 'bg-white/5 text-white/60 rounded' : 'text-white/40 hover:text-white'}`}
-                                >
-                                    PERPS
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('COMBINED')}
-                                    className={`px-2 py-1 text-[10px] transition ${viewMode === 'COMBINED' ? 'bg-white/5 text-white/60 rounded' : 'text-white/40 hover:text-white'}`}
-                                >
-                                    COMBINED
-                                </button>
-                            </div>
-                        </div>
-                        <div className="flex gap-1 p-0.5 rounded bg-white/5">
-                            {periods.map(p => (
-                                <button
-                                    key={p.key}
-                                    onClick={() => p.key !== 'VALUE' && setPeriod(p.key as '24H' | '7D' | '30D' | 'ALL')}
-                                    className={`px-2 py-1 rounded text-[10px] font-medium transition-all ${(p.key === 'VALUE' || period === p.key)
-                                        ? 'bg-white/10 text-white'
-                                        : 'text-white/40 hover:text-white'
-                                        }`}
-                                >
-                                    {p.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Chart */}
-                    <div className="h-[320px] p-4 shrink-0">
-                        {viewMode === 'CALENDAR' ? (
-                            <EconomicCalendarWidget />
-                        ) : viewMode === 'COMBINED' ? (
-                            <div className="flex items-center justify-center w-full h-full text-white/30 text-xs">
-                                Combined View Placeholder
-                            </div>
-                        ) : (
-                            <EquityChart
-                                data={filteredChartData}
-                                isLoading={isLoading}
-                                pnlValue={currentPnl}
-                                pnlPeriod={period}
-                                trades={recentFills}
-                            />
-                        )}
-                    </div>
-
-                    {/* Bottom Tabs */}
-                    <div className="border-t border-white/5">
-                        <div className="flex items-center gap-1 p-2 border-b border-white/5 overflow-x-auto">
-                            {tabs.map(tab => (
-                                <button
-                                    key={tab}
-                                    onClick={() => setActiveTab(tab)}
-                                    className={`px-2 py-1 text-[9px] font-medium whitespace-nowrap transition-all rounded ${activeTab === tab
-                                        ? 'bg-white/10 text-white'
-                                        : 'text-white/40 hover:text-white'
-                                        }`}
-                                >
-                                    {tab}
-                                    {tab === 'POSITIONS' && positions.length > 0 && (
-                                        <span className="ml-1 px-1 text-[8px] bg-primary/20 text-primary rounded">{positions.length}</span>
-                                    )}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Tab Content */}
-                        <div className="p-2 max-h-[150px] overflow-y-auto bg-black relative z-20" style={{ backgroundColor: '#000000' }}>
-                            {activeTab === 'POSITIONS' && (
-                                positions.length > 0 ? (
-                                    <table className="w-full text-[10px]">
-                                        <thead>
-                                            <tr className="text-white/40 border-b border-white/5">
-                                                <th className="text-left py-1.5 font-medium">ASSET</th>
-                                                <th className="text-center py-1.5 font-medium">CHART</th>
-                                                <th className="text-right py-1.5 font-medium">SIZE</th>
-                                                <th className="text-right py-1.5 font-medium">LEV</th>
-                                                <th className="text-right py-1.5 font-medium">VALUE</th>
-                                                <th className="text-right py-1.5 font-medium">ENTRY</th>
-                                                <th className="text-right py-1.5 font-medium">MARK</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {positions.map((pos, idx) => (
-                                                <tr key={idx} className="border-b border-white/5">
-                                                    <td className="py-1.5">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-[7px] font-bold">
-                                                                {pos.symbol.substring(0, 2)}
-                                                            </div>
-                                                            <span className="font-medium text-white">{pos.symbol}</span>
-                                                            <span className={`text-[8px] px-1 rounded ${pos.side === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                                {pos.side}
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-1.5">
-                                                        <div className="w-32 h-16 mx-auto">
-                                                            <MiniTradingViewChart symbol={pos.symbol} />
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-1.5 text-right text-white/60">{pos.size.toFixed(4)}</td>
-                                                    <td className="py-1.5 text-right text-yellow-400 font-medium">{pos.leverage || 20}x</td>
-                                                    <td className="py-1.5 text-right text-white/60">${(pos.size * pos.mark_price).toFixed(2)}</td>
-                                                    <td className="py-1.5 text-right text-white/60">${pos.entry_price.toFixed(2)}</td>
-                                                    <td className="py-1.5 text-right text-white/60">${pos.mark_price.toFixed(2)}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                ) : (
-                                    <div className="text-center py-6 text-white/30 text-xs">No active positions</div>
-                                )
-                            )}
-
-                            {activeTab === 'TWAP' && (
-                                openOrders.filter(o => o.type === 'TWAP' || o.type.includes('Twap')).length > 0 ? (
-                                    <table className="w-full text-[10px]">
-                                        <thead>
-                                            <tr className="text-white/40 border-b border-white/5">
-                                                <th className="text-left py-1.5 font-medium">ASSET</th>
-                                                <th className="text-right py-1.5 font-medium">SIDE</th>
-                                                <th className="text-right py-1.5 font-medium">SIZE</th>
-                                                <th className="text-right py-1.5 font-medium">PRICE</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {openOrders.filter(o => o.type === 'TWAP' || o.type.includes('Twap')).map((order, idx) => (
-                                                <tr key={idx} className="border-b border-white/5 bg-black">
-                                                    <td className="py-1.5 text-white font-medium">{order.symbol}</td>
-                                                    <td className="py-1.5 text-right">
-                                                        <span className={`text-[8px] px-1 rounded ${order.side === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                            {order.side.toUpperCase()}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-1.5 text-right text-white/60">{order.size}</td>
-                                                    <td className="py-1.5 text-right text-white/60">${order.price.toFixed(2)}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                ) : (
-                                    <div className="text-center py-6 text-white/30 text-xs">No active TWAP orders</div>
-                                )
-                            )}
-
-                            {activeTab === 'BALANCES' && (
-                                <div className="space-y-1">
-                                    <div className="flex items-center justify-between py-2 border-b border-white/5">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-[10px] font-bold">U</div>
-                                            <span className="text-white font-medium">USDC</span>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-white font-mono">${(status?.equity || 0).toFixed(2)}</div>
-                                            <div className="text-[9px] text-white/40">Collateral</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {activeTab === 'TRADES' && (
-                                recentFills.filter(f => f.closed_pnl !== undefined && f.closed_pnl !== null).length > 0 ? (
-                                    <table className="w-full text-[10px]">
-                                        <thead>
-                                            <tr className="text-white/40 border-b border-white/5">
-                                                <th className="text-left py-1.5 font-medium">TIME</th>
-                                                <th className="text-left py-1.5 font-medium">SYMBOL</th>
-                                                <th className="text-left py-1.5 font-medium">SIDE</th>
-                                                <th className="text-right py-1.5 font-medium">PnL</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {recentFills.filter(f => f.closed_pnl !== undefined && f.closed_pnl !== null).slice(0, 10).map((fill, idx) => {
-                                                const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
-                                                return (
-                                                    <tr key={idx} className="border-b border-white/5 bg-black">
-                                                        <td className="py-1.5 text-white/60">{fill.timestamp ? new Date(fill.timestamp).toLocaleTimeString() : '--:--'}</td>
-                                                        <td className="py-1.5 text-white font-medium">{fill.symbol}</td>
-                                                        <td className="py-1.5">
-                                                            <span className={`text-[8px] px-1 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                                {isLong ? 'LONG' : 'SHORT'}
-                                                            </span>
-                                                        </td>
-                                                        <td className={`py-1.5 text-right font-medium ${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                            ${(fill.closed_pnl || 0).toFixed(2)}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                ) : (
-                                    <div className="text-center py-6 text-white/30 text-xs">No recent trades (Closed PnL)</div>
-                                )
-                            )}
-                            <span className={`${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : `$${fill.price.toFixed(2)}`}
+                            <span className={`px-2 py-0.5 text-[8px] rounded ${pnlTotal >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} uppercase`}>
+                                {pnlTotal >= 0 ? 'Profitable' : 'Slightly Unprofitable'}
                             </span>
                         </div>
-                        );
-                                        })}
+
+                        {/* Account Value */}
+                        <SidebarSection title="Account Value">
+                            <div className="text-xl font-bold text-white">${equity.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                        </SidebarSection>
+
+                        {/* Account Equity */}
+                        <SidebarSection title="Account Equity">
+                            <MetricRow label="PERPS" value={`$${equity.toFixed(2)}`} />
+                            <MetricRow label="SPOT" value="$0.00" valueColor="text-white/40" />
+                        </SidebarSection>
+
+                        {/* Perps Overview */}
+                        <SidebarSection title="Perps Overview">
+                            <MetricRow
+                                label="UNREALIZED PNL"
+                                value={`${unrealizedPnl >= 0 ? '+' : ''}$${unrealizedPnl.toFixed(2)}`}
+                                valueColor={unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}
+                            />
+                            <MetricRow label="MARGIN USAGE" value={`${marginUsage.toFixed(2)}%`} />
+                            <MetricRow
+                                label="ALL TIME PNL"
+                                value={`${pnlTotal >= 0 ? '+' : ''}$${pnlTotal.toFixed(2)}`}
+                                valueColor={pnlTotal >= 0 ? 'text-green-400' : 'text-red-400'}
+                            />
+                            <MetricRow label="VOLUME" value={`$${volume.toLocaleString('en-US', { minimumFractionDigits: 2 })}`} />
+                        </SidebarSection>
+
+                        {/* Execution Profile */}
+                        <SidebarSection title="Execution Profile" collapsible>
+                            <MetricRow label="TRADING STYLE" value="Intraday" />
+                            <MetricRow label="AVG DURATION" value={formatDuration(avgDuration)} />
+                        </SidebarSection>
+
+                        {/* Performance */}
+                        <SidebarSection title="Performance" collapsible>
+                            <MetricRow label="WIN RATE" value={`${winRate.toFixed(0)}%`} />
+                            <MetricRow label="DRAWDOWN" value="0%" />
+                        </SidebarSection>
                     </div>
-                    ) : (
-                    <div className="text-center py-6 text-white/30 text-xs">No recent trades</div>
-                    )
-                            )}
-                    {activeTab === 'TWAP' && (
-                        <div className="text-center py-6 text-white/30 text-xs">No active TWAP orders</div>
-                    )}
-                    {activeTab === 'TRANSFERS' && (
-                        transfers.length > 0 ? (
-                            <table className="w-full text-[10px]">
-                                <thead>
-                                    <tr className="text-white/40 border-b border-white/5">
-                                        <th className="text-left py-1.5 font-medium">TIME</th>
-                                        <th className="text-left py-1.5 font-medium">TYPE</th>
-                                        <th className="text-right py-1.5 font-medium">AMOUNT</th>
-                                        <th className="text-right py-1.5 font-medium">STATUS</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {transfers.slice(0, 10).map((t, idx) => (
-                                        <tr key={idx} className="border-b border-white/5 bg-[#0a0a0a]">
-                                            <td className="py-1.5 text-white/60">{new Date(t.timestamp || Date.now()).toLocaleDateString()}</td>
-                                            <td className="py-1.5">
-                                                <span className={`px-1 rounded text-[8px] ${t.type.toLowerCase().includes('deposit') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                    {t.type.toUpperCase()}
-                                                </span>
-                                            </td>
-                                            <td className="py-1.5 text-right text-white font-medium">${t.amount.toFixed(2)}</td>
-                                            <td className="py-1.5 text-right text-white/40">{t.status}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        ) : (
-                            <div className="text-center py-6 text-white/30 text-xs">No recent transfers</div>
-                        )
-                    )}
-                    {activeTab === 'FILLS' && (
-                        recentFills.length > 0 ? (
-                            <table className="w-full text-[10px]">
-                                <thead>
-                                    <tr className="text-white/40 border-b border-white/5">
-                                        <th className="text-left py-1.5 font-medium">TIME</th>
-                                        <th className="text-left py-1.5 font-medium">SYMBOL</th>
-                                        <th className="text-left py-1.5 font-medium">SIDE</th>
-                                        <th className="text-right py-1.5 font-medium">SIZE</th>
-                                        <th className="text-right py-1.5 font-medium">PRICE</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {recentFills.slice(0, 10).map((fill, idx) => {
-                                        const isBuy = fill.side?.toLowerCase() === 'buy';
-                                        return (
-                                            <tr key={idx} className="border-b border-white/5 bg-black">
-                                                <td className="py-1.5 text-white/60">{fill.timestamp ? new Date(fill.timestamp).toLocaleTimeString() : '--:--'}</td>
-                                                <td className="py-1.5 text-white font-medium">{fill.symbol}</td>
-                                                <td className="py-1.5">
-                                                    <span className={`text-[8px] px-1 rounded ${isBuy ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                        {isBuy ? 'BUY' : 'SELL'}
-                                                    </span>
-                                                </td>
-                                                <td className="py-1.5 text-right text-white/60">{fill.size}</td>
-                                                <td className="py-1.5 text-right text-white/60">${fill.price.toFixed(2)}</td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        ) : (
-                            <div className="text-center py-6 text-white/30 text-xs">No recent fills</div>
-                        )
-                    )}
-                    {activeTab === 'ORDERS' && (
-                        openOrders.length > 0 ? (
-                            <table className="w-full text-[10px]">
-                                <thead>
-                                    <tr className="text-white/40 border-b border-white/5">
-                                        <th className="text-left py-1.5 font-medium">ASSET</th>
-                                        <th className="text-right py-1.5 font-medium">TYPE</th>
-                                        <th className="text-right py-1.5 font-medium">SIDE</th>
-                                        <th className="text-right py-1.5 font-medium">SIZE</th>
-                                        <th className="text-right py-1.5 font-medium">PRICE</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {openOrders.slice(0, 5).map((order, idx) => (
-                                        <tr key={idx} className="border-b border-white/5">
-                                            <td className="py-1.5 text-white font-medium">{order.symbol}</td>
-                                            <td className="py-1.5 text-right text-white/60">{order.type}</td>
-                                            <td className="py-1.5 text-right">
-                                                <span className={`text-[8px] px-1 rounded ${order.side === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                    {order.side.toUpperCase()}
-                                                </span>
-                                            </td>
-                                            <td className="py-1.5 text-right text-white/60">{order.size}</td>
-                                            <td className="py-1.5 text-right text-white/60">${order.price.toFixed(2)}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        ) : (
-                            <div className="text-center py-6 text-white/30 text-xs">No open orders</div>
-                        )
-                    )}
-                    {activeTab === 'BALANCES' && (
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between py-2 border-b border-white/5">
-                                <span className="text-white font-medium">Account Equity</span>
-                                <span className="text-green-400 font-bold">${equity.toFixed(2)}</span>
+
+                    {/* Center - Chart Area - 7 cols */}
+                    <div className="col-span-7 flex flex-col border-r border-white/5">
+
+                        {/* Chart Header */}
+                        <div className="flex items-center justify-between p-3 border-b border-white/5">
+                            <div className="flex items-center gap-3">
+                                <div className="flex gap-1">
+                                    <button className="px-2 py-1 text-[10px] bg-white/10 text-white rounded">PNL</button>
+                                    <button
+                                        onClick={() => setViewMode('CALENDAR')}
+                                        className={`px-2 py-1 text-[10px] transition ${viewMode === 'CALENDAR' ? 'bg-white/10 text-white rounded' : 'text-white/40 hover:text-white'}`}
+                                    >
+                                        CALENDAR
+                                    </button>
+                                </div>
+                                <div className="flex gap-1">
+                                    <button
+                                        onClick={() => setViewMode('PERPS')}
+                                        className={`px-2 py-1 text-[10px] transition ${viewMode === 'PERPS' ? 'bg-white/5 text-white/60 rounded' : 'text-white/40 hover:text-white'}`}
+                                    >
+                                        PERPS
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('COMBINED')}
+                                        className={`px-2 py-1 text-[10px] transition ${viewMode === 'COMBINED' ? 'bg-white/5 text-white/60 rounded' : 'text-white/40 hover:text-white'}`}
+                                    >
+                                        COMBINED
+                                    </button>
+                                </div>
                             </div>
-                            <div className="flex items-center justify-between py-2 border-b border-white/5">
-                                <span className="text-white/60">Unrealized PnL</span>
-                                <span className={unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}>${unrealizedPnl.toFixed(2)}</span>
-                            </div>
-                            <div className="flex items-center justify-between py-2 border-b border-white/5">
-                                <span className="text-white/60">Margin Used</span>
-                                <span className="text-yellow-400">{(marginUsage * 100).toFixed(1)}%</span>
-                            </div>
-                            <div className="flex items-center justify-between py-2">
-                                <span className="text-white/60">Available Balance</span>
-                                <span className="text-white">${(equity * (1 - marginUsage)).toFixed(2)}</span>
+                            <div className="flex gap-1 p-0.5 rounded bg-white/5">
+                                {periods.map(p => (
+                                    <button
+                                        key={p.key}
+                                        onClick={() => p.key !== 'VALUE' && setPeriod(p.key as '24H' | '7D' | '30D' | 'ALL')}
+                                        className={`px-2 py-1 rounded text-[10px] font-medium transition-all ${(p.key === 'VALUE' || period === p.key)
+                                            ? 'bg-white/10 text-white'
+                                            : 'text-white/40 hover:text-white'
+                                            }`}
+                                    >
+                                        {p.label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
-                    )}
-                    {(!['POSITIONS', 'BALANCES', 'ORDERS', 'FILLS', 'TRADES', 'TWAP', 'TRANSFERS'].includes(activeTab)) && (
-                        <div className="text-center py-6 text-white/30 text-xs">No data</div>
-                    )}
-                </div>
-            </div>
 
-            <div className="col-span-3 bg-[#080808] flex flex-col">
-                {/* Tabs */}
-                <div className="flex border-b border-white/5">
-                    <button
-                        onClick={() => setRightTab('BEST_TRADES')}
-                        className={`flex-1 px-3 py-2.5 text-[10px] font-medium transition-all ${rightTab === 'BEST_TRADES' ? 'text-white border-b-2 border-primary' : 'text-white/40 hover:text-white'}`}
-                    >
-                        📊 Recent Activity
-                    </button>
-                    <button
-                        onClick={() => setRightTab('AI_STRATEGY')}
-                        className={`flex-1 px-3 py-2.5 text-[10px] font-medium transition-all ${rightTab === 'AI_STRATEGY' ? 'text-white border-b-2 border-primary' : 'text-white/40 hover:text-white'}`}
-                    >
-                        🤖 AI Strategy
-                    </button>
-                </div>
+                        {/* Chart */}
+                        <div className="h-[320px] p-4 shrink-0">
+                            {viewMode === 'CALENDAR' ? (
+                                <EconomicCalendarWidget />
+                            ) : viewMode === 'COMBINED' ? (
+                                <div className="flex items-center justify-center w-full h-full text-white/30 text-xs">
+                                    Combined View Placeholder
+                                </div>
+                            ) : (
+                                <EquityChart
+                                    data={filteredChartData}
+                                    isLoading={isLoading}
+                                    pnlValue={currentPnl}
+                                    pnlPeriod={period}
+                                    trades={recentFills}
+                                />
+                            )}
+                        </div>
 
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-3">
-                    {rightTab === 'BEST_TRADES' && (
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                <span className="text-[10px] text-white/40 uppercase tracking-wider">Live Trade History</span>
+                        {/* Bottom Tabs */}
+                        <div className="border-t border-white/5">
+                            <div className="flex items-center gap-1 p-2 border-b border-white/5 overflow-x-auto">
+                                {tabs.map(tab => (
+                                    <button
+                                        key={tab}
+                                        onClick={() => setActiveTab(tab)}
+                                        className={`px-2 py-1 text-[9px] font-medium whitespace-nowrap transition-all rounded ${activeTab === tab
+                                            ? 'bg-white/10 text-white'
+                                            : 'text-white/40 hover:text-white'
+                                            }`}
+                                    >
+                                        {tab}
+                                        {tab === 'POSITIONS' && positions.length > 0 && (
+                                            <span className="ml-1 px-1 text-[8px] bg-primary/20 text-primary rounded">{positions.length}</span>
+                                        )}
+                                    </button>
+                                ))}
                             </div>
-                            {recentFills.length > 0 ? (
-                                recentFills.slice(0, 15).map((fill, idx) => {
-                                    const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
-                                    return (
-                                        <div key={idx} className="p-2 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-[8px] font-bold">
-                                                        {fill.symbol.substring(0, 2)}
-                                                    </div>
-                                                    <span className="text-xs font-medium text-white">{fill.symbol}</span>
-                                                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                        {isLong ? 'Long' : 'Short'}
-                                                    </span>
-                                                </div>
-                                                <span className={`text-xs font-bold ${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                    {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : '--'}
-                                                </span>
+
+                            {/* Tab Content */}
+                            <div className="p-2 max-h-[150px] overflow-y-auto bg-black relative z-20" style={{ backgroundColor: '#000000' }}>
+                                {activeTab === 'POSITIONS' && (
+                                    positions.length > 0 ? (
+                                        <table className="w-full text-[10px]">
+                                            <thead>
+                                                <tr className="text-white/40 border-b border-white/5">
+                                                    <th className="text-left py-1.5 font-medium">ASSET</th>
+                                                    <th className="text-center py-1.5 font-medium">CHART</th>
+                                                    <th className="text-right py-1.5 font-medium">SIZE</th>
+                                                    <th className="text-right py-1.5 font-medium">LEV</th>
+                                                    <th className="text-right py-1.5 font-medium">VALUE</th>
+                                                    <th className="text-right py-1.5 font-medium">ENTRY</th>
+                                                    <th className="text-right py-1.5 font-medium">MARK</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {positions.map((pos, idx) => (
+                                                    <tr key={idx} className="border-b border-white/5">
+                                                        <td className="py-1.5">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-[7px] font-bold">
+                                                                    {pos.symbol.substring(0, 2)}
+                                                                </div>
+                                                                <span className="font-medium text-white">{pos.symbol}</span>
+                                                                <span className={`text-[8px] px-1 rounded ${pos.side === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                                    {pos.side}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-1.5">
+                                                            <div className="w-32 h-16 mx-auto">
+                                                                <MiniTradingViewChart symbol={pos.symbol} />
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-1.5 text-right text-white/60">{pos.size.toFixed(4)}</td>
+                                                        <td className="py-1.5 text-right text-yellow-400 font-medium">{pos.leverage || 20}x</td>
+                                                        <td className="py-1.5 text-right text-white/60">${(pos.size * pos.mark_price).toFixed(2)}</td>
+                                                        <td className="py-1.5 text-right text-white/60">${pos.entry_price.toFixed(2)}</td>
+                                                        <td className="py-1.5 text-right text-white/60">${pos.mark_price.toFixed(2)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <div className="text-center py-6 text-white/30 text-xs">No active positions</div>
+                                    )
+                                )}
+
+                                {activeTab === 'TWAP' && (
+                                    openOrders.filter(o => o.type === 'TWAP' || o.type.includes('Twap')).length > 0 ? (
+                                        <table className="w-full text-[10px]">
+                                            <thead>
+                                                <tr className="text-white/40 border-b border-white/5">
+                                                    <th className="text-left py-1.5 font-medium">ASSET</th>
+                                                    <th className="text-right py-1.5 font-medium">SIDE</th>
+                                                    <th className="text-right py-1.5 font-medium">SIZE</th>
+                                                    <th className="text-right py-1.5 font-medium">PRICE</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {openOrders.filter(o => o.type === 'TWAP' || o.type.includes('Twap')).map((order, idx) => (
+                                                    <tr key={idx} className="border-b border-white/5 bg-black">
+                                                        <td className="py-1.5 text-white font-medium">{order.symbol}</td>
+                                                        <td className="py-1.5 text-right">
+                                                            <span className={`text-[8px] px-1 rounded ${order.side === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                                {order.side.toUpperCase()}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-1.5 text-right text-white/60">{order.size}</td>
+                                                        <td className="py-1.5 text-right text-white/60">${order.price.toFixed(2)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <div className="text-center py-6 text-white/30 text-xs">No active TWAP orders</div>
+                                    )
+                                )}
+
+                                {activeTab === 'BALANCES' && (
+                                    <div className="space-y-1">
+                                        <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-[10px] font-bold">U</div>
+                                                <span className="text-white font-medium">USDC</span>
                                             </div>
-                                            <div className="flex items-center justify-between text-[9px] text-white/40">
-                                                <span>${fill.price.toFixed(2)} × {fill.size}</span>
-                                                <span>{fill.timestamp ? new Date(fill.timestamp).toLocaleString() : '--'}</span>
+                                            <div className="text-right">
+                                                <div className="text-white font-mono">${(status?.equity || 0).toFixed(2)}</div>
+                                                <div className="text-[9px] text-white/40">Collateral</div>
                                             </div>
                                         </div>
-                                    );
-                                })
-                            ) : (
-                                <div className="text-center py-8 text-white/30 text-xs">No trade history</div>
-                            )}
+                                    </div>
+                                )}
+                                {activeTab === 'TRADES' && (
+                                    recentFills.filter(f => f.closed_pnl !== undefined && f.closed_pnl !== null).length > 0 ? (
+                                        <table className="w-full text-[10px]">
+                                            <thead>
+                                                <tr className="text-white/40 border-b border-white/5">
+                                                    <th className="text-left py-1.5 font-medium">TIME</th>
+                                                    <th className="text-left py-1.5 font-medium">SYMBOL</th>
+                                                    <th className="text-left py-1.5 font-medium">SIDE</th>
+                                                    <th className="text-right py-1.5 font-medium">PnL</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {recentFills.filter(f => f.closed_pnl !== undefined && f.closed_pnl !== null).slice(0, 10).map((fill, idx) => {
+                                                    const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
+                                                    return (
+                                                        <tr key={idx} className="border-b border-white/5 bg-black">
+                                                            <td className="py-1.5 text-white/60">{fill.timestamp ? new Date(fill.timestamp).toLocaleTimeString() : '--:--'}</td>
+                                                            <td className="py-1.5 text-white font-medium">{fill.symbol}</td>
+                                                            <td className="py-1.5">
+                                                                <span className={`text-[8px] px-1 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                                    {isLong ? 'LONG' : 'SHORT'}
+                                                                </span>
+                                                            </td>
+                                                            <td className={`py-1.5 text-right font-medium ${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                                ${(fill.closed_pnl || 0).toFixed(2)}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    ) : (
+                                        <div className="text-center py-6 text-white/30 text-xs">No recent trades (Closed PnL)</div>
+                                    )
+                                )}
+                                <span className={`${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : `$${fill.price.toFixed(2)}`}
+                                </span>
+                            </div>
+                            );
+                                        })}
                         </div>
-                    )}
-
-                    {rightTab === 'AI_STRATEGY' && (
-                        <div className="space-y-3">
-                            {/* AI Status */}
-                            <div className={`p-3 rounded-lg ${moodConfig[aiMood].bg} border border-white/5`}>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <BrainCircuit className="w-4 h-4 text-primary" />
-                                    <span className="text-xs font-bold text-white">AI Strategy Core</span>
+                        ) : (
+                        <div className="text-center py-6 text-white/30 text-xs">No recent trades</div>
+                        )
+                            )}
+                        {activeTab === 'TWAP' && (
+                            <div className="text-center py-6 text-white/30 text-xs">No active TWAP orders</div>
+                        )}
+                        {activeTab === 'TRANSFERS' && (
+                            transfers.length > 0 ? (
+                                <table className="w-full text-[10px]">
+                                    <thead>
+                                        <tr className="text-white/40 border-b border-white/5">
+                                            <th className="text-left py-1.5 font-medium">TIME</th>
+                                            <th className="text-left py-1.5 font-medium">TYPE</th>
+                                            <th className="text-right py-1.5 font-medium">AMOUNT</th>
+                                            <th className="text-right py-1.5 font-medium">STATUS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {transfers.slice(0, 10).map((t, idx) => (
+                                            <tr key={idx} className="border-b border-white/5 bg-[#0a0a0a]">
+                                                <td className="py-1.5 text-white/60">{new Date(t.timestamp || Date.now()).toLocaleDateString()}</td>
+                                                <td className="py-1.5">
+                                                    <span className={`px-1 rounded text-[8px] ${t.type.toLowerCase().includes('deposit') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                        {t.type.toUpperCase()}
+                                                    </span>
+                                                </td>
+                                                <td className="py-1.5 text-right text-white font-medium">${t.amount.toFixed(2)}</td>
+                                                <td className="py-1.5 text-right text-white/40">{t.status}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="text-center py-6 text-white/30 text-xs">No recent transfers</div>
+                            )
+                        )}
+                        {activeTab === 'FILLS' && (
+                            recentFills.length > 0 ? (
+                                <table className="w-full text-[10px]">
+                                    <thead>
+                                        <tr className="text-white/40 border-b border-white/5">
+                                            <th className="text-left py-1.5 font-medium">TIME</th>
+                                            <th className="text-left py-1.5 font-medium">SYMBOL</th>
+                                            <th className="text-left py-1.5 font-medium">SIDE</th>
+                                            <th className="text-right py-1.5 font-medium">SIZE</th>
+                                            <th className="text-right py-1.5 font-medium">PRICE</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {recentFills.slice(0, 10).map((fill, idx) => {
+                                            const isBuy = fill.side?.toLowerCase() === 'buy';
+                                            return (
+                                                <tr key={idx} className="border-b border-white/5 bg-black">
+                                                    <td className="py-1.5 text-white/60">{fill.timestamp ? new Date(fill.timestamp).toLocaleTimeString() : '--:--'}</td>
+                                                    <td className="py-1.5 text-white font-medium">{fill.symbol}</td>
+                                                    <td className="py-1.5">
+                                                        <span className={`text-[8px] px-1 rounded ${isBuy ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                            {isBuy ? 'BUY' : 'SELL'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-1.5 text-right text-white/60">{fill.size}</td>
+                                                    <td className="py-1.5 text-right text-white/60">${fill.price.toFixed(2)}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="text-center py-6 text-white/30 text-xs">No recent fills</div>
+                            )
+                        )}
+                        {activeTab === 'ORDERS' && (
+                            openOrders.length > 0 ? (
+                                <table className="w-full text-[10px]">
+                                    <thead>
+                                        <tr className="text-white/40 border-b border-white/5">
+                                            <th className="text-left py-1.5 font-medium">ASSET</th>
+                                            <th className="text-right py-1.5 font-medium">TYPE</th>
+                                            <th className="text-right py-1.5 font-medium">SIDE</th>
+                                            <th className="text-right py-1.5 font-medium">SIZE</th>
+                                            <th className="text-right py-1.5 font-medium">PRICE</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {openOrders.slice(0, 5).map((order, idx) => (
+                                            <tr key={idx} className="border-b border-white/5">
+                                                <td className="py-1.5 text-white font-medium">{order.symbol}</td>
+                                                <td className="py-1.5 text-right text-white/60">{order.type}</td>
+                                                <td className="py-1.5 text-right">
+                                                    <span className={`text-[8px] px-1 rounded ${order.side === 'buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                        {order.side.toUpperCase()}
+                                                    </span>
+                                                </td>
+                                                <td className="py-1.5 text-right text-white/60">{order.size}</td>
+                                                <td className="py-1.5 text-right text-white/60">${order.price.toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="text-center py-6 text-white/30 text-xs">No open orders</div>
+                            )
+                        )}
+                        {activeTab === 'BALANCES' && (
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                    <span className="text-white font-medium">Account Equity</span>
+                                    <span className="text-green-400 font-bold">${equity.toFixed(2)}</span>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                    <span className={`text-xs ${moodConfig[aiMood].color}`}>{moodConfig[aiMood].label}</span>
-                                    <span className="text-[10px] text-white/40">{sessionInfo?.session || 'Unknown Session'}</span>
+                                <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                    <span className="text-white/60">Unrealized PnL</span>
+                                    <span className={unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}>${unrealizedPnl.toFixed(2)}</span>
+                                </div>
+                                <div className="flex items-center justify-between py-2 border-b border-white/5">
+                                    <span className="text-white/60">Margin Used</span>
+                                    <span className="text-yellow-400">{(marginUsage * 100).toFixed(1)}%</span>
+                                </div>
+                                <div className="flex items-center justify-between py-2">
+                                    <span className="text-white/60">Available Balance</span>
+                                    <span className="text-white">${(equity * (1 - marginUsage)).toFixed(2)}</span>
                                 </div>
                             </div>
+                        )}
+                        {(!['POSITIONS', 'BALANCES', 'ORDERS', 'FILLS', 'TRADES', 'TWAP', 'TRANSFERS'].includes(activeTab)) && (
+                            <div className="text-center py-6 text-white/30 text-xs">No data</div>
+                        )}
+                    </div>
+                </div>
 
-                            {/* Execution Logs */}
-                            <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Terminal className="w-3 h-3 text-white/40" />
-                                    <span className="text-[10px] text-white/40 uppercase tracking-wider">Execution Logs</span>
+                <div className="col-span-3 bg-[#080808] flex flex-col">
+                    {/* Tabs */}
+                    <div className="flex border-b border-white/5">
+                        <button
+                            onClick={() => setRightTab('BEST_TRADES')}
+                            className={`flex-1 px-3 py-2.5 text-[10px] font-medium transition-all ${rightTab === 'BEST_TRADES' ? 'text-white border-b-2 border-primary' : 'text-white/40 hover:text-white'}`}
+                        >
+                            📊 Recent Activity
+                        </button>
+                        <button
+                            onClick={() => setRightTab('AI_STRATEGY')}
+                            className={`flex-1 px-3 py-2.5 text-[10px] font-medium transition-all ${rightTab === 'AI_STRATEGY' ? 'text-white border-b-2 border-primary' : 'text-white/40 hover:text-white'}`}
+                        >
+                            🤖 AI Strategy
+                        </button>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 overflow-y-auto p-3">
+                        {rightTab === 'BEST_TRADES' && (
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                    <span className="text-[10px] text-white/40 uppercase tracking-wider">Live Trade History</span>
                                 </div>
-                                <div className="space-y-2">
-                                    {thoughts.length > 0 ? (
-                                        thoughts.slice(0, 10).map((thought, idx) => (
-                                            <div key={idx} className="p-2 rounded-lg bg-white/[0.02] border border-white/5">
-                                                <div className="flex items-start gap-2">
-                                                    <span className="text-sm">{thought.emoji || '🤖'}</span>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-[10px] text-white/80 line-clamp-2">{thought.summary}</p>
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            <span className="text-[9px] text-white/30">
-                                                                {new Date(thought.timestamp).toLocaleTimeString()}
-                                                            </span>
-                                                            <span className={`text-[9px] px-1 rounded ${thought.confidence >= 70 ? 'bg-green-500/20 text-green-400' : thought.confidence >= 40 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                                {thought.confidence}%
-                                                            </span>
+                                {recentFills.length > 0 ? (
+                                    recentFills.slice(0, 15).map((fill, idx) => {
+                                        const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
+                                        return (
+                                            <div key={idx} className="p-2 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-[8px] font-bold">
+                                                            {fill.symbol.substring(0, 2)}
+                                                        </div>
+                                                        <span className="text-xs font-medium text-white">{fill.symbol}</span>
+                                                        <span className={`text-[9px] px-1.5 py-0.5 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                            {isLong ? 'Long' : 'Short'}
+                                                        </span>
+                                                    </div>
+                                                    <span className={`text-xs font-bold ${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : '--'}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center justify-between text-[9px] text-white/40">
+                                                    <span>${fill.price.toFixed(2)} × {fill.size}</span>
+                                                    <span>{fill.timestamp ? new Date(fill.timestamp).toLocaleString() : '--'}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <div className="text-center py-8 text-white/30 text-xs">No trade history</div>
+                                )}
+                            </div>
+                        )}
+
+                        {rightTab === 'AI_STRATEGY' && (
+                            <div className="space-y-3">
+                                {/* AI Status */}
+                                <div className={`p-3 rounded-lg ${moodConfig[aiMood].bg} border border-white/5`}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <BrainCircuit className="w-4 h-4 text-primary" />
+                                        <span className="text-xs font-bold text-white">AI Strategy Core</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className={`text-xs ${moodConfig[aiMood].color}`}>{moodConfig[aiMood].label}</span>
+                                        <span className="text-[10px] text-white/40">{sessionInfo?.session || 'Unknown Session'}</span>
+                                    </div>
+                                </div>
+
+                                {/* Execution Logs */}
+                                <div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Terminal className="w-3 h-3 text-white/40" />
+                                        <span className="text-[10px] text-white/40 uppercase tracking-wider">Execution Logs</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {thoughts.length > 0 ? (
+                                            thoughts.slice(0, 10).map((thought, idx) => (
+                                                <div key={idx} className="p-2 rounded-lg bg-white/[0.02] border border-white/5">
+                                                    <div className="flex items-start gap-2">
+                                                        <span className="text-sm">{thought.emoji || '🤖'}</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-[10px] text-white/80 line-clamp-2">{thought.summary}</p>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="text-[9px] text-white/30">
+                                                                    {new Date(thought.timestamp).toLocaleTimeString()}
+                                                                </span>
+                                                                <span className={`text-[9px] px-1 rounded ${thought.confidence >= 70 ? 'bg-green-500/20 text-green-400' : thought.confidence >= 40 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                                    {thought.confidence}%
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="text-center py-6 text-white/30 text-xs">No recent thoughts</div>
-                                    )}
+                                            ))
+                                        ) : (
+                                            <div className="text-center py-6 text-white/30 text-xs">No recent thoughts</div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
-                </div>
-            </div>
+                        )}
+                    </div>
+                </div >
+            </div >
         </div >
-        </div >
-    );
+        </>
+            );
 }
