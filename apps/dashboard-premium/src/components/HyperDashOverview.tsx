@@ -428,8 +428,12 @@ export default function HyperDashOverview({
         observing: { color: 'text-blue-400', bg: 'bg-blue-500/10', label: '👁️ Observing' }
     };
 
+
     return (
-        <div className="w-full bg-black rounded-xl border border-white/5 overflow-hidden relative z-10" style={{ backgroundColor: '#000000' }}>
+        <div
+            className="w-full bg-black rounded-xl border border-white/5 overflow-hidden relative z-10"
+            style={{ backgroundColor: '#000000' }}
+        >
             <div className="grid grid-cols-12 min-h-[480px]">
 
                 {/* Left Sidebar - 2 cols */}
