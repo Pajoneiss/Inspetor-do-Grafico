@@ -329,7 +329,6 @@ export default function HyperDashOverview({
 }: HyperDashOverviewProps) {
 
     const [activeTab, setActiveTab] = useState<'POSITIONS' | 'BALANCES' | 'ORDERS' | 'FILLS' | 'TRADES' | 'TWAP' | 'TRANSFERS'>('POSITIONS');
-    const [rightTab, setRightTab] = useState<'BEST_TRADES' | 'AI_STRATEGY'>('BEST_TRADES');
     const [viewMode, setViewMode] = useState<'PERPS' | 'CALENDAR' | 'COMBINED'>('PERPS');
 
     // Calculate values
