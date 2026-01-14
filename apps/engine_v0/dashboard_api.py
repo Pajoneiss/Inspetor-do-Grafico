@@ -1166,6 +1166,68 @@ def api_user_trades():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route('/api/user/completed_trades')
+def api_user_completed_trades():
+    """Get aggregated completed trades from fills (cached 60s)"""
+    user_address = os.getenv("HYPERLIQUID_WALLET_ADDRESS", "0x96E09Fb536CfB0E424Df3B496F9353b98704bA24")
+
+    def fetch_completed_trades():
+        response = requests.post(
+            "https://api.hyperliquid.xyz/info",
+            json={"type": "userFills", "user": user_address},
+            timeout=10
+        )
+        if not response.ok:
+            return None
+        
+        fills = response.json()
+        
+        # Group fills by position (symbol + direction strategy)
+        # Simple aggregation: group by symbol and roughly time proximity or just by symbol?
+        # Better approach: Group by symbol and closedPnl events.
+        
+        completed_trades = []
+        
+        # We will scan for fills with closedPnl != 0, implying a realization.
+        # This is a simplification. For full trade reconstruction we need more complex logic.
+        # But for "Completed Trades" list, listing the closing fills (or aggregated closing fills) is often what's desired.
+        
+        # Let's aggregate by Symbol + Side + Time proximity (within 1 min)
+        
+        # Alternative: Return the closedPnl fills as "Completed Trades", but aggregated.
+        
+        processed_fills = []
+        for fill in fills:
+             if fill.get("closedPnl") is not None and float(fill.get("closedPnl")) != 0:
+                 processed_fills.append({
+                     "symbol": fill.get("coin", ""),
+                     "side": "BUY" if str(fill.get("side", "")).upper() == "B" else "SELL",
+                     "entry_price": float(fill.get("startPositionPx", 0)) if fill.get("startPositionPx") else float(fill.get("px", 0)),
+                     "exit_price": float(fill.get("px", 0)),
+                     "size": float(fill.get("sz", 0)),
+                     "pnl": float(fill.get("closedPnl", 0)),
+                     "timestamp": fill.get("time"),
+                     "dir": fill.get("dir", "")
+                 })
+                 
+        return processed_fills
+
+    try:
+        data = get_cached_response(f"completed_trades_{user_address}", fetch_completed_trades, ttl=60)
+        if data is None:
+             return jsonify({"ok": False, "error": "Hyperliquid API error"}), 502
+
+        return jsonify({
+            "ok": True,
+            "data": data,
+            "server_time_ms": int(time.time() * 1000)
+        })
+        
+    except Exception as e:
+        print(f"[DASHBOARD] Completed trades error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route('/api/transfers')
 def api_transfers():
     """Get deposits and withdrawals from Hyperliquid (cached 60s)"""

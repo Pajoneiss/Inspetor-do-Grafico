@@ -62,6 +62,25 @@ interface OrderInfo {
     trigger_px?: number;
 }
 
+interface TransferInfo {
+    timestamp?: string;
+    type: string;
+    amount: number;
+    status: string;
+    hash?: string;
+}
+
+interface CompletedTradeInfo {
+    symbol: string;
+    side: string;
+    entry_price: number;
+    exit_price: number;
+    size: number;
+    pnl: number;
+    timestamp?: string;
+    dir?: string;
+}
+
 interface AIThought {
     id?: string;
     timestamp: string;
@@ -78,6 +97,8 @@ interface HyperDashOverviewProps {
     positions: Position[];
     recentFills: FillInfo[];
     openOrders?: OrderInfo[];
+    transfers?: TransferInfo[];
+    completedTrades?: CompletedTradeInfo[];
     period: '24H' | '7D' | '30D' | 'ALL';
     setPeriod: (p: '24H' | '7D' | '30D' | 'ALL') => void;
     isLoading: boolean;
@@ -320,6 +341,8 @@ export default function HyperDashOverview({
     positions,
     recentFills,
     openOrders = [],
+    transfers = [],
+    completedTrades = [],
     period,
     setPeriod,
     isLoading,
@@ -625,55 +648,132 @@ export default function HyperDashOverview({
                                 </div>
                             )}
                             {activeTab === 'TRADES' && (
-                                recentFills.length > 0 ? (
-                                    <div className="space-y-1">
-                                        {recentFills.slice(0, 10).map((fill, idx) => {
-                                            const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
-                                            return (
-                                                <div key={idx} className="flex items-center justify-between py-1 border-b border-white/5">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-white font-medium">{fill.symbol}</span>
-                                                        <span className={`text-[8px] px-1 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                            {isLong ? 'LONG' : 'SHORT'}
+                                completedTrades.length > 0 ? (
+                                    <table className="w-full text-[10px]">
+                                        <thead>
+                                            <tr className="text-white/40 border-b border-white/5">
+                                                <th className="text-left py-1.5 font-medium">TIME</th>
+                                                <th className="text-left py-1.5 font-medium">SYMBOL</th>
+                                                <th className="text-center py-1.5 font-medium">SIDE</th>
+                                                <th className="text-right py-1.5 font-medium">SIZE</th>
+                                                <th className="text-right py-1.5 font-medium">ENTRY</th>
+                                                <th className="text-right py-1.5 font-medium">EXIT</th>
+                                                <th className="text-right py-1.5 font-medium">PNL</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {completedTrades.slice(0, 10).map((trade, idx) => (
+                                                <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02]">
+                                                    <td className="py-1.5 text-white/60">
+                                                        {trade.timestamp ? new Date(trade.timestamp).toLocaleString() : '--'}
+                                                    </td>
+                                                    <td className="py-1.5 font-medium text-white">{trade.symbol}</td>
+                                                    <td className="py-1.5 text-center">
+                                                        <span className={`text-[8px] px-1 rounded ${trade.side === 'BUY' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                            {trade.side}
                                                         </span>
-                                                    </div>
-                                                    <span className={`${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                        {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : `$${fill.price.toFixed(2)}`}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                                    </td>
+                                                    <td className="py-1.5 text-right text-white/60">{trade.size.toFixed(4)}</td>
+                                                    <td className="py-1.5 text-right text-white/60">${trade.entry_price.toFixed(2)}</td>
+                                                    <td className="py-1.5 text-right text-white/60">${trade.exit_price.toFixed(2)}</td>
+                                                    <td className={`py-1.5 text-right font-medium ${trade.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 ) : (
-                                    <div className="text-center py-6 text-white/30 text-xs">No recent trades</div>
+                                    <div className="text-center py-6 text-white/30 text-xs">No completed trades</div>
                                 )
                             )}
                             {activeTab === 'TWAP' && (
                                 <div className="text-center py-6 text-white/30 text-xs">No active TWAP orders</div>
                             )}
                             {activeTab === 'TRANSFERS' && (
-                                <div className="text-center py-6 text-white/30 text-xs">No recent transfers</div>
+                                transfers.length > 0 ? (
+                                    <table className="w-full text-[10px]">
+                                        <thead>
+                                            <tr className="text-white/40 border-b border-white/5">
+                                                <th className="text-left py-1.5 font-medium">TIME</th>
+                                                <th className="text-left py-1.5 font-medium">TYPE</th>
+                                                <th className="text-right py-1.5 font-medium">AMOUNT</th>
+                                                <th className="text-right py-1.5 font-medium">STATUS</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {transfers.slice(0, 10).map((transfer, idx) => (
+                                                <tr key={idx} className="border-b border-white/5">
+                                                    <td className="py-1.5 text-white/60">
+                                                        {transfer.timestamp ? new Date(transfer.timestamp).toLocaleDateString() : '--'}
+                                                    </td>
+                                                    <td className="py-1.5">
+                                                        <span className={`text-[8px] px-1 rounded ${transfer.type === 'DEPOSIT' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                            {transfer.type}
+                                                        </span>
+                                                    </td>
+                                                    <td className={`py-1.5 text-right font-medium ${transfer.type === 'DEPOSIT' ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {transfer.type === 'DEPOSIT' ? '+' : '-'}${Math.abs(transfer.amount).toFixed(2)}
+                                                    </td>
+                                                    <td className="py-1.5 text-right text-green-400/80 uppercase">
+                                                        {transfer.status}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div className="text-center py-6 text-white/30 text-xs">No recent transfers</div>
+                                )
                             )}
                             {activeTab === 'FILLS' && (
                                 recentFills.length > 0 ? (
-                                    <div className="space-y-1">
-                                        {recentFills.slice(0, 5).map((fill, idx) => {
-                                            const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
-                                            return (
-                                                <div key={idx} className="flex items-center justify-between py-1 border-b border-white/5">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-white font-medium">{fill.symbol}</span>
-                                                        <span className={`text-[8px] px-1 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                            {isLong ? 'LONG' : 'SHORT'}
-                                                        </span>
-                                                    </div>
-                                                    <span className={`${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                        {fill.closed_pnl !== undefined && fill.closed_pnl !== null ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}` : `$${fill.price.toFixed(2)}`}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                    <table className="w-full text-[10px]">
+                                        <thead>
+                                            <tr className="text-white/40 border-b border-white/5">
+                                                <th className="text-left py-1.5 font-medium">TIME</th>
+                                                <th className="text-left py-1.5 font-medium">ASSET</th>
+                                                <th className="text-center py-1.5 font-medium">SIDE</th>
+                                                <th className="text-right py-1.5 font-medium">PRICE</th>
+                                                <th className="text-right py-1.5 font-medium">SIZE</th>
+                                                <th className="text-right py-1.5 font-medium">VALUE</th>
+                                                <th className="text-right py-1.5 font-medium">PNL</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {recentFills.slice(0, 10).map((fill, idx) => {
+                                                const isLong = fill.dir?.toLowerCase().includes('long') || fill.side?.toLowerCase() === 'buy';
+                                                return (
+                                                    <tr key={idx} className="border-b border-white/5">
+                                                        <td className="py-1.5 text-white/60">
+                                                            {fill.timestamp ? new Date(fill.timestamp).toLocaleTimeString() : '--'}
+                                                        </td>
+                                                        <td className="py-1.5">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-[7px] font-bold">
+                                                                    {fill.symbol.substring(0, 2)}
+                                                                </div>
+                                                                <span className="font-medium text-white">{fill.symbol}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-1.5 text-center">
+                                                            <span className={`text-[8px] px-1 rounded ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                                {isLong ? 'BUY' : 'SELL'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-1.5 text-right text-white/60">${fill.price.toFixed(2)}</td>
+                                                        <td className="py-1.5 text-right text-white/60">{fill.size.toFixed(4)}</td>
+                                                        <td className="py-1.5 text-right text-white/60">${fill.value.toFixed(2)}</td>
+                                                        <td className={`py-1.5 text-right font-medium ${(fill.closed_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {fill.closed_pnl !== undefined && fill.closed_pnl !== null
+                                                                ? `${fill.closed_pnl >= 0 ? '+' : ''}$${fill.closed_pnl.toFixed(2)}`
+                                                                : '--'}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
                                 ) : (
                                     <div className="text-center py-6 text-white/30 text-xs">No recent fills</div>
                                 )

@@ -168,6 +168,17 @@ interface TransferInfo {
   status: string;
 }
 
+interface CompletedTradeInfo {
+  symbol: string;
+  side: string;
+  entry_price: number;
+  exit_price: number;
+  size: number;
+  pnl: number;
+  timestamp?: string;
+  dir?: string;
+}
+
 // --- Components ---
 
 const GlassCard = ({ children, className, delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) => (
@@ -385,6 +396,7 @@ function DashboardContent() {
   const [activeFleetTab, setActiveFleetTab] = useState<'Asset Positions' | 'Open Orders' | 'Recent Fills' | 'Completed Trades' | 'TWAP' | 'Deposits & Withdrawals'>('Asset Positions');
   const [openOrders, setOpenOrders] = useState<OrderInfo[]>([]);
   const [recentFills, setRecentFills] = useState<FillInfo[]>([]);
+  const [completedTrades, setCompletedTrades] = useState<CompletedTradeInfo[]>([]);
   const [transfers, setTransfers] = useState<TransferInfo[]>([]);
   const [cryptoPrices, setCryptoPrices] = useState<{ btc: { price: number }, eth: { price: number } } | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -435,7 +447,7 @@ function DashboardContent() {
     if (!API_URL) return;
 
     try {
-      const [statusRes, posRes, thoughtRes, allThoughtRes, pnlRes, historyRes, tradeLogsRes, fullAnalyticsRes, ordersRes, fillsRes, transfersRes] = await Promise.all([
+      const [statusRes, posRes, thoughtRes, allThoughtRes, pnlRes, historyRes, tradeLogsRes, fullAnalyticsRes, ordersRes, fillsRes, transfersRes, completedTradesRes] = await Promise.all([
         fetch(`${API_URL}/api/status`).then(r => r.json()),
         fetch(`${API_URL}/api/positions`).then(r => r.json()),
         fetch(`${API_URL}/api/ai/thoughts`).then(r => r.json()),
@@ -446,7 +458,8 @@ function DashboardContent() {
         fetch(`${API_URL}/api/analytics`).then(r => r.json()),
         fetch(`${API_URL}/api/orders`).then(r => r.json()),
         fetch(`${API_URL}/api/user/trades`).then(r => r.json()),
-        fetch(`${API_URL}/api/transfers`).then(r => r.json())
+        fetch(`${API_URL}/api/transfers`).then(r => r.json()),
+        fetch(`${API_URL}/api/user/completed_trades`).then(r => r.json())
       ]);
 
       if (statusRes.ok) setStatus(statusRes.data);
@@ -463,6 +476,8 @@ function DashboardContent() {
       if (ordersRes.ok) setOpenOrders(ordersRes.data || []);
       if (fillsRes.ok) setRecentFills(fillsRes.data || []);
       if (transfersRes.ok) setTransfers(transfersRes.data || []);
+      if (completedTradesRes.ok) setCompletedTrades(completedTradesRes.data || []);
+
 
       try {
         const journalRes = await fetch(`${API_URL}/api/journal/stats`).then(r => r.json());
@@ -879,6 +894,7 @@ function DashboardContent() {
                 aiMood={aiMood}
                 sessionInfo={sessionInfo}
                 transfers={transfers}
+                completedTrades={completedTrades}
               />
             </div>
 
