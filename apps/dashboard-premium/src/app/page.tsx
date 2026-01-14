@@ -737,47 +737,49 @@ function DashboardContent() {
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto relative scroll-smooth p-6 lg:p-10">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div className="flex items-center gap-4">
-            {/* Mobile hamburger button */}
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-            <div>
-              <h2 className="text-2xl lg:text-3xl font-bold tracking-tight mb-1">O Inspetor Do Gráfico</h2>
-              <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest">
-                <span className={cn("flex items-center gap-2", error ? "text-secondary" : "text-primary")}>
-                  <span className={cn("w-2 h-2 rounded-full", error ? "bg-secondary" : "bg-primary animate-pulse neon-glow")} />
-                  {error ? "API Disconnected" : "System Live"}
-                </span>
-                <span className="text-muted-foreground">/</span>
-                {/* Session Badge */}
-                {sessionInfo && (
-                  <span className="flex items-center gap-2 text-cyan-400">
-                    <Globe className="w-3 h-3" />
-                    {sessionInfo.session === 'ASIA' && '🌏 Asia'}
-                    {sessionInfo.session === 'LONDON' && '🇬🇧 London'}
-                    {sessionInfo.session === 'NEW_YORK' && '🇺🇸 NY'}
-                    {sessionInfo.session === 'OVERLAP_LONDON_NY' && '🔥 NY/London'}
-                    {sessionInfo.session === 'QUIET' && '🌙 Quiet'}
-                    {sessionInfo.is_weekend && ' (Weekend)'}
+        <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8 lg:mb-12">
+          <div className="flex items-center gap-4 w-full lg:w-auto justify-between lg:justify-start">
+            <div className="flex items-center gap-4">
+              {/* Mobile hamburger button */}
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+              <div>
+                <h2 className="text-xl lg:text-3xl font-bold tracking-tight mb-1">O Inspetor Do Gráfico</h2>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] lg:text-xs font-bold uppercase tracking-widest">
+                  <span className={cn("flex items-center gap-2", error ? "text-secondary" : "text-primary")}>
+                    <span className={cn("w-2 h-2 rounded-full", error ? "bg-secondary" : "bg-primary animate-pulse neon-glow")} />
+                    {error ? "Disconnected" : "System Live"}
                   </span>
-                )}
-                <span className="text-muted-foreground">/</span>
-                <span className="flex items-center gap-2 text-white/50">
-                  <Activity className="w-3 h-3" />
-                  {status ? `${status.margin_usage}% Margin Use` : "Fetching Data..."}
-                </span>
+                  <span className="text-muted-foreground hidden sm:inline">/</span>
+                  {/* Session Badge */}
+                  {sessionInfo && (
+                    <span className="flex items-center gap-2 text-cyan-400">
+                      <Globe className="w-3 h-3" />
+                      {sessionInfo.session === 'ASIA' && 'Asia'}
+                      {sessionInfo.session === 'LONDON' && 'London'}
+                      {sessionInfo.session === 'NEW_YORK' && 'NY'}
+                      {sessionInfo.session === 'OVERLAP_LONDON_NY' && 'NY/Lon'}
+                      {sessionInfo.session === 'QUIET' && 'Quiet'}
+                      {sessionInfo.is_weekend && ' (Wknd)'}
+                    </span>
+                  )}
+                  <span className="text-muted-foreground hidden sm:inline">/</span>
+                  <span className="flex items-center gap-2 text-white/50">
+                    <Activity className="w-3 h-3" />
+                    {status ? `${status.margin_usage}% Margin` : "Loading..."}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
 
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex flex-col items-end mr-4">
+          <div className="flex items-center gap-2 lg:gap-4 self-end lg:self-auto">
+            <div className="hidden sm:flex flex-col items-end mr-2 lg:mr-4">
               <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-bold">Local Time</span>
               <span className="text-sm font-mono tracking-tighter text-white/80">{time.toLocaleTimeString()}</span>
             </div>
@@ -785,10 +787,10 @@ function DashboardContent() {
             {/* Simple History Dropdown */}
             <div className="relative">
               <button
-                className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all hover:scale-105 active:scale-95"
+                className="p-2 lg:p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all hover:scale-105 active:scale-95"
                 onClick={() => setViewAllModalOpen(!viewAllModalOpen)}
               >
-                <HistoryIcon className="w-5 h-5" />
+                <HistoryIcon className="w-4 h-4 lg:w-5 lg:h-5" />
               </button>
 
               {viewAllModalOpen && (
@@ -830,12 +832,12 @@ function DashboardContent() {
               )}
             </div>
 
-            {/* Language Toggle - 150% Larger */}
-            <div className="flex bg-white/5 border border-white/10 rounded-xl p-1 gap-1 mr-2">
+            {/* Language Toggle */}
+            <div className="flex bg-white/5 border border-white/10 rounded-xl p-1 gap-1 mr-0 lg:mr-2">
               <button
                 onClick={() => updateSetting('language', 'pt')}
                 className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-black tracking-tight transition-all",
+                  "px-3 py-1.5 lg:px-4 lg:py-2 rounded-lg text-xs lg:text-sm font-black tracking-tight transition-all",
                   settings.language === 'pt' ? "bg-primary text-black shadow-[0_0_15px_rgba(0,255,157,0.3)]" : "text-white/40 hover:text-white hover:bg-white/5"
                 )}
               >
@@ -844,7 +846,7 @@ function DashboardContent() {
               <button
                 onClick={() => updateSetting('language', 'en')}
                 className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-black tracking-tight transition-all",
+                  "px-3 py-1.5 lg:px-4 lg:py-2 rounded-lg text-xs lg:text-sm font-black tracking-tight transition-all",
                   settings.language === 'en' ? "bg-primary text-black shadow-[0_0_15px_rgba(0,255,157,0.3)]" : "text-white/40 hover:text-white hover:bg-white/5"
                 )}
               >
@@ -852,14 +854,14 @@ function DashboardContent() {
               </button>
             </div>
 
-            <div className="h-10 w-px bg-white/10 mx-2" />
-            <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl pl-1.5 pr-4 py-1.5 hover:border-primary/50 transition-all cursor-pointer">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center font-bold text-xs text-black">
-                <UserCircle className="w-5 h-5" />
+            <div className="h-8 lg:h-10 w-px bg-white/10 mx-1 lg:mx-2" />
+            <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl pl-1.5 pr-1.5 lg:pr-4 py-1.5 hover:border-primary/50 transition-all cursor-pointer">
+              <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-xl bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center font-bold text-xs text-black">
+                <UserCircle className="w-4 h-4 lg:w-5 lg:h-5" />
               </div>
               <div className="hidden lg:block">
                 <p className="text-[10px] font-bold tracking-widest uppercase opacity-50 leading-none mb-1">Commander</p>
-                <p className="text-xs font-bold">Trading Mode: LIVE</p>
+                <p className="text-xs font-bold">LIVE</p>
               </div>
             </div>
           </div>

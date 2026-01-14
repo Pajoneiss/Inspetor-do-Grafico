@@ -443,10 +443,10 @@ export default function HyperDashOverview({
 
     return (
         <div className="w-full bg-black rounded-xl border border-white/5 overflow-hidden relative z-10" style={{ backgroundColor: '#000000' }}>
-            <div className="grid grid-cols-12 min-h-[480px]">
+            <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[480px]">
 
-                {/* Left Sidebar - 2 cols */}
-                <div className="col-span-2 border-r border-white/5 p-3 overflow-y-auto bg-[#080808]">
+                {/* Left Sidebar - 2 cols on desktop, hidden or readjusted on mobile if needed, usually full width on mobile if shown */}
+                <div className="col-span-1 lg:col-span-3 xl:col-span-2 border-r border-white/5 p-3 overflow-y-auto bg-[#080808] max-h-[300px] lg:max-h-none border-b lg:border-b-0">
 
                     {/* Account Header */}
                     <div className="mb-3 pb-3 border-b border-white/5">
@@ -499,8 +499,8 @@ export default function HyperDashOverview({
                     </SidebarSection>
                 </div>
 
-                {/* Center - Chart Area - 7 cols */}
-                <div className="col-span-7 flex flex-col border-r border-white/5">
+                {/* Center - Chart Area - Responsive Spans */}
+                <div className="col-span-1 lg:col-span-6 xl:col-span-7 flex flex-col border-r border-white/5">
 
                     {/* Chart Header */}
                     <div className="flex items-center justify-between p-3 border-b border-white/5">

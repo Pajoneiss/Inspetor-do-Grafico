@@ -451,8 +451,10 @@ def _sanitize_actions(actions: List[Dict[str, Any]], hl_client=None) -> List[Dic
         symbol = action.get("symbol", "")
         
         # === B1: Remove SL/TP/ADD if CLOSE exists for same symbol ===
+        # NOTE: We do NOT remove MOVE_STOP_TO_BREAKEVEN here because if CLOSE_PARTIAL fails
+        # (e.g., due to min notional), the breakeven should still execute to protect the position.
         if symbol in close_symbols:
-            if action_type in ("SET_STOP_LOSS", "SET_TAKE_PROFIT", "MOVE_STOP_TO_BREAKEVEN", 
+            if action_type in ("SET_STOP_LOSS", "SET_TAKE_PROFIT", 
                                "PLACE_ORDER", "ADD_TO_POSITION"):
                 print(f"[SANITIZE] Removed {action_type} for {symbol} (conflicting with CLOSE_*)")
                 removed_count += 1
