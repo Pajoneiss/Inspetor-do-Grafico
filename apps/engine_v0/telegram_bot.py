@@ -922,6 +922,77 @@ Responda como se VOCÊ fosse o bot operando. Diga "Eu estou...", "Minha posiçã
         """Send beautiful summary with full market data + AI thoughts + positions details"""
         state = _bot_state.get("last_summary", {})
         
+        # First, send BTC chart image
+        try:
+            import httpx
+            from io import BytesIO
+            import json
+            
+            # Fetch BTC price data from CoinGecko (last 24h)
+            cg_url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1"
+            async with httpx.AsyncClient(timeout=15) as client:
+                cg_resp = await client.get(cg_url)
+                if cg_resp.status_code == 200:
+                    cg_data = cg_resp.json()
+                    prices = cg_data.get("prices", [])
+                    
+                    if prices and len(prices) > 10:
+                        # Extract price values
+                        price_values = [p[1] for p in prices]
+                        # Sample every Nth point for cleaner chart
+                        step = max(1, len(price_values) // 48)
+                        sampled = price_values[::step]
+                        
+                        # Create time labels
+                        labels = [f"-{24 - i * (24 // max(len(sampled), 1))}h" for i in range(len(sampled))]
+                        
+                        # Build QuickChart config
+                        chart_config = {
+                            "type": "line",
+                            "data": {
+                                "labels": labels,
+                                "datasets": [{
+                                    "label": "BTC/USD",
+                                    "data": sampled,
+                                    "borderColor": "#10b981",
+                                    "backgroundColor": "rgba(16, 185, 129, 0.1)",
+                                    "fill": True,
+                                    "tension": 0.4,
+                                    "pointRadius": 0
+                                }]
+                            },
+                            "options": {
+                                "plugins": {
+                                    "title": {"display": True, "text": "BTC/USD - 24H", "color": "#fff"},
+                                    "legend": {"display": False}
+                                },
+                                "scales": {
+                                    "x": {"ticks": {"color": "#888"}, "grid": {"color": "#333"}},
+                                    "y": {"ticks": {"color": "#888"}, "grid": {"color": "#333"}}
+                                }
+                            }
+                        }
+                        
+                        # URL encode the JSON
+                        import urllib.parse
+                        chart_json = json.dumps(chart_config)
+                        qc_url = f"https://quickchart.io/chart?c={urllib.parse.quote(chart_json)}&backgroundColor=%23111&width=600&height=300"
+                        
+                        chart_resp = await client.get(qc_url, timeout=15)
+                        if chart_resp.status_code == 200:
+                            current_price = price_values[-1]
+                            price_24h_ago = price_values[0]
+                            change_pct = ((current_price - price_24h_ago) / price_24h_ago) * 100
+                            emoji = "📈" if change_pct > 0 else "📉"
+                            
+                            await update.message.reply_photo(
+                                photo=BytesIO(chart_resp.content),
+                                caption=f"{emoji} *BTC/USD 24H*\n💰 ${current_price:,.0f} ({change_pct:+.2f}%)",
+                                parse_mode="Markdown"
+                            )
+        except Exception as chart_err:
+            print(f"[TG] Chart generation failed: {chart_err}")
+        
         text = "📊 *RESUMO COMPLETO*\n\n"
         
         # Account section
