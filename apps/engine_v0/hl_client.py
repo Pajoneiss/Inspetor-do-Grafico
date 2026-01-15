@@ -543,27 +543,39 @@ class HLClient:
                 data = resp.json()
                 
                 # Parse the portfolio response
-                # Structure: [[timestamp, {day: {pnl, vlm}, week: {...}, month: {...}, allTime: {...}}], ...]
-                # We want the most recent entry
+                # Format: [["day", {...}], ["week", {...}], ["month", {...}], ["allTime", {...}]]
+                # Each period has pnlHistory array with last element being current PnL
                 if not data or not isinstance(data, list) or len(data) == 0:
                     print(f"[PNL][WARN] Empty portfolio response")
                     return {"error": "Empty response"}
                 
-                latest = data[-1]  # Most recent entry
-                if not isinstance(latest, list) or len(latest) < 2:
-                    return {"error": "Invalid format"}
-                
-                timestamp_ms = latest[0]
-                pnl_data = latest[1]
-                
                 result = {
-                    "timestamp": timestamp_ms,
-                    "day": float(pnl_data.get("day", {}).get("pnl", 0)),
-                    "week": float(pnl_data.get("week", {}).get("pnl", 0)),
-                    "month": float(pnl_data.get("month", {}).get("pnl", 0)),
-                    "allTime": float(pnl_data.get("allTime", {}).get("pnl", 0)),
-                    "raw": pnl_data  # Keep raw for debugging
+                    "day": 0.0,
+                    "week": 0.0,
+                    "month": 0.0,
+                    "allTime": 0.0,
+                    "raw": data
                 }
+                
+                for item in data:
+                    if isinstance(item, list) and len(item) >= 2:
+                        period_name = item[0]  # "day", "week", "month", "allTime"
+                        period_data = item[1]
+                        
+                        # Get PnL from last entry in pnlHistory
+                        pnl_hist = period_data.get("pnlHistory", [])
+                        current_pnl = 0.0
+                        if pnl_hist and len(pnl_hist) > 0:
+                            current_pnl = float(pnl_hist[-1][1])
+                        
+                        if period_name == "day":
+                            result["day"] = current_pnl
+                        elif period_name == "week":
+                            result["week"] = current_pnl
+                        elif period_name == "month":
+                            result["month"] = current_pnl
+                        elif period_name == "allTime":
+                            result["allTime"] = current_pnl
                 
                 print(f"[PNL] Portfolio fetched: day=${result['day']:.2f} week=${result['week']:.2f} month=${result['month']:.2f} allTime=${result['allTime']:.2f}")
                 return result

@@ -1,11 +1,11 @@
 """
 Telegram Bot Module for Hyperliquid AI Bot
-v11.0 MVP - 3 buttons + chat + summary
+v11.0 MVP - 3 buttons + chat + summary + daily recap
 """
 import os
 import asyncio
 import threading
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List
 
 # Feature flag
@@ -22,7 +22,8 @@ _bot_state = {
     "ai_enabled": True,
     "last_summary": None,
     "last_scan": None,
-    "chat_mode": False
+    "chat_mode": False,
+    "last_daily_summary_date": None  # Track last daily recap sent
 }
 
 
