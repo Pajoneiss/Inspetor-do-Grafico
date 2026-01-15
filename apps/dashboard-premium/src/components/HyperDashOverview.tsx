@@ -504,13 +504,13 @@ export default function HyperDashOverview({
                 <div className="w-full lg:col-span-6 xl:col-span-7 flex flex-col lg:border-r border-white/5 order-first lg:order-none">
 
                     {/* Chart Header */}
-                    <div className="flex items-center justify-between p-3 border-b border-white/5">
-                        <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 p-2 lg:p-3 border-b border-white/5">
+                        <div className="flex flex-wrap items-center gap-1 lg:gap-3">
                             <div className="flex gap-1">
-                                <button className="px-2 py-1 text-[10px] bg-white/10 text-white rounded">PNL</button>
+                                <button className="px-1.5 lg:px-2 py-1 text-[9px] lg:text-[10px] bg-white/10 text-white rounded">PNL</button>
                                 <button
                                     onClick={() => setViewMode('CALENDAR')}
-                                    className={`px-2 py-1 text-[10px] transition ${viewMode === 'CALENDAR' ? 'bg-white/10 text-white rounded' : 'text-white/40 hover:text-white'}`}
+                                    className={`px-1.5 lg:px-2 py-1 text-[9px] lg:text-[10px] transition ${viewMode === 'CALENDAR' ? 'bg-white/10 text-white rounded' : 'text-white/40 hover:text-white'}`}
                                 >
                                     CALENDAR
                                 </button>
@@ -518,24 +518,25 @@ export default function HyperDashOverview({
                             <div className="flex gap-1">
                                 <button
                                     onClick={() => setViewMode('PERPS')}
-                                    className={`px-2 py-1 text-[10px] transition ${viewMode === 'PERPS' ? 'bg-white/5 text-white/60 rounded' : 'text-white/40 hover:text-white'}`}
+                                    className={`px-1.5 lg:px-2 py-1 text-[9px] lg:text-[10px] transition ${viewMode === 'PERPS' ? 'bg-white/5 text-white/60 rounded' : 'text-white/40 hover:text-white'}`}
                                 >
                                     PERPS
                                 </button>
                                 <button
                                     onClick={() => setViewMode('COMBINED')}
-                                    className={`px-2 py-1 text-[10px] transition ${viewMode === 'COMBINED' ? 'bg-white/5 text-white/60 rounded' : 'text-white/40 hover:text-white'}`}
+                                    className={`px-1.5 lg:px-2 py-1 text-[9px] lg:text-[10px] transition ${viewMode === 'COMBINED' ? 'bg-white/5 text-white/60 rounded' : 'text-white/40 hover:text-white'}`}
                                 >
                                     COMBINED
                                 </button>
                             </div>
                         </div>
-                        <div className="flex gap-1 p-0.5 rounded bg-white/5">
+                        {/* Period selector - horizontal scroll on mobile */}
+                        <div className="flex gap-1 p-0.5 rounded bg-white/5 overflow-x-auto max-w-full">
                             {periods.map(p => (
                                 <button
                                     key={p.key}
                                     onClick={() => p.key !== 'VALUE' && setPeriod(p.key as '24H' | '7D' | '30D' | 'ALL')}
-                                    className={`px-2 py-1 rounded text-[10px] font-medium transition-all ${(p.key === 'VALUE' || period === p.key)
+                                    className={`px-1.5 lg:px-2 py-1 rounded text-[9px] lg:text-[10px] font-medium whitespace-nowrap transition-all ${(p.key === 'VALUE' || period === p.key)
                                         ? 'bg-white/10 text-white'
                                         : 'text-white/40 hover:text-white'
                                         }`}
@@ -585,50 +586,52 @@ export default function HyperDashOverview({
                             ))}
                         </div>
 
-                        {/* Tab Content */}
-                        <div className="p-2 max-h-[150px] overflow-y-auto bg-black relative z-20" style={{ backgroundColor: '#000000' }}>
+                        {/* Tab Content - horizontal scroll for tables */}
+                        <div className="p-2 max-h-[200px] lg:max-h-[150px] overflow-y-auto overflow-x-auto bg-black relative z-20" style={{ backgroundColor: '#000000' }}>
                             {activeTab === 'POSITIONS' && (
                                 positions.length > 0 ? (
-                                    <table className="w-full text-[10px]">
-                                        <thead>
-                                            <tr className="text-white/40 border-b border-white/5">
-                                                <th className="text-left py-1.5 font-medium">ASSET</th>
-                                                <th className="text-center py-1.5 font-medium">CHART</th>
-                                                <th className="text-right py-1.5 font-medium">SIZE</th>
-                                                <th className="text-right py-1.5 font-medium">LEV</th>
-                                                <th className="text-right py-1.5 font-medium">VALUE</th>
-                                                <th className="text-right py-1.5 font-medium">ENTRY</th>
-                                                <th className="text-right py-1.5 font-medium">MARK</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {positions.map((pos, idx) => (
-                                                <tr key={idx} className="border-b border-white/5">
-                                                    <td className="py-1.5">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-[7px] font-bold">
-                                                                {pos.symbol.substring(0, 2)}
-                                                            </div>
-                                                            <span className="font-medium text-white">{pos.symbol}</span>
-                                                            <span className={`text-[8px] px-1 rounded ${pos.side === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                                {pos.side}
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-1.5">
-                                                        <div className="w-32 h-16 mx-auto">
-                                                            <MiniTradingViewChart symbol={pos.symbol} />
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-1.5 text-right text-white/60">{pos.size.toFixed(4)}</td>
-                                                    <td className="py-1.5 text-right text-yellow-400 font-medium">{pos.leverage || 20}x</td>
-                                                    <td className="py-1.5 text-right text-white/60">${(pos.size * pos.mark_price).toFixed(2)}</td>
-                                                    <td className="py-1.5 text-right text-white/60">${pos.entry_price.toFixed(2)}</td>
-                                                    <td className="py-1.5 text-right text-white/60">${pos.mark_price.toFixed(2)}</td>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-[9px] lg:text-[10px] min-w-[500px]">
+                                            <thead>
+                                                <tr className="text-white/40 border-b border-white/5">
+                                                    <th className="text-left py-1.5 font-medium">ASSET</th>
+                                                    <th className="text-center py-1.5 font-medium">CHART</th>
+                                                    <th className="text-right py-1.5 font-medium">SIZE</th>
+                                                    <th className="text-right py-1.5 font-medium">LEV</th>
+                                                    <th className="text-right py-1.5 font-medium">VALUE</th>
+                                                    <th className="text-right py-1.5 font-medium">ENTRY</th>
+                                                    <th className="text-right py-1.5 font-medium">MARK</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                                {positions.map((pos, idx) => (
+                                                    <tr key={idx} className="border-b border-white/5">
+                                                        <td className="py-1.5">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-[7px] font-bold">
+                                                                    {pos.symbol.substring(0, 2)}
+                                                                </div>
+                                                                <span className="font-medium text-white">{pos.symbol}</span>
+                                                                <span className={`text-[8px] px-1 rounded ${pos.side === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                                    {pos.side}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-1.5">
+                                                            <div className="w-32 h-16 mx-auto">
+                                                                <MiniTradingViewChart symbol={pos.symbol} />
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-1.5 text-right text-white/60">{pos.size.toFixed(4)}</td>
+                                                        <td className="py-1.5 text-right text-yellow-400 font-medium">{pos.leverage || 20}x</td>
+                                                        <td className="py-1.5 text-right text-white/60">${(pos.size * pos.mark_price).toFixed(2)}</td>
+                                                        <td className="py-1.5 text-right text-white/60">${pos.entry_price.toFixed(2)}</td>
+                                                        <td className="py-1.5 text-right text-white/60">${pos.mark_price.toFixed(2)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 ) : (
                                     <div className="text-center py-6 text-white/30 text-xs">No active positions</div>
                                 )
