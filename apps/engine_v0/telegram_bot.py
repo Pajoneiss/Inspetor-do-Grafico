@@ -147,6 +147,8 @@ class TelegramBot:
                 
                 # Keep running - reset retry delay on success
                 retry_delay = 30
+                last_daily_check = 0  # Throttle daily check to once per minute
+                
                 while self.running:
                     await asyncio.sleep(1)
                     
@@ -164,6 +166,12 @@ class TelegramBot:
                             print(f"[TG][ERROR] Failed to send test trade result: {e}")
                             del _bot_state["test_trade_result"]  # Clear anyway to avoid spam
                     
+                    # Check for daily summary (21h BRT = 00:00 UTC)
+                    current_time = datetime.now(timezone.utc)
+                    if current_time.timestamp() - last_daily_check > 60:  # Check once per minute
+                        last_daily_check = current_time.timestamp()
+                        await self._check_and_send_daily_summary(app.bot, current_time)
+                    
             except telegram.error.Conflict as e:
                 print(f"[TG][WARN] Conflict error (another instance running?), retrying in {retry_delay}s")
                 await asyncio.sleep(retry_delay)
@@ -175,6 +183,109 @@ class TelegramBot:
                 continue
         
         await app.stop()
+    
+    async def _check_and_send_daily_summary(self, bot, current_time: datetime):
+        """Check if it's time to send daily summary (21h BRT = 00:00 UTC)"""
+        # 21h BRT = 00:00 UTC (Brasilia is UTC-3)
+        target_hour_utc = 0  # 00:00 UTC = 21:00 BRT
+        
+        # Check if we're within the target hour window (00:00-00:05 UTC)
+        if current_time.hour != target_hour_utc or current_time.minute > 5:
+            return
+        
+        # Check if we already sent today
+        today_str = current_time.strftime("%Y-%m-%d")
+        if _bot_state.get("last_daily_summary_date") == today_str:
+            return
+        
+        # Mark as sent for today
+        _bot_state["last_daily_summary_date"] = today_str
+        print(f"[TG][DAILY] Sending daily summary for {today_str}")
+        
+        try:
+            # Build daily summary message
+            state = _bot_state.get("last_summary", {})
+            pnl_hist = state.get("pnl_history", {})
+            perf = state.get("performance_today", {})
+            positions = state.get("positions", {})
+            
+            # Get PnL values
+            pnl_24h = pnl_hist.get("24h", 0)
+            pnl_7d = pnl_hist.get("7d", 0)
+            pnl_all = pnl_hist.get("all", 0)
+            
+            # Emojis based on PnL
+            emoji_24h = "🟢" if pnl_24h > 0 else "🔴" if pnl_24h < 0 else "⚪"
+            
+            text = "📊 *RESUMO DIÁRIO - 21H*\n\n"
+            text += f"📅 *{current_time.strftime('%d/%m/%Y')}*\n\n"
+            
+            # Account
+            text += "💰 *CONTA*\n"
+            text += f"├ Equity: ${state.get('equity', 0):.2f}\n"
+            text += f"└ IA: {'✅ LIGADO' if _bot_state['ai_enabled'] else '❌ DESLIGADO'}\n\n"
+            
+            # PnL do dia
+            text += f"{emoji_24h} *PNL HOJE:* ${pnl_24h:+.2f}\n"
+            text += f"└ 7D: ${pnl_7d:+.2f} | ALL: ${pnl_all:+.2f}\n\n"
+            
+            # Trades do dia
+            if perf and perf.get("trades", 0) > 0:
+                trades = perf.get("trades", 0)
+                win_rate = perf.get("win_rate", 0)
+                text += f"📈 *TRADES HOJE:* {trades}\n"
+                text += f"└ Win Rate: {win_rate:.0f}%\n\n"
+            
+            # Posições abertas
+            if positions:
+                text += f"📊 *POSIÇÕES ABERTAS:* {len(positions)}\n"
+                for sym, pos in list(positions.items())[:3]:
+                    pnl = pos.get("unrealized_pnl", 0)
+                    side = pos.get("side", "?")
+                    emoji = "🟢" if pnl > 0 else "🔴" if pnl < 0 else "⚪"
+                    text += f"├ {sym}: {side} {emoji} ${pnl:.2f}\n"
+                text += "\n"
+            else:
+                text += "📊 *POSIÇÕES:* Nenhuma\n\n"
+            
+            text += "🌙 _Bom descanso! A IA continua monitorando._"
+            
+            # Send to all admins
+            for admin_id in TELEGRAM_ADMIN_IDS:
+                try:
+                    # First try to send BTC chart image
+                    try:
+                        chart_url = "https://www.tradingview.com/x/BTCUSDT/"
+                        # Use TradingView mini-chart widget image (public)
+                        mini_chart_url = f"https://s3.tradingview.com/snapshots/b/btcusdt_4h.png?t={int(current_time.timestamp())}"
+                        
+                        import httpx
+                        async with httpx.AsyncClient(timeout=10) as client:
+                            resp = await client.get(mini_chart_url)
+                            if resp.status_code == 200:
+                                from io import BytesIO
+                                await bot.send_photo(
+                                    chat_id=admin_id,
+                                    photo=BytesIO(resp.content),
+                                    caption="📈 BTC/USDT 4H"
+                                )
+                    except Exception as chart_err:
+                        print(f"[TG][DAILY] Chart fetch failed: {chart_err}")
+                    
+                    # Send text summary
+                    await bot.send_message(
+                        chat_id=admin_id,
+                        text=text,
+                        parse_mode="Markdown"
+                    )
+                    print(f"[TG][DAILY] Sent to admin {admin_id}")
+                except Exception as e:
+                    print(f"[TG][DAILY] Failed to send to {admin_id}: {e}")
+                    
+        except Exception as e:
+            print(f"[TG][DAILY] Error generating summary: {e}")
+            import traceback
+            traceback.print_exc()
     
     async def _cmd_start(self, update, context):
         """Handle /start command - show persistent keyboard with 4 buttons"""
