@@ -897,6 +897,7 @@ function DashboardContent() {
                 sessionInfo={sessionInfo}
                 transfers={transfers}
                 completedTrades={completedTrades}
+                tradeLog={tradeLog}
               />
             </div>
 

@@ -91,6 +91,34 @@ interface AIThought {
     actions?: string[];
 }
 
+interface TradeLog {
+    id?: string;
+    symbol: string;
+    side: string;
+    entry_price: number;
+    expected_outcome?: string;
+    confidence: number;
+    strategy?: {
+        name: string;
+        timeframe: string;
+        confluence_factors: string[];
+    };
+    entry_rationale?: string;
+    risk_management?: {
+        stop_loss: number;
+        stop_loss_reason?: string;
+        take_profit_1: number;
+        tp1_reason?: string;
+        take_profit_2?: number;
+        tp2_reason?: string;
+        risk_usd?: number;
+        risk_pct?: number;
+    };
+    ai_notes?: string;
+    ai_notes_pt?: string;
+    timestamp?: string;
+}
+
 interface HyperDashOverviewProps {
     status: DashboardData | null;
     fullAnalytics: FullAnalytics | null;
@@ -106,6 +134,10 @@ interface HyperDashOverviewProps {
     thoughts?: AIThought[];
     aiMood?: 'aggressive' | 'defensive' | 'observing';
     sessionInfo?: { session: string; current_time_utc: string; is_weekend: boolean } | null;
+    // Latest AI Trade Analysis
+    tradeLog?: TradeLog | null;
+    aiNotesLang?: 'pt' | 'en';
+    setAiNotesLang?: (lang: 'pt' | 'en') => void;
 }
 
 // Equity Chart Component - HyperDash style
@@ -348,11 +380,15 @@ export default function HyperDashOverview({
     isLoading,
     thoughts = [],
     aiMood = 'observing',
-    sessionInfo
+    sessionInfo,
+    tradeLog,
+    aiNotesLang = 'en',
+    setAiNotesLang
 }: HyperDashOverviewProps) {
 
     const [activeTab, setActiveTab] = useState<'POSITIONS' | 'BALANCES' | 'ORDERS' | 'FILLS' | 'TRADES' | 'TWAP' | 'TRANSFERS'>('POSITIONS');
     const [viewMode, setViewMode] = useState<'PERPS' | 'CALENDAR' | 'COMBINED'>('PERPS');
+    const [localLang, setLocalLang] = useState<'pt' | 'en'>(aiNotesLang);
 
     // Calculate values
     const equity = status?.equity || 0;
@@ -882,8 +918,8 @@ export default function HyperDashOverview({
                         </div>
                     </div>
 
-                    {/* AI Strategy Section */}
-                    <div className="p-3 flex-1 overflow-y-auto" style={{ maxHeight: '50%' }}>
+                    {/* AI Strategy Section - Full Display */}
+                    <div className="p-3 flex-1 overflow-y-auto">
 
                         <div className="space-y-3">
                             {/* AI Status */}
@@ -898,6 +934,117 @@ export default function HyperDashOverview({
                                 </div>
                             </div>
 
+                            {/* Latest AI Trade Analysis - Show when tradeLog exists */}
+                            {tradeLog && (
+                                <div className="space-y-3">
+                                    {/* Trade Header */}
+                                    <div className="p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-primary/10 border border-white/10">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-[10px] text-white/40 uppercase tracking-wider">Latest Trade</span>
+                                            <span className={`text-[9px] px-1.5 py-0.5 rounded ${tradeLog.confidence >= 70 ? 'bg-green-500/20 text-green-400' : tradeLog.confidence >= 40 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                {(tradeLog.confidence * 100).toFixed(0)}%
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold border ${tradeLog.side === 'LONG' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
+                                                {tradeLog.symbol?.substring(0, 2)}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-white">{tradeLog.symbol}</p>
+                                                <p className={`text-[10px] font-medium ${tradeLog.side === 'LONG' ? 'text-green-400' : 'text-red-400'}`}>
+                                                    {tradeLog.side} @ ${tradeLog.entry_price.toLocaleString()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Strategy */}
+                                    {tradeLog.strategy && (
+                                        <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                                <span className="text-[10px] text-white/40 uppercase tracking-wider">Strategy</span>
+                                            </div>
+                                            <p className="text-xs font-bold text-primary mb-1">
+                                                {tradeLog.strategy.name} • {tradeLog.strategy.timeframe}
+                                            </p>
+                                            {tradeLog.entry_rationale && (
+                                                <p className="text-[10px] text-white/60 line-clamp-2">{tradeLog.entry_rationale}</p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Confluence Factors */}
+                                    {tradeLog.strategy?.confluence_factors && tradeLog.strategy.confluence_factors.length > 0 && (
+                                        <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                                                <span className="text-[10px] text-white/40 uppercase tracking-wider">
+                                                    Confluence ({tradeLog.strategy.confluence_factors.length})
+                                                </span>
+                                            </div>
+                                            <div className="space-y-1">
+                                                {tradeLog.strategy.confluence_factors.slice(0, 4).map((factor, idx) => (
+                                                    <div key={idx} className="flex items-center gap-2 text-[10px]">
+                                                        <span className="text-green-400">✓</span>
+                                                        <span className="text-white/70">{factor}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Risk Management */}
+                                    {tradeLog.risk_management && (
+                                        <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                                                <span className="text-[10px] text-white/40 uppercase tracking-wider">Risk Mgmt</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 text-[10px]">
+                                                <div>
+                                                    <p className="text-white/40">Stop Loss</p>
+                                                    <p className="text-red-400 font-medium">${tradeLog.risk_management.stop_loss.toLocaleString()}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-white/40">Take Profit</p>
+                                                    <p className="text-green-400 font-medium">${tradeLog.risk_management.take_profit_1.toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* AI Notes with Language Toggle */}
+                                    {(tradeLog.ai_notes || tradeLog.ai_notes_pt) && (
+                                        <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <BrainCircuit className="w-3 h-3 text-purple-400" />
+                                                    <span className="text-[10px] text-white/40 uppercase tracking-wider">AI Notes</span>
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    <button
+                                                        onClick={() => { setLocalLang('pt'); setAiNotesLang?.('pt'); }}
+                                                        className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${localLang === 'pt' ? 'bg-green-500/20 text-green-400' : 'text-white/30 hover:text-white/60'}`}
+                                                    >
+                                                        🇧🇷
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { setLocalLang('en'); setAiNotesLang?.('en'); }}
+                                                        className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${localLang === 'en' ? 'bg-blue-500/20 text-blue-400' : 'text-white/30 hover:text-white/60'}`}
+                                                    >
+                                                        🇺🇸
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <p className="text-[10px] text-white/70 leading-relaxed">
+                                                {localLang === 'pt' ? (tradeLog.ai_notes_pt || tradeLog.ai_notes) : tradeLog.ai_notes}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Execution Logs */}
                             <div>
                                 <div className="flex items-center gap-2 mb-2">
@@ -906,7 +1053,7 @@ export default function HyperDashOverview({
                                 </div>
                                 <div className="space-y-2">
                                     {thoughts.length > 0 ? (
-                                        thoughts.slice(0, 10).map((thought, idx) => (
+                                        thoughts.slice(0, 5).map((thought, idx) => (
                                             <div key={idx} className="p-2 rounded-lg bg-white/[0.02] border border-white/5">
                                                 <div className="flex items-start gap-2">
                                                     <span className="text-sm">{thought.emoji || '🤖'}</span>
@@ -925,7 +1072,7 @@ export default function HyperDashOverview({
                                             </div>
                                         ))
                                     ) : (
-                                        <div className="text-center py-6 text-white/30 text-xs">No recent thoughts</div>
+                                        <div className="text-center py-4 text-white/30 text-xs">No recent thoughts</div>
                                     )}
                                 </div>
                             </div>
