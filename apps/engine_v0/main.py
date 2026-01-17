@@ -772,7 +772,7 @@ def main():
                             # Store last decision with timestamp for Telegram
                             # Store last decision with timestamp for Telegram
                             state["last_decision"] = {
-                                "timestamp": datetime.utcnow().isoformat(),
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
                                 "summary": decision.get("summary", ""),
                                 "confidence": decision.get("confidence", 0),
                                 "actions": decision.get("actions", [])
