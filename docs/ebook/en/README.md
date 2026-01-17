@@ -21,7 +21,7 @@ This is not just a bot guide, but a complete course on financial markets.
 
 #### Module 4: Financial Expansion (New)
 *   **[Chapter 08: Modalities & Profiles](08_MODALITIES_STYLES.md)** - Day Trade vs Swing, Stocks vs Crypto. Who are you?
-*   **[Chapter 09: Crypto Ecosystem & Security](09_CRYPTO_ECOSYSTEM_SECURITY.md)** - Blockchain, DeFi, Cold Wallets, and Anti-Hack.
+*   **[Chapter 09: Crypto Genesis & Security](09_CRYPTO_ECOSYSTEM_SECURITY.md)** - From Satoshi to DeFi. History and Defense.
 
 ---
 *© 2025 Ladder Labs - Advanced Agentic Coding*

@@ -21,7 +21,7 @@ Este não é apenas um guia sobre o bot, mas um curso completo sobre o mercado f
 
 #### Módulo 4: Expansão Financeira (Novo)
 *   **[Capítulo 08: Modalidades e Perfis](08_MODALIDADES_ESTILOS.md)** - Day Trade vs Swing, Ações vs Cripto. Quem é você?
-*   **[Capítulo 09: Ecossistema Cripto & Segurança](09_ECOSSISTEMA_CRIPTO_SEGURANCA.md)** - Blockchain, DeFi, Cold Wallets e Anti-Hack.
+*   **[Capítulo 09: Gênese Cripto & Segurança](09_ECOSSISTEMA_CRIPTO_SEGURANCA.md)** - De Satoshi Nakamoto ao DeFi. História e Defesa.
 
 ---
 *© 2025 Ladder Labs - Advanced Agentic Coding*
