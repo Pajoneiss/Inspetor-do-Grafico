@@ -95,12 +95,153 @@ def _format_indicators(indicators_by_symbol: Dict, prices: Dict) -> str:
         price = prices.get(symbol, 0)
         ema9, ema21, ema50 = ind.get("ema_9", 0), ind.get("ema_21", 0), ind.get("ema_50", 0)
         rsi, macd, atr = ind.get("rsi_14", 50), ind.get("macd_hist", 0), ind.get("atr_pct", 0)
+        vwap = ind.get("vwap", 0)
+        vwap_dist = ind.get("vwap_distance_pct", 0)
+        stoch_k = ind.get("stoch_rsi_k", 50)
+        stoch_d = ind.get("stoch_rsi_d", 50)
         
         status = "BULL" if ema9>ema21>ema50 else "BEAR" if ema9<ema21<ema50 else "FLAT"
-        lines.append(f"{symbol}(${price:.0f}): EMA[{status}] 9={ema9:.0f} 21={ema21:.0f} 50={ema50:.0f} | RSI={rsi:.1f} MACD={macd:.2f} ATR={atr:.2f}%")
+        vwap_str = f"VWAP=${vwap:.0f}({vwap_dist:+.1f}%)" if vwap > 0 else ""
+        stoch_str = f"StochRSI={stoch_k:.0f}/{stoch_d:.0f}"
+        adx = ind.get("adx", 25)
+        adx_str = f"ADX={adx:.0f}"
+        
+        lines.append(f"{symbol}(${price:.0f}): EMA[{status}] RSI={rsi:.0f} {adx_str} {vwap_str} {stoch_str}")
     
     return "\n".join(lines) if lines else "(no indicators)"
 
+
+def _format_fibonacci(fibonacci_by_symbol: Dict) -> str:
+    """Format Fibonacci data for prompt"""
+    if not fibonacci_by_symbol:
+        return "(no fibonacci data)"
+    
+    lines = []
+    for symbol, fib in fibonacci_by_symbol.items():
+        if not fib or fib.get("swing_high") is None:
+            continue
+        
+        swing_h = fib.get("swing_high", 0)
+        swing_l = fib.get("swing_low", 0)
+        trend = fib.get("trend_context", "?")
+        ret = fib.get("retracements", {})
+        
+        # Key levels
+        fib_382 = ret.get(0.382, 0)
+        fib_618 = ret.get(0.618, 0)
+        
+        lines.append(f"{symbol} FIB({trend}): Range ${swing_l:.0f}-${swing_h:.0f} | 0.382=${fib_382:.0f} 0.618=${fib_618:.0f}")
+    
+    return "\n".join(lines) if lines else "(no fibonacci)"
+
+
+def _format_fvg(fvg_by_symbol: Dict) -> str:
+    """Format FVG data for prompt"""
+    if not fvg_by_symbol:
+        return "(no fvg data)"
+    
+    lines = []
+    for symbol, fvg in fvg_by_symbol.items():
+        if not fvg or fvg.get("total_fvgs", 0) == 0:
+            continue
+        
+        nearest_bull = fvg.get("nearest_bullish")
+        nearest_bear = fvg.get("nearest_bearish")
+        
+        parts = [f"{symbol} FVG:"]
+        if nearest_bull:
+            parts.append(f"Support=${nearest_bull['gap_bottom']:.0f}-${nearest_bull['gap_top']:.0f}")
+        if nearest_bear:
+            parts.append(f"Resist=${nearest_bear['gap_bottom']:.0f}-${nearest_bear['gap_top']:.0f}")
+        
+        if len(parts) > 1:
+            lines.append(" | ".join(parts))
+    
+    return "\n".join(lines) if lines else "(no fvg)"
+
+
+def _format_htf_levels(htf_by_symbol: Dict) -> str:
+    """Format HTF key levels (Weekly/Monthly highs/lows)"""
+    if not htf_by_symbol:
+        return "(no HTF levels)"
+    
+    lines = []
+    for symbol, levels in htf_by_symbol.items():
+        if not levels:
+            continue
+        weekly = levels.get("weekly", {})
+        monthly = levels.get("monthly", {})
+        
+        parts = [f"{symbol} HTF:"]
+        if weekly:
+            parts.append(f"W[H=${weekly.get('current_high', 0):.0f} L=${weekly.get('current_low', 0):.0f}]")
+        if monthly:
+            parts.append(f"M[H=${monthly.get('current_high', 0):.0f} L=${monthly.get('current_low', 0):.0f}]")
+        
+        if len(parts) > 1:
+            lines.append(" ".join(parts))
+    
+    return "\n".join(lines) if lines else "(no HTF levels)"
+
+
+def _format_session_levels(session_by_symbol: Dict) -> str:
+    """Format session highs/lows"""
+    if not session_by_symbol:
+        return "(no session levels)"
+    
+    lines = []
+    for symbol, sessions in session_by_symbol.items():
+        if not sessions:
+            continue
+        
+        parts = [f"{symbol} SESSIONS:"]
+        for sess_name in ["ASIA", "LONDON", "NY"]:
+            if sess_name in sessions:
+                s = sessions[sess_name]
+                active = "🟢" if s.get("active") else ""
+                parts.append(f"{sess_name}{active}[H=${s.get('high', 0):.0f} L=${s.get('low', 0):.0f}]")
+        
+        if len(parts) > 1:
+            lines.append(" ".join(parts))
+    
+    return "\n".join(lines) if lines else "(no session levels)"
+
+
+def _format_patterns(patterns_by_symbol: Dict) -> str:
+    """Format candle patterns"""
+    if not patterns_by_symbol:
+        return "(no patterns)"
+    
+    lines = []
+    for symbol, data in patterns_by_symbol.items():
+        if not data or not data.get("patterns"):
+            continue
+        
+        patterns = data.get("patterns", [])[:3]
+        bias = data.get("bias", "NEUTRAL")
+        pattern_strs = [p.get("type", "?") for p in patterns]
+        
+        lines.append(f"{symbol} PATTERNS({bias}): {' | '.join(pattern_strs)}")
+    
+    return "\n".join(lines) if lines else "(no patterns)"
+
+
+def _format_pivots(pivots_by_symbol: Dict) -> str:
+    """Format pivot points"""
+    if not pivots_by_symbol:
+        return "(no pivots)"
+    
+    lines = []
+    for symbol, pivots in pivots_by_symbol.items():
+        if not pivots:
+            continue
+        
+        daily = pivots.get("daily", {})
+        if daily:
+            pos = daily.get("position", "?")
+            lines.append(f"{symbol} PIVOTS({pos}): P=${daily.get('pivot', 0):.0f} S1=${daily.get('s1', 0):.0f} R1=${daily.get('r1', 0):.0f}")
+    
+    return "\n".join(lines) if lines else "(no pivots)"
 
 def _format_positions(positions: Dict, position_details: Dict) -> str:
     """Format open positions with context"""
@@ -288,6 +429,23 @@ class LLMClient:
         indicators_str = _format_indicators(indicators, prices)
         positions_str = _format_positions(positions, position_details)
         session_str = _get_session()
+        
+        # v19.0: Fibonacci and FVG data
+        fibonacci_data = state.get("fibonacci_by_symbol", {})
+        fvg_data = state.get("fvg_by_symbol", {})
+        fibonacci_str = _format_fibonacci(fibonacci_data)
+        fvg_str = _format_fvg(fvg_data)
+        
+        # v19.1: Additional advanced tools
+        htf_levels_data = state.get("htf_levels_by_symbol", {})
+        session_levels_data = state.get("session_levels_by_symbol", {})
+        patterns_data = state.get("patterns_by_symbol", {})
+        pivots_data = state.get("pivots_by_symbol", {})
+        
+        htf_levels_str = _format_htf_levels(htf_levels_data)
+        session_levels_str = _format_session_levels(session_levels_data)
+        patterns_str = _format_patterns(patterns_data)
+        pivots_str = _format_pivots(pivots_data)
         
         # Trade history for learning
         recent_fills = state.get("recent_fills", [])
@@ -505,6 +663,21 @@ When to Size DOWN:
 
 Your Job: Calculate notional BEFORE requesting size. Don't let position sizing be an afterthought.
 
+AVAILABLE ANALYSIS TOOLS (Use as you see fit):
+These tools provide objective data. You decide IF and HOW to use them:
+
+• FIBONACCI: Retracement (0.236, 0.382, 0.5, 0.618, 0.786) and extension levels from swing points.
+• FVG (Fair Value Gaps): Price imbalances - can act as support/resistance zones.
+• VWAP: Volume-weighted average price.
+• STOCHASTIC RSI: Momentum oscillator (K/D values 0-100).
+• ADX: Trend strength (>25=trending, <20=ranging).
+• HTF KEY LEVELS: Weekly/Monthly highs and lows - major liquidity targets.
+• SESSION LEVELS: Asia/London/NY session highs and lows (kill zones).
+• CANDLE PATTERNS: Engulfing, Hammer, Shooting Star, Doji, Inside Bar.
+• PIVOT POINTS: Daily S1/S2/S3, Pivot, R1/R2/R3 levels.
+
+These are DATA INPUTS, not rules. Use them to inform your analysis as a professional trader would.
+
 # ACCOUNT
 Equity: ${equity:.2f} | BP: ${buying_power:.2f} | Session: {session_str}
 
@@ -524,6 +697,24 @@ News: {news_str}
 
 # CANDLES
 {candles_str}
+
+# FIBONACCI
+{fibonacci_str}
+
+# FVG (FAIR VALUE GAPS)
+{fvg_str}
+
+# HTF KEY LEVELS (Weekly/Monthly)
+{htf_levels_str}
+
+# SESSION LEVELS (Today's Asia/London/NY)
+{session_levels_str}
+
+# CANDLE PATTERNS
+{patterns_str}
+
+# PIVOT POINTS
+{pivots_str}
 
 # POSITIONS
 {positions_str}

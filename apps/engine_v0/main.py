@@ -313,6 +313,19 @@ def main():
                         print(f"[VISION][WARN] indicators import failed: {e}")
                         indicators_available = False
                     
+                    # v19.0: Advanced analysis tools imports
+                    try:
+                        from fibonacci import calculate_fibonacci_levels
+                        from fvg_detector import analyze_fvg_zones
+                        from htf_levels import calculate_htf_levels
+                        from session_levels import calculate_session_levels
+                        from candle_patterns import detect_candle_patterns
+                        from pivot_points import calculate_pivot_points
+                        advanced_tools_available = True
+                    except ImportError as e:
+                        print(f"[VISION][WARN] advanced tools disabled: {e}")
+                        advanced_tools_available = False
+                    
                     try:
                         # v12.0: Multi-symbol candles with 7 timeframes (micro to macro)
                         candles_by_symbol = {}
@@ -388,6 +401,67 @@ def main():
                             time.sleep(0.1)
                             funding_by_symbol[symbol] = hl.get_funding_info(symbol)
                         state["funding_by_symbol"] = funding_by_symbol
+                        
+                        # v19.0: Calculate Fibonacci and FVG for scan candidates
+                        if advanced_tools_available:
+                            fibonacci_by_symbol = {}
+                            fvg_by_symbol = {}
+                            
+                            for symbol in scan_candidates:
+                                symbol_candles = candles_by_symbol.get(symbol, {})
+                                
+                                # Use 4h candles for Fibonacci (best for swing trading)
+                                candles_4h = symbol_candles.get("4h", [])
+                                if candles_4h:
+                                    fibonacci_by_symbol[symbol] = calculate_fibonacci_levels(candles_4h)
+                                
+                                # Use 1h candles for FVG (more recent gaps)
+                                candles_1h = symbol_candles.get("1h", [])
+                                if candles_1h:
+                                    fvg_by_symbol[symbol] = analyze_fvg_zones(candles_1h)
+                            
+                            state["fibonacci_by_symbol"] = fibonacci_by_symbol
+                            state["fvg_by_symbol"] = fvg_by_symbol
+                            
+                            # v19.1: Additional advanced tools
+                            htf_levels_by_symbol = {}
+                            session_levels_by_symbol = {}
+                            patterns_by_symbol = {}
+                            pivots_by_symbol = {}
+                            
+                            for symbol in scan_candidates:
+                                symbol_candles = candles_by_symbol.get(symbol, {})
+                                
+                                # HTF Levels (Weekly/Monthly highs/lows)
+                                weekly_candles = symbol_candles.get("1w", [])
+                                monthly_candles = symbol_candles.get("1M", [])
+                                if weekly_candles or monthly_candles:
+                                    htf_levels_by_symbol[symbol] = calculate_htf_levels(weekly_candles, monthly_candles)
+                                
+                                # Session Levels (Asia/London/NY)
+                                candles_1h = symbol_candles.get("1h", [])
+                                if candles_1h:
+                                    session_levels_by_symbol[symbol] = calculate_session_levels(candles_1h)
+                                
+                                # Candle Patterns (from 4H for swing trading)
+                                candles_4h = symbol_candles.get("4h", [])
+                                if candles_4h:
+                                    patterns_by_symbol[symbol] = detect_candle_patterns(candles_4h)
+                                
+                                # Pivot Points (Daily and Weekly)
+                                candles_1d = symbol_candles.get("1d", [])
+                                if candles_1d:
+                                    pivots_by_symbol[symbol] = {
+                                        "daily": calculate_pivot_points(candles_1d, "daily"),
+                                        "weekly": calculate_pivot_points(weekly_candles, "weekly") if weekly_candles else {}
+                                    }
+                            
+                            state["htf_levels_by_symbol"] = htf_levels_by_symbol
+                            state["session_levels_by_symbol"] = session_levels_by_symbol
+                            state["patterns_by_symbol"] = patterns_by_symbol
+                            state["pivots_by_symbol"] = pivots_by_symbol
+                            
+                            print(f"[VISION] Calculated all advanced tools for {len(scan_candidates)} symbols")
                         
                         # v11.0: BUILD REAL SYMBOL BRIEFS WITH VARIED SCORING
                         symbol_briefs = {}
