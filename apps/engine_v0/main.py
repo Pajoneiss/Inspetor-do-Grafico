@@ -152,7 +152,7 @@ def main():
             # Initialize state for this iteration
             state = {
                 "time": datetime.now().isoformat(),
-                "equity": 0.0,
+                "equity": last_equity,
                 "positions_count": 0,
                 "positions": {},  # Will be dict[symbol, {...}]
                 "open_orders_count": 0,
@@ -168,6 +168,7 @@ def main():
                     # Get account summary
                     summary = hl.get_account_summary()
                     state["equity"] = summary["equity"]
+                    last_equity = summary["equity"]  # Keep track for fallbacks
                     state["positions_count"] = summary["positions_count"]
                     
                     # v13.0: Persist real equity history for the dashboard chart
