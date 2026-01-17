@@ -1,27 +1,38 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Book, GraduationCap, ArrowRight, Globe, Lock, Brain, TrendingUp, Activity, Heart, Shield } from 'lucide-react';
+import { Book, GraduationCap, ArrowRight, Globe, Lock, Brain, TrendingUp, Activity, Heart, Shield, AlertTriangle, Flag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
 const GlassCard = ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <div className={cn(
-        "glass-card p-6 overflow-hidden relative group transition-all duration-300 hover:-translate-y-1 hover:border-primary/30",
+        "relative overflow-hidden rounded-xl border border-white/10 bg-black/40 backdrop-blur-md shadow-xl",
         className
     )}>
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-        <div className="relative z-10">{children}</div>
+        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+        {children}
     </div>
 );
 
 const CHAPTERS = [
     {
+        id: 0,
+        title_pt: "A Verdade Brutal",
+        title_en: "The Brutal Truth",
+        desc_pt: "Leia antes de começar. O filtro dos fracos.",
+        desc_en: "Read before starting. The filter for the weak.",
+        icon: AlertTriangle,
+        file_pt: "00_PREFACIO_A_VERDADE.md",
+        file_en: "00_THE_BRUTAL_TRUTH.md",
+        color: "text-red-500"
+    },
+    {
         id: 1,
-        title_pt: "Os Fundamentos Clássicos",
+        title_pt: "Fundamentos Clássicos",
         title_en: "Classical Fundamentals",
-        desc_pt: "Dow, Elliott e Wyckoff: A base centenária dos mercados.",
-        desc_en: "Dow, Elliott, and Wyckoff: The century-old market foundation.",
+        desc_pt: "Dow, Elliott e Wyckoff: A base de tudo.",
+        desc_en: "Dow, Elliott and Wyckoff: The foundation.",
         icon: Book,
         file_pt: "01_FUNDAMENTOS_CLASSICOS.md",
         file_en: "01_CLASSICAL_FUNDAMENTALS.md",
@@ -31,19 +42,19 @@ const CHAPTERS = [
         id: 2,
         title_pt: "Price Action Avançado",
         title_en: "Advanced Price Action",
-        desc_pt: "Lendo a linguagem pura das velas e padrões gráficos.",
-        desc_en: "Reading the pure language of candles and chart patterns.",
-        icon: TrendingUp,
+        desc_pt: "Candles, Padrões e a psicologia do pavio.",
+        desc_en: "Candles, Patterns and wick psychology.",
+        icon: Activity,
         file_pt: "02_PRICE_ACTION_AVANCADO.md",
         file_en: "02_ADVANCED_PRICE_ACTION.md",
         color: "text-green-400"
     },
     {
         id: 3,
-        title_pt: "Smart Money Concepts (SMC)",
-        title_en: "Smart Money Concepts (SMC)",
-        desc_pt: "O segredo institucional: Order Blocks, FVG e Liquidez.",
-        desc_en: "Institutional secrets: Order Blocks, FVG, and Liquidity.",
+        title_pt: "Smart Money Concepts",
+        title_en: "Smart Money Concepts",
+        desc_pt: "Rastreando os Grandes Players (SMC).",
+        desc_en: "Tracking Big Players (SMC).",
         icon: Lock,
         file_pt: "03_SMART_MONEY_CONCEPTS.md",
         file_en: "03_SMART_MONEY_CONCEPTS.md",
@@ -53,30 +64,30 @@ const CHAPTERS = [
         id: 4,
         title_pt: "Ferramentas Matemáticas",
         title_en: "Mathematical Tools",
-        desc_pt: "Fibonacci, RSI e a geometria do lucro.",
-        desc_en: "Fibonacci, RSI, and the geometry of profit.",
-        icon: Activity,
+        desc_pt: "Fibonacci, Médias e Indicadores Reais.",
+        desc_en: "Fibonacci, Averages and Real Indicators.",
+        icon: TrendingUp,
         file_pt: "04_FERRAMENTAS_MATEMATICAS.md",
         file_en: "04_MATHEMATICAL_TOOLS.md",
         color: "text-yellow-400"
     },
     {
         id: 5,
-        title_pt: "Mente Blindada & Gestão",
-        title_en: "Bulletproof Mind & Management",
-        desc_pt: "Psicologia e Risco: Onde o jogo é ganho.",
-        desc_en: "Psychology and Risk: Where the game is won.",
-        icon: Shield,
+        title_pt: "Psicologia & Risco",
+        title_en: "Psychology & Risk",
+        desc_pt: "Como não quebrar a banca e a mente.",
+        desc_en: "How not to blow your account and mind.",
+        icon: Brain,
         file_pt: "05_GESTAO_RISCO_PSICOLOGIA.md",
         file_en: "05_PSYCHOLOGY_RISK.md",
         color: "text-red-400"
     },
     {
         id: 6,
-        title_pt: "Trader Atleta - Lifestyle",
-        title_en: "Trader Athlete - Lifestyle",
-        desc_pt: "Sono, dopamina e a biologia da alta performance.",
-        desc_en: "Sleep, dopamine, and the biology of peak performance.",
+        title_pt: "Lifestyle & Saúde",
+        title_en: "Lifestyle & Health",
+        desc_pt: "O corpo do trader de alta performance.",
+        desc_en: "The high performance trader's body.",
         icon: Heart,
         file_pt: "06_LIFESTYLE_SAUDE.md",
         file_en: "06_LIFESTYLE_HEALTH.md",
@@ -95,10 +106,10 @@ const CHAPTERS = [
     },
     {
         id: 8,
-        title_pt: "Modalidades e Perfis",
-        title_en: "Modalities & Profiles",
-        desc_pt: "Scalp vs Swing vs Hodl: Quem é você no mercado?",
-        desc_en: "Scalp vs Swing vs Hodl: Who are you in the market?",
+        title_pt: "O Mapa dos Ativos",
+        title_en: "The Asset Map",
+        desc_pt: "Ações, FIIs, Derivativos e Perfis de Risco.",
+        desc_en: "Stocks, REITs, Derivatives and Risk Profiles.",
         icon: GraduationCap,
         file_pt: "08_MODALIDADES_ESTILOS.md",
         file_en: "08_MODALITIES_STYLES.md",
@@ -106,14 +117,58 @@ const CHAPTERS = [
     },
     {
         id: 9,
-        title_pt: "Gênese Cripto & Segurança",
-        title_en: "Crypto Genesis & Security",
-        desc_pt: "Satoshi, Blockchain e como não ser hackeado.",
-        desc_en: "Satoshi, Blockchain and how to avoid hacks.",
+        title_pt: "Tecnologia Cripto & Segurança",
+        title_en: "Crypto Tech & Security",
+        desc_pt: "Blockchain, Layers, Tokenomics e Defesa.",
+        desc_en: "Blockchain, Layers, Tokenomics and Defense.",
         icon: Shield,
         file_pt: "09_ECOSSISTEMA_CRIPTO_SEGURANCA.md",
         file_en: "09_CRYPTO_ECOSYSTEM_SECURITY.md",
         color: "text-orange-400"
+    },
+    {
+        id: 10,
+        title_pt: "Macroeconomia & Fundamentos",
+        title_en: "Macro & Fundamentals",
+        desc_pt: "Juros, Inflação e Ciclos Econômicos.",
+        desc_en: "Rates, Inflation and Economic Cycles.",
+        icon: Globe,
+        file_pt: "10_ANALISE_FUNDAMENTALISTA_MACRO.md",
+        file_en: "10_FUNDAMENTAL_ANALYSIS_MACRO.md",
+        color: "text-emerald-400"
+    },
+    {
+        id: 11,
+        title_pt: "História dos Crashes",
+        title_en: "History of Crashes",
+        desc_pt: "Tulipas, 1929, 2008 e Lendas do Mercado.",
+        desc_en: "Tulips, 1929, 2008 and Market Legends.",
+        icon: Activity,
+        file_pt: "11_HISTORIA_CRASHES.md",
+        file_en: "11_HISTORY_CRASHES.md",
+        color: "text-rose-400"
+    },
+    {
+        id: 12,
+        title_pt: "O Mapa Final",
+        title_en: "The Final Map",
+        desc_pt: "A conexão total. O sistema unificado.",
+        desc_en: "The total connection. The unified system.",
+        icon: Activity,
+        file_pt: "12_MAPA_FINAL.md",
+        file_en: "12_THE_FINAL_MAP.md",
+        color: "text-rose-400"
+    },
+    {
+        id: 13,
+        title_pt: "O Legado Final",
+        title_en: "The Final Legacy",
+        desc_pt: "O manifesto. Pensar em décadas.",
+        desc_en: "The manifesto. Thinking in decades.",
+        icon: Flag,
+        file_pt: "13_LEGADO_FINAL.md",
+        file_en: "13_FINAL_LEGACY.md",
+        color: "text-gold-400"
     }
 ];
 
