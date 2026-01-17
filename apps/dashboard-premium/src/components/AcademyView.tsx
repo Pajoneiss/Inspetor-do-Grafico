@@ -92,6 +92,28 @@ const CHAPTERS = [
         file_pt: "07_A_REVOLUCAO_INSPETOR.md",
         file_en: "07_THE_INSPETOR_REVOLUTION.md",
         color: "text-cyan-400"
+    },
+    {
+        id: 8,
+        title_pt: "Modalidades e Perfis",
+        title_en: "Modalities & Profiles",
+        desc_pt: "Scalp vs Swing vs Hodl: Quem é você no mercado?",
+        desc_en: "Scalp vs Swing vs Hodl: Who are you in the market?",
+        icon: GraduationCap,
+        file_pt: "08_MODALIDADES_ESTILOS.md",
+        file_en: "08_MODALITIES_STYLES.md",
+        color: "text-indigo-400"
+    },
+    {
+        id: 9,
+        title_pt: "Cripto & Segurança",
+        title_en: "Crypto & Security",
+        desc_pt: "DeFi, Blockchain e como não ser hackeado (Keys).",
+        desc_en: "DeFi, Blockchain and how to filter attacks.",
+        icon: Shield,
+        file_pt: "09_ECOSSISTEMA_CRIPTO_SEGURANCA.md",
+        file_en: "09_CRYPTO_ECOSYSTEM_SECURITY.md",
+        color: "text-orange-400"
     }
 ];
 
