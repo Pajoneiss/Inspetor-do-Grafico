@@ -135,6 +135,34 @@ Tendência é a inércia do dinheiro grande movendo o mercado.
 
 ---
 
+## Exercícios de Fixação (Capítulo 00)
+
+**1. Exercício de Observação (Visual)**
+*   Abra qualquer gráfico (ex: BTC/USD ou PETR4) no tempo Diário (D1).
+*   Não use indicadores.
+*   Identifique visualmente se o preço está subindo (Tendência de Alta), descendo (Baixa) ou de lado (Consolidação) nos últimos 30 candles.
+
+**2. Exercício de Análise (Racional)**
+*   Olhe para o último candle fechado.
+*   Quem ganhou a batalha? Compradores (Verde/Alta) ou Vendedores (Vermelho/Baixa)?
+*   Olhe para as sombras (pavios). Houve rejeição de preço? Onde?
+
+**3. Exercício de Erro (Preventivo)**
+*   Imagine que você comprou agora. Liste 3 motivos pelos quais isso poderia dar errado imediatamente.
+*   Exemplo: "Estou comprando perto de uma resistência?", "O volume está baixo?", "Estou operando por tédio?".
+
+**4. Exercício de Escrita (Fixação)**
+*   Pegue um papel. Escreva com suas palavras, sem olhar no livro: "O que é um Candle e o que ele me diz sobre a psicologia dos compradores e vendedores?".
+*   Se não conseguir explicar simples, releia a seção 3.
+
+**5. Exercício de Autoconsciência (Mental)**
+*   Olhe para o gráfico com o preço se movendo.
+*   O que você sente? Ansiedade para clicar? Tédio? Medo de perder a alta?
+*   Anote a emoção dominante. Não julgue, apenas anote.
+
+
+---
+
 ### 5. O Tempo (Timeframes)
 
 #### 1. O Que É

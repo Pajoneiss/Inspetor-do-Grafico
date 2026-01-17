@@ -9,6 +9,7 @@ COVER_IMAGE = "capa_oficial.jpg"
 
 # Ordem final dos arquivos
 FILES = [
+    "00_GUIA_DE_ESTUDO.md",
     "00_PREFACIO_A_VERDADE.md",
     "00_QUEM_NAO_DEVE_LER.md",
     "00_FUNDAMENTOS_ABSOLUTOS.md",
