@@ -1,46 +1,56 @@
-# Capítulo 14: Encerramento Final
-## O Mercado Não Deve Nada a Você
+# Capítulo 14: Encerramento - A Partida
 
-> *"A responsabilidade é integralmente sua."*
+> *"A responsabilidade é integralmente sua. Isso é aterrorizante e libertador ao mesmo tempo."*
 
-Este é o fim.
-Não há mais técnicas a aprender. Não há mais capítulos.
-A partir daqui, você está sozinho.
+Este é o fim do mapa.
+Não há mais técnicas secretas. Não há mais capítulos ocultos.
+A partir daqui, você caminha sozinho.
 
-### O Que Este Livro Te Deu
-*   A arquitetura de 100 anos de análise técnica.
-*   A visão do dinheiro institucional.
-*   A matemática da sobrevivência.
-*   A compreensão da sua própria mente.
-*   Uma ferramenta (o Inspetor) para automatizar a execução.
+---
 
-### O Que Este Livro NÃO Te Deu
-*   Garantia de lucro.
-*   Uma fórmula mágica.
-*   Isenção do risco.
-*   Permissão para relaxar a disciplina.
+## 1. O Que Você Recebeu
 
-O mercado não sabe que você estudou. Ele não te deve nada.
-Você pode fazer tudo certo e perder. A aleatoriedade é parte do sistema.
-Se isso te incomoda, você ainda não entendeu.
+Você agora possui um arsenal que 99% dos participantes do mercado desconhecem:
+1.  **Fundamentos (Cap 00-01):** Sabe ler a história do preço (Dow, Elliott, Wyckoff).
+2.  **Técnica (Cap 02-04):** Sabe onde atirar (SMC, Price Action, Fibo).
+3.  **Defesa (Cap 05-09):** Sabe como não morrer (Gestão, Segurança, Macro).
+4.  **Ferramenta (Inspetor):** Tem uma máquina de execução fria ao seu lado.
 
-### A Execução é Solitária
-Quando o candle se formar, ninguém vai apertar o botão por você.
-Quando vier a perda, ninguém vai sofrer no seu lugar.
-Quando vier o lucro, ninguém vai administrá-lo por você.
-E isso é libertador. Ou aterrorizante. A escolha de perspectiva é sua.
+Mas ferramentas não constroem casas sozinhas. Elas precisam de um arquiteto. **Você é o arquiteto.**
 
-### O Código Final
-Não prometo que você vai ficar rico.
-Prometo que, se aplicar o que está aqui com disciplina e paciência, você terá uma chance real.
-Uma chance é tudo que o mercado oferece.
-Pegue a sua.
+## 2. O Contrato Final
+
+O Mercado financeiro não é uma instituição de caridade. Ele é um mecanismo de transferência de riqueza dos impacientes para os pacientes.
+Ao fechar este livro, você assina um contrato silencioso:
+*   Você aceita que perdas são custos de negócio.
+*   Você aceita que a disciplina vale mais que a inteligência.
+*   Você aceita que o resultado de hoje não define o seu valor como pessoa.
+
+## 3. A Última Ordem
+
+Não tente ser o "Lobo de Wall Street". Seja o "Monge de Wall Street".
+Silencioso. Disciplinado. Invisível. Lucrativo.
+
+O **Inspetor do Gráfico** estará lá, 24 horas por dia, escaneando o caos para encontrar a ordem.
+Ele fará a parte dele.
+Faça a sua.
 
 ---
 
 *Desligue este livro.*
-*Ligue o Inspetor.*
+*Abra o gráfico.*
 *Respire fundo.*
-*Vá viver.*
+*E vá viver.*
 
-**Boa caçada, Inspetor.**
+**Boa caçada, Trader.**
+
+---
+### Apêndice: Glossário Rápido
+*   **Long:** Compra (Aposta na alta).
+*   **Short:** Venda (Aposta na baixa).
+*   **SMC:** Smart Money Concepts (Conceitos de Dinheiro Institucional).
+*   **BOS:** Break of Structure (Quebra de Estrutura - Continuação).
+*   **ChoCh:** Change of Character (Mudança de Caráter - Reversão).
+*   **Liquidez:** Onde estão os Stops.
+*   **DD (Drawdown):** O quanto sua conta caiu do topo.
+*   **ROI:** Retorno sobre Investimento.

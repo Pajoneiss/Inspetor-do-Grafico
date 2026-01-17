@@ -17,18 +17,44 @@ const GlassCard = ({ children, className }: { children: React.ReactNode; classNa
 
 const CHAPTERS = [
     {
-        id: 0,
+        id: "guide",
+        display_id: "GUIA",
+        title_pt: "Guia de Estudo",
+        title_en: "Study Guide",
+        desc_pt: "Como usar este livro. Do Faixa Branca ao Faixa Preta.",
+        desc_en: "How to use this book. From White Belt to Black Belt.",
+        icon: Globe,
+        file_pt: "00_GUIA_DE_ESTUDO.md",
+        file_en: "00_GUIA_DE_ESTUDO.md",
+        color: "text-blue-500"
+    },
+    {
+        id: "intro",
+        display_id: "INTRO",
         title_pt: "A Verdade Brutal",
         title_en: "The Brutal Truth",
         desc_pt: "Leia antes de começar. O filtro dos fracos.",
         desc_en: "Read before starting. The filter for the weak.",
         icon: AlertTriangle,
         file_pt: "00_PREFACIO_A_VERDADE.md",
-        file_en: "00_THE_BRUTAL_TRUTH.md",
+        file_en: "00_PREFACIO_A_VERDADE.md",
         color: "text-red-500"
     },
     {
-        id: 1,
+        id: "00",
+        display_id: "00",
+        title_pt: "Fundamentos Absolutos",
+        title_en: "Absolute Foundations",
+        desc_pt: "O Zero Absoluto: Gráfico, Preço, Tempo e Tendência.",
+        desc_en: "Absolute Zero: Chart, Price, Time and Trend.",
+        icon: GraduationCap,
+        file_pt: "00_FUNDAMENTOS_ABSOLUTOS.md",
+        file_en: "00_FUNDAMENTOS_ABSOLUTOS.md",
+        color: "text-green-500"
+    },
+    {
+        id: "01",
+        display_id: "01",
         title_pt: "Fundamentos Clássicos",
         title_en: "Classical Fundamentals",
         desc_pt: "Dow, Elliott e Wyckoff: A base de tudo.",
@@ -39,7 +65,8 @@ const CHAPTERS = [
         color: "text-blue-400"
     },
     {
-        id: 2,
+        id: "02",
+        display_id: "02",
         title_pt: "Price Action Avançado",
         title_en: "Advanced Price Action",
         desc_pt: "Candles, Padrões e a psicologia do pavio.",
@@ -50,7 +77,8 @@ const CHAPTERS = [
         color: "text-green-400"
     },
     {
-        id: 3,
+        id: "03",
+        display_id: "03",
         title_pt: "Smart Money Concepts",
         title_en: "Smart Money Concepts",
         desc_pt: "Rastreando os Grandes Players (SMC).",
@@ -61,7 +89,8 @@ const CHAPTERS = [
         color: "text-purple-400"
     },
     {
-        id: 4,
+        id: "04",
+        display_id: "04",
         title_pt: "Ferramentas Matemáticas",
         title_en: "Mathematical Tools",
         desc_pt: "Fibonacci, Médias e Indicadores Reais.",
@@ -72,7 +101,8 @@ const CHAPTERS = [
         color: "text-yellow-400"
     },
     {
-        id: 5,
+        id: "05",
+        display_id: "05",
         title_pt: "Psicologia & Risco",
         title_en: "Psychology & Risk",
         desc_pt: "Como não quebrar a banca e a mente.",
@@ -83,7 +113,8 @@ const CHAPTERS = [
         color: "text-red-400"
     },
     {
-        id: 6,
+        id: "06",
+        display_id: "06",
         title_pt: "Lifestyle & Saúde",
         title_en: "Lifestyle & Health",
         desc_pt: "O corpo do trader de alta performance.",
@@ -94,7 +125,8 @@ const CHAPTERS = [
         color: "text-pink-400"
     },
     {
-        id: 7,
+        id: "07",
+        display_id: "07",
         title_pt: "A Revolução Inspetor",
         title_en: "The Inspetor Revolution",
         desc_pt: "IA + Humano: O futuro do trading híbrido.",
@@ -105,7 +137,8 @@ const CHAPTERS = [
         color: "text-cyan-400"
     },
     {
-        id: 8,
+        id: "08",
+        display_id: "08",
         title_pt: "O Mapa dos Ativos",
         title_en: "The Asset Map",
         desc_pt: "Ações, FIIs, Derivativos e Perfis de Risco.",
@@ -116,7 +149,8 @@ const CHAPTERS = [
         color: "text-indigo-400"
     },
     {
-        id: 9,
+        id: "09",
+        display_id: "09",
         title_pt: "Tecnologia Cripto & Segurança",
         title_en: "Crypto Tech & Security",
         desc_pt: "Blockchain, Layers, Tokenomics e Defesa.",
@@ -127,7 +161,8 @@ const CHAPTERS = [
         color: "text-orange-400"
     },
     {
-        id: 10,
+        id: "10",
+        display_id: "10",
         title_pt: "Macroeconomia & Fundamentos",
         title_en: "Macro & Fundamentals",
         desc_pt: "Juros, Inflação e Ciclos Econômicos.",
@@ -138,7 +173,8 @@ const CHAPTERS = [
         color: "text-emerald-400"
     },
     {
-        id: 11,
+        id: "11",
+        display_id: "11",
         title_pt: "História dos Crashes",
         title_en: "History of Crashes",
         desc_pt: "Tulipas, 1929, 2008 e Lendas do Mercado.",
@@ -149,7 +185,8 @@ const CHAPTERS = [
         color: "text-rose-400"
     },
     {
-        id: 12,
+        id: "12",
+        display_id: "12",
         title_pt: "O Mapa Final",
         title_en: "The Final Map",
         desc_pt: "A conexão total. O sistema unificado.",
@@ -160,7 +197,8 @@ const CHAPTERS = [
         color: "text-rose-400"
     },
     {
-        id: 13,
+        id: "13",
+        display_id: "13",
         title_pt: "O Legado Final",
         title_en: "The Final Legacy",
         desc_pt: "O manifesto. Pensar em décadas.",
@@ -169,6 +207,18 @@ const CHAPTERS = [
         file_pt: "13_LEGADO_FINAL.md",
         file_en: "13_FINAL_LEGACY.md",
         color: "text-gold-400"
+    },
+    {
+        id: "14",
+        display_id: "14",
+        title_pt: "Encerramento",
+        title_en: "Closing",
+        desc_pt: "A despedida. O contrato final com o mercado.",
+        desc_en: "The farewell. The final contract with the market.",
+        icon: Flag,
+        file_pt: "14_ENCERRAMENTO_FINAL.md",
+        file_en: "14_FINAL_CLOSING.md",
+        color: "text-red-500"
     }
 ];
 
@@ -200,8 +250,8 @@ export default function AcademyView() {
 
                     <p className="text-lg text-muted-foreground leading-relaxed mb-8">
                         {lang === 'pt'
-                            ? 'A "Bíblia do Trader Moderno". Um curso completo de 7 módulos cobrindo do zero ao institucional, integrando Teoria de Dow, SMC e IA.'
-                            : 'The "Modern Trader Bible". A complete 7-module course covering from zero to institutional level, integrating Dow Theory, SMC, and AI.'}
+                            ? 'A "Bíblia do Trader Moderno". Um curso completo de 17 módulos cobrindo do zero ao institucional, integrando Teoria de Dow, SMC e IA.'
+                            : 'The "Modern Trader Bible". A complete 17-module course covering from zero to institutional level, integrating Dow Theory, SMC, and AI.'}
                     </p>
 
                     <div className="flex items-center gap-4">
@@ -242,7 +292,9 @@ export default function AcademyView() {
                                         <chapter.icon className="w-6 h-6" />
                                     </div>
                                     <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">
-                                        {lang === 'pt' ? `Capítulo 0${chapter.id}` : `Chapter 0${chapter.id}`}
+                                        {/^\d+$/.test(chapter.display_id)
+                                            ? (lang === 'pt' ? `Capítulo ${chapter.display_id}` : `Chapter ${chapter.display_id}`)
+                                            : chapter.display_id}
                                     </span>
                                 </div>
 
