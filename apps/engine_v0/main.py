@@ -961,8 +961,14 @@ def main():
                 except Exception as e:
                     print(f"[DASHBOARD][ERROR] {e}")
             
-            # Sleep until next iteration
-            time.sleep(LOOP_INTERVAL_SECONDS)
+            # Smart Sleep: Dynamic interval based on activity
+            # Does NOT increase AI costs (AI interval is separate), but improves local risk management
+            sleep_time = LOOP_INTERVAL_SECONDS
+            if state.get("positions_count", 0) > 0:
+                sleep_time = max(5, LOOP_INTERVAL_SECONDS // 2)
+                
+            print(f"[LOOP] Sleeping {sleep_time}s... (Positions: {state.get('positions_count', 0)})")
+            time.sleep(sleep_time)
             
     except KeyboardInterrupt:
         print("\n[SHUTDOWN] Received interrupt signal")

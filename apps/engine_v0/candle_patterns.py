@@ -114,6 +114,81 @@ def detect_candle_patterns(candles: List[Dict], lookback: int = 10) -> Dict[str,
                     "compression": c_range / (p_range if (p_range := p_high - p_low) > 0 else 1)
                 })
                 
+            # === MORNING STAR (3 candles) ===
+            # Red, Small Body (Gap Down ideally), Green (Gap Up ideally, closes > midpoint of first)
+            # Simplified: Red, Small, Green taking out explicit gaps for crypto reliability
+            if i >= 2:
+                p2 = recent[i-2] # 2 candles ago
+                p2_open = float(p2.get('o', p2.get('open', 0)))
+                p2_close = float(p2.get('c', p2.get('close', 0)))
+                p2_body = abs(p2_close - p2_open)
+                p2_bearish = p2_close < p2_open
+                
+                # Check structure: Bearish -> Small -> Bullish
+                if p2_bearish and p2_body > 0 and c_bullish:
+                    # Middle candle (prev) should be small
+                    if p_body < p2_body * 0.5 and p_body < c_body * 0.5:
+                         # 3rd candle closes above midpoint of 1st candle
+                         midpoint = (p2_open + p2_close) / 2
+                         if c_close > midpoint:
+                             patterns.append({
+                                "type": "MORNING_STAR",
+                                "age": age,
+                                "price": c_close,
+                                "strength": "HIGH"
+                            })
+
+            # === EVENING STAR (3 candles) ===
+            # Green, Small Body, Red (closes < midpoint of first)
+            if i >= 2:
+                p2 = recent[i-2]
+                p2_open = float(p2.get('o', p2.get('open', 0)))
+                p2_close = float(p2.get('c', p2.get('close', 0)))
+                p2_body = abs(p2_close - p2_open)
+                p2_bullish = p2_close > p2_open
+                
+                if p2_bullish and p2_body > 0 and c_bearish:
+                    if p_body < p2_body * 0.5 and p_body < c_body * 0.5:
+                         midpoint = (p2_open + p2_close) / 2
+                         if c_close < midpoint:
+                             patterns.append({
+                                "type": "EVENING_STAR",
+                                "age": age,
+                                "price": c_close,
+                                "strength": "HIGH"
+                            })
+
+            # === THREE WHITE SOLDIERS ===
+            # 3 consecutive green candles, each closing higher
+            if i >= 2:
+                p2 = recent[i-2]
+                if (p2['close'] > p2['open'] and 
+                    prev['close'] > prev['open'] and 
+                    current['close'] > current['open']):
+                    if (current['close'] > prev['close'] > p2['close']):
+                         # Check bodies are decent size (not dojis)
+                         if c_range > 0 and c_body/c_range > 0.5:
+                             patterns.append({
+                                "type": "3_WHITE_SOLDIERS",
+                                "age": age,
+                                "price": c_close
+                            })
+
+            # === THREE BLACK CROWS ===
+            # 3 consecutive red candles, each closing lower
+            if i >= 2:
+                p2 = recent[i-2]
+                if (p2['close'] < p2['open'] and 
+                    prev['close'] < prev['open'] and 
+                    current['close'] < current['open']):
+                    if (current['close'] < prev['close'] < p2['close']):
+                         if c_range > 0 and c_body/c_range > 0.5:
+                             patterns.append({
+                                "type": "3_BLACK_CROWS",
+                                "age": age,
+                                "price": c_close
+                            })
+                            
         except Exception:
             continue
     
