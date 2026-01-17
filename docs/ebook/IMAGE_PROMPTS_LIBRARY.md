@@ -65,11 +65,117 @@ Esta biblioteca contém os prompts padronizados para geração de imagens didát
 
 ---
 
+---
+
+### Capítulo 04: Ferramentas Matemáticas
+
+#### 12. Fibonacci (Didática)
+*   **Arquivo:** `ch04_fibonacci.png`
+*   **Prompt:** A technical chart diagram showing a price impulse up, followed by a correction down to a specific level, and then a bounce up. The correction stops exactly at a horizontal line labeled '61.8% (Golden Ratio)'. Text labels: 'Impulse', 'Correction', 'Entry Zone'. High contrast, neon style on dark background.
+
+#### 13. RSI Divergence (Didática)
+*   **Arquivo:** `ch04_rsi_divergence.png`
+*   **Prompt:** A split screen diagram. Top half: Price Chart showing 'Higher Highs' (Price going up). Bottom half: RSI Oscillator showing 'Lower Highs' (Indicator going down). Dotted lines connect the peaks to show the divergence. Label: 'Bearish Divergence'. Dark background, clean lines.
+
+#### 14. Moving Averages (Didática)
+*   **Arquivo:** `ch04_moving_averages.png`
+*   **Prompt:** A candlestick chart with a single smooth blue line flowing below the candles. The line acts as a dynamic support floor. Arrows show the price touching the blue line and bouncing up. Label: 'EMA 200 (Dynamic Support)'.
+
+---
+
 ### Capítulo 05: Psicologia
 
 #### 12. Ciclo do Medo e Ganância (Conceitual)
 *   **Arquivo:** `ch05_fear_greed_cycle.png`
 *   **Prompt:** A circular flow diagram. Steps: 'Trade Entry' -> 'Anxiety' -> 'Profit (Greed)' OR 'Loss (Fear)' -> 'Revenge Trade' -> 'Regret'. A vicious cycle loop. Darker tones, psychological theme.
+
+#### 13. Ilusão de Controle (Conceitual)
+*   **Arquivo:** `ch05_illusion_control.png`
+*   **Prompt:** A split scene. Left side: A general pointing at a perfect battle map (Planning). Right side: Tanks stuck in mud under heavy rain (Reality). Visual metaphor for "Market Randomness vs Plan". Educational style.
+
+---
+
+---
+
+### Capítulo 06: Trader Atleta
+
+#### 16. O Custo do Sono (Gráfico)
+*   **Arquivo:** `ch06_sleep_performance.png`
+*   **Prompt:** A simple performance line chart comparing two traders. Line 1 (Green, Label: '8h Sleep') goes steadily up. Line 2 (Red, Label: '4h Sleep') is volatile and crashes down. Dark background, clear labels.
+
+#### 17. Monge vs Viciado (Conceitual)
+*   **Arquivo:** `ch06_dopamine_monk.png`
+*   **Prompt:** A split screen comparison. Left: A calm monk meditating in a zen garden (Label: 'Focus'). Right: A stressed trader screaming at 6 screens with energy drinks spilling (Label: 'Dopamine Overload'). High contrast.
+
+#### 18. Combustível Cerebral (Conceitual)
+*   **Arquivo:** `ch06_nutrition_brain.png`
+*   **Prompt:** A visual comparison of "Fuel". Left: A plate with salmon, avocado, and nuts (Label: 'Brain Power'). Right: A pile of fast food and soda (Label: 'Mental Fog'). Clean, detailed illustration style.
+
+---
+
+---
+
+### Capítulo 07: A Revolução Híbrida
+
+#### 19. A Lógica de Confluência (Fluxograma)
+*   **Arquivo:** `ch07_confluence_logic.png`
+*   **Prompt:** A structured flowchart showing the decision process. Layer 1: 'Macro Trend (Dow)' (Check). Layer 2: 'Structure (SMC)' (Check). Layer 3: 'Momentum (RSI)' (Check). All arrows point to a central glowing button labeled 'ENTER TRADE'. Tech HUD style.
+
+#### 20. Modos de Operação (UI Mockup)
+*   **Arquivo:** `ch07_operating_modes.png`
+*   **Prompt:** A mockup of a smartphone screen showing a Telegram bot interface. A message says 'Opportunity Detected: BTC/USD'. Three buttons below: 'Auto Execute', 'View Chart', 'Ignore'. Sleek, dark mode UI.
+
+---
+
+### Capítulo 08: Modalidades e Estilos
+
+#### 21. Batalha de Estilos (Infográfico)
+*   **Arquivo:** `ch08_style_comparison.png`
+*   **Prompt:** A 3-column comparison infographic. Left: 'Day Trade' (Clock ticking fast, red high stress meter). Middle: 'Swing Trade' (Calendar, green low stress meter, money bag). Right: 'Holder' (A growing golden tree, very slow). Dark background.
+
+#### 22. O Setup Perfeito (Swing Trade)
+*   **Arquivo:** `ch08_swing_setup.png`
+*   **Prompt:** A clean H4 timeframe chart. An uptrend. Price pulls back gently to the EMA 200 line which aligns with a Fibonacci 61.8% line. A glowing green box labeled 'Buy Entry'. Text: 'High Probability Setup'.
+
+---
+
+### Capítulo 09: Ecossistema Cripto
+
+#### 23. O Trilema Blockchain (Conceitual)
+*   **Arquivo:** `ch09_blockchain_trilemma.png`
+*   **Prompt:** A triangle diagram labeled 'Blockchain Trilemma'. Corners: 'Security' (Lock icon), 'Decentralization' (Network node icon), 'Scalability' (Speedometer icon). A slider shows you can only pick 2. Tech aesthetic.
+
+#### 24. Mapa de Custódia (Conceitual)
+*   **Arquivo:** `ch09_custody_map.png`
+*   **Prompt:** A security levels diagram. Level 1 (Low Security): 'Exchange' (Public Building icon). Level 2 (Medium): 'Hot Wallet' (Mobile Phone icon). Level 3 (Max Security): 'Cold Wallet' (USB Stick in a Safe). Green checkmarks on Level 3.
+
+---
+
+### Capítulo 10: Macro e Fundamentalismo
+
+#### 25. Ciclos de Liquidez (Conceitual)
+*   **Arquivo:** `ch10_macro_liquidity_cycle.png`
+*   **Prompt:** A conceptual illustration of a water tap. Left side: 'Low Rates' (Tap Open, water flowing, green plants growing labeled 'Assets Up'). Right side: 'High Rates' (Tap Closed, water stopped, plants withering labeled 'Assets Down').
+
+#### 26. Dólar vs Bitcoin (Gráfico)
+*   **Arquivo:** `ch10_btc_dxy_correlation.png`
+*   **Prompt:** An overlay chart. One line is DXY (Dollar) going up (Green). The other line is BTC (Bitcoin) going down (Red). A clear inverse correlation. Text label: 'Inverse Correlation'. Dark background.
+
+#### 27. O Iceberg do FDV (Conceitual)
+*   **Arquivo:** `ch10_tokenomics_fdv.png`
+*   **Prompt:** An iceberg diagram. The tip above water is labeled 'Market Cap' (Small). The huge mass underwater is labeled 'FDV (Locked Tokens)' (Huge). Warning sign: 'Inflation Risk'.
+
+---
+
+### Capítulo 11: História dos Crashes
+
+#### 28. Anatomia da Bolha (Didática)
+*   **Arquivo:** `ch11_bubble_anatomy.png`
+*   **Prompt:** A classic bubble cycle chart. A line rising slowly (Stealth), then faster (Awareness), then vertically (Mania), then crashing vertically (Blow-off). Labels: 'Smart Money', 'Institutional', 'Public (Retail)', 'Panic'.
+
+#### 29. Linha do Tempo dos Crashes (Infográfico)
+*   **Arquivo:** `ch11_crash_timeline.png`
+*   **Prompt:** A horizontal timeline of financial disasters. 1637 (Tulip Flower icon), 1929 (Stock Market Crash icon), 2000 (Dotcom Pixel icon), 2008 (House icon crumbling). Dark background, historical theme.
 
 ---
 
@@ -78,3 +184,23 @@ Esta biblioteca contém os prompts padronizados para geração de imagens didát
 #### 13. O Sistema Unificado (Didática/Fluxograma)
 *   **Arquivo:** `ch12_unified_system_flow.png`
 *   **Prompt:** A logic flowchart. Box 1: 'Macro Condition' (Yes/No). Arrow to Box 2: 'Market Structure' (Bull/Bear). Arrow to Box 3: 'Liquidity Grab' (Wait). Arrow to Box 4: 'Entry Trigger'. Arrow to Box 5: 'Execution'. structured programming logic style.
+
+#### 14. A Rotina de Elite (Infográfico)
+*   **Arquivo:** `ch12_elite_routine.png`
+*   **Prompt:** A vertical timeline of a Pro Trader's day. 08:00 (Coffee/Meditation). 09:30 (Chart Analysis). 10:00 (Bot Activation). 14:00 (Gym/Life). 18:00 (Review). Dark background, clean icons.
+
+---
+
+### Capítulo 13: O Legado
+
+#### 30. A Curva Exponencial (Gráfico)
+*   **Arquivo:** `ch13_compound_interest.png`
+*   **Prompt:** A simple line chart showing Compound Interest. The line starts flat and curves up exponentially to the sky. Label: 'Consistency + Time = Freedom'.
+
+---
+
+### Capítulo 14: Encerramento
+
+#### 31. O Monge de Wall Street (Artístico)
+*   **Arquivo:** `ch14_philosophy_torch.png`
+*   **Prompt:** An cinematic shot from behind of a modern trader (hoodie) walking into a chaotic trading floor (Wall Street), but he is glowing with a calm blue aura. Contrast between Chaos (Market) and Order (The Trader).
