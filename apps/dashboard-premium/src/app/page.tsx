@@ -26,6 +26,7 @@ import {
   Terminal,
   Newspaper,
   UserCircle,
+  GraduationCap,
   History as HistoryIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ import { useSettings } from "@/hooks/useSettings";
 import AnimatedBackground from "@/components/AnimatedBackground";
 // UnifiedOverviewCard replaced by HyperDashOverview
 import HyperDashOverview from "@/components/HyperDashOverview";
+import AcademyView from "@/components/AcademyView";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -382,7 +384,7 @@ function DashboardContent() {
   const [allThoughts, setAllThoughts] = useState<AIThought[]>([]); // Full logs including HOLDs
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'charts' | 'news' | 'chat' | 'logs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'charts' | 'news' | 'chat' | 'logs' | 'academy'>('overview');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_pnlHistory, _setPnlHistory] = useState<{ time: string | number; value: number }[]>([]);
   const [pnlPeriod, setPnlPeriod] = useState<'24H' | '7D' | '30D' | 'ALL'>('24H');
@@ -693,6 +695,7 @@ function DashboardContent() {
             { id: 'news', label: isPt ? 'Notícias' : 'News', icon: Globe },
             { id: 'chat', label: isPt ? 'Chat IA' : 'AI Chat', icon: MessageSquare },
             { id: 'logs', label: isPt ? 'Logs de Execução' : 'Execution Logs', icon: Terminal },
+            { id: 'academy', label: isPt ? 'Academy' : 'Academy', icon: GraduationCap },
           ].map((item) => {
             const content = (
               <>
@@ -718,7 +721,7 @@ function DashboardContent() {
             return (
               <button
                 key={item.id}
-                onClick={() => { setActiveTab(item.id as 'overview' | 'charts' | 'news' | 'chat' | 'logs'); setSidebarOpen(false); }}
+                onClick={() => { setActiveTab(item.id as 'overview' | 'charts' | 'news' | 'chat' | 'logs' | 'academy'); setSidebarOpen(false); }}
                 className={className}
               >
                 {content}
@@ -1689,6 +1692,14 @@ function DashboardContent() {
                   )}
                 </div>
               </GlassCard>
+            </div>
+          )
+        }
+
+        {
+          activeTab === 'academy' && (
+            <div key="academy" className="animate-in fade-in slide-in-from-right-2 duration-300">
+              <AcademyView />
             </div>
           )
         }
