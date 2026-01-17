@@ -6,9 +6,10 @@ Este não é apenas um guia sobre o bot, mas um curso completo sobre o mercado f
 
 ### Índice de Conteúdo
 
-#### Módulo 0: O Filtro
+#### Módulo 0: O Filtro & Base
 *   **[Prefácio: A Verdade Brutal](00_PREFACIO_A_VERDADE.md)** - Leia antes de começar.
 *   **[Quem NÃO Deve Ler](00_QUEM_NAO_DEVE_LER.md)** - O filtro dos fracos.
+*   **[Capítulo 00: Fundamentos Absolutos](00_FUNDAMENTOS_ABSOLUTOS.md)** - O que é gráfico, preço e candle (Didático).
 
 #### Módulo 1: A Fundação Clássica
 *   **[Capítulo 01: Fundamentos Clássicos](01_FUNDAMENTOS_CLASSICOS.md)** - Dow, Elliott e Wyckoff.

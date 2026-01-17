@@ -11,6 +11,7 @@ COVER_IMAGE = "capa_oficial.jpg"
 FILES = [
     "00_PREFACIO_A_VERDADE.md",
     "00_QUEM_NAO_DEVE_LER.md",
+    "00_FUNDAMENTOS_ABSOLUTOS.md",
     "01_FUNDAMENTOS_CLASSICOS.md",
     "02_PRICE_ACTION_AVANCADO.md",
     "03_SMART_MONEY_CONCEPTS.md",
@@ -30,6 +31,7 @@ FILES = [
 
 # Mapping images to chapters
 CHAPTER_IMAGES = {
+    "00_FUNDAMENTOS": "images/ch00_basics_chart_axis.png",
     "01": "images/ch01_foundations.png",
     "02": "images/ch02_price_action.png",
     "03": "images/ch03_smart_money.png",
